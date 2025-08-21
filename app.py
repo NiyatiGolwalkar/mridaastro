@@ -67,13 +67,16 @@ def compute_chart(dt_local, tz_hours, lat, lon, use_moshier=True):
     # Choose flags: prefer built-in Moshier to avoid ephemeris files
     flags = swe.FLG_MOSEPH if use_moshier else swe.FLG_SWIEPH
 
+    # --- IMPORTANT FIX ---
+    # Set Lahiri sidereal mode once, then get ayanamsa for this JD.
+    swe.set_sid_mode(swe.SIDM_LAHIRI, 0, 0)
     # Houses (Placidus) then convert to Lahiri sidereal
     try:
         cusps, ascmc = swe.houses_ex(jd, flags, lat, lon, b'H')
     except Exception:
         cusps, ascmc = swe.houses(jd, lat, lon, b'H')
-     swe.set_sid_mode(swe.SIDM_LAHIRI, 0, 0)
-     ayan = swe.get_ayanamsa_ut(jd)
+    ayan = swe.get_ayanamsa_ut(jd)  # <-- takes only JD
+
     asc_sidereal = (ascmc[0] - ayan) % 360
     houses_sidereal = [(c - ayan) % 360 for c in cusps[1:13]]
 
@@ -181,8 +184,8 @@ colA, colB = st.columns([1,1])
 
 with colA:
     name = st.text_input("Name", "Sample Name")
-    dob = st.date_input("Date of Birth", datetime.date(1981,4,14))
-    tob = st.time_input("Time of Birth", datetime.time(22,20))
+    dob = st.date_input("Date of Birth", datetime.date(1987,9,15))
+    tob = st.time_input("Time of Birth", datetime.time(22,45))
     tz = st.number_input("Timezone offset (e.g., 5.5 for IST)", value=5.5, step=0.5, format="%.2f")
     city = st.selectbox("City (quick pick)", list(CITY_LATLON.keys()), index=1)
 with colB:
