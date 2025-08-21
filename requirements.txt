@@ -2,6 +2,7 @@ streamlit
 pyswisseph
 matplotlib
 python-docx
-geopy
 timezonefinder
 pytz
+requests
+
