@@ -67,15 +67,14 @@ def compute_chart(dt_local, tz_hours, lat, lon, use_moshier=True):
     # Choose flags: prefer built-in Moshier to avoid ephemeris files
     flags = swe.FLG_MOSEPH if use_moshier else swe.FLG_SWIEPH
 
-    # --- IMPORTANT FIX ---
-    # Set Lahiri sidereal mode once, then get ayanamsa for this JD.
+    # Set Lahiri sidereal mode, then get ayanamsa for this JD.
     swe.set_sid_mode(swe.SIDM_LAHIRI, 0, 0)
     # Houses (Placidus) then convert to Lahiri sidereal
     try:
         cusps, ascmc = swe.houses_ex(jd, flags, lat, lon, b'H')
     except Exception:
         cusps, ascmc = swe.houses(jd, lat, lon, b'H')
-    ayan = swe.get_ayanamsa_ut(jd)  # <-- takes only JD
+    ayan = swe.get_ayanamsa_ut(jd)
 
     asc_sidereal = (ascmc[0] - ayan) % 360
     houses_sidereal = [(c - ayan) % 360 for c in cusps[1:13]]
@@ -85,7 +84,8 @@ def compute_chart(dt_local, tz_hours, lat, lon, use_moshier=True):
                    swe.JUPITER, swe.SATURN, swe.MEAN_NODE]
     plon = {}
     for p in planet_list:
-        lon_trop, lat_, dist, _ = swe.calc_ut(jd, p, flags)
+        x, _retflag = swe.calc_ut(jd, p, flags)   # x = (lon, lat, dist, speedlon, speedlat, speeddist)
+        lon_trop = x[0]
         lon_sid = (lon_trop - ayan) % 360
         plon[p] = lon_sid
 
