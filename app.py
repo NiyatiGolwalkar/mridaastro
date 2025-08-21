@@ -72,7 +72,8 @@ def compute_chart(dt_local, tz_hours, lat, lon, use_moshier=True):
         cusps, ascmc = swe.houses_ex(jd, flags, lat, lon, b'H')
     except Exception:
         cusps, ascmc = swe.houses(jd, lat, lon, b'H')
-    ayan = swe.get_ayanamsa_ut(jd, ayan_t=swe.SIDM_LAHIRI)
+     swe.set_sid_mode(swe.SIDM_LAHIRI, 0, 0)
+     ayan = swe.get_ayanamsa_ut(jd)
     asc_sidereal = (ascmc[0] - ayan) % 360
     houses_sidereal = [(c - ayan) % 360 for c in cusps[1:13]]
 
