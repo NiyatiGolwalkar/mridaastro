@@ -1,4 +1,4 @@
-import os, datetime, requests, pytz
+import os, re, datetime, requests, pytz
 import streamlit as st
 import pandas as pd
 import swisseph as swe
@@ -11,6 +11,7 @@ from io import BytesIO
 st.set_page_config(page_title="Kundali – Vimshottari & Positions", layout="wide", page_icon="🪔")
 
 HN = {'Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Me':'बुध','Ju':'गुरु','Ve':'शुक्र','Sa':'शनि','Ra':'राहु','Ke':'केतु'}
+ABBR = {'Su':'Su','Mo':'Mo','Ma':'Ma','Me':'Me','Ju':'Ju','Ve':'Ve','Sa':'Sa','Ra':'Ra','Ke':'Ke'}
 ORDER = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
 YEARS = {'Ke':7,'Ve':20,'Su':6,'Mo':10,'Ma':7,'Ra':18,'Ju':16,'Sa':19,'Me':17}
 NAK = 360.0/27.0
@@ -30,7 +31,7 @@ def fmt_deg_sign(lon_sid):
     return sign, f"{d:02d}°{m:02d}'{s:02d}\""
 
 def kp_sublord(lon_sid):
-    """Return (nakshatra_lord, sub_lord) — i.e., Nakshatra Lord and sub-Nakshatra Lord (KP style)."""
+    """Return (nakshatra_lord, sub_lord) — KP style."""
     part = lon_sid % 360.0
     ni = int(part // NAK); pos = part - ni*NAK
     lord = ORDER[ni % 9]
@@ -82,19 +83,14 @@ def sidereal_positions(dt_utc):
     return jd, ay, out
 
 def positions_table(sidelons):
-    """Return two DataFrames:
-    - df_display: Planet | Sign number | Degree | Nakshatra Lord | Sub Nakshatra Lord
-    - df_kp: Planet | Sign | Degree | Lord | Sub-Lord (for any internal use)"""
-    rows_disp=[]; rows_kp=[]
+    rows=[]
     for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
         lon=sidelons[code]
         sign, deg_str = fmt_deg_sign(lon)
         nak_lord, sub_lord = kp_sublord(lon)
-        rows_disp.append([HN[code], sign, deg_str, HN[nak_lord], HN[sub_lord]])
-        rows_kp.append([HN[code], sign, deg_str, HN[nak_lord], HN[sub_lord]])
-    df_display = pd.DataFrame(rows_disp, columns=["Planet","Sign number","Degree","Nakshatra Lord","Sub Nakshatra Lord"])
-    df_kp = pd.DataFrame(rows_kp, columns=["Planet","Sign","Degree","Lord","Sub-Lord"])
-    return df_display, df_kp
+        rows.append([HN[code], sign, deg_str, HN[nak_lord], HN[sub_lord]])
+    df = pd.DataFrame(rows, columns=["Planet","Sign number","Degree","Nakshatra Lord","Sub Nakshatra Lord"])
+    return df
 
 # ---- Vimshottari ----
 def moon_balance(moon_sid):
@@ -110,15 +106,10 @@ def add_years(dt, y):
     return dt + datetime.timedelta(days=y*YEAR_DAYS)
 
 def build_mahadashas_from_birth(birth_local_dt, moon_sid):
-    """Return MD segments starting at birth, capped to 100 years.
-    Each segment dict: {'planet','start','end','years_used'}.
-    First segment is the balance of birth MD (start=birth, end=birth+rem)."""
     md_lord, rem = moon_balance(moon_sid)
-    end_limit = add_years(birth_local_dt, 100.0)  # cap at 100 years
+    end_limit = add_years(birth_local_dt, 100.0)
 
     segments = []
-
-    # 1) Birth partial MD
     birth_md_start = birth_local_dt
     birth_md_end = min(add_years(birth_local_dt, rem), end_limit)
     segments.append({
@@ -127,14 +118,11 @@ def build_mahadashas_from_birth(birth_local_dt, moon_sid):
         "end": birth_md_end,
         "years_used": (birth_md_end - birth_md_start).days / YEAR_DAYS
     })
-
-    # 2) Subsequent full MDs (clamp last if needed)
     idx = (ORDER.index(md_lord) + 1) % 9
     t = birth_md_end
     while t < end_limit:
         L = ORDER[idx]
-        full_years = YEARS[L]
-        end = add_years(t, full_years)
+        end = add_years(t, YEARS[L])
         if end > end_limit:
             end = end_limit
         segments.append({
@@ -145,15 +133,13 @@ def build_mahadashas_from_birth(birth_local_dt, moon_sid):
         })
         t = end
         idx = (idx + 1) % 9
-
-    return segments, md_lord, rem
+    return segments
 
 def antars_in_md(md_lord, md_start, md_years):
-    """Return list of (antar_lord, start, end, antar_years) for this specific MD segment duration (md_years)."""
     res=[]; t=md_start; start_idx=ORDER.index(md_lord)
     for i in range(9):
         L=ORDER[(start_idx+i)%9]
-        yrs = YEARS[L]*(md_years/120.0)  # proportional share
+        yrs = YEARS[L]*(md_years/120.0)
         days = yrs*YEAR_DAYS
         start = t
         end = t + datetime.timedelta(days=days)
@@ -162,7 +148,6 @@ def antars_in_md(md_lord, md_start, md_years):
     return res
 
 def pratyantars_in_antar(antar_lord, antar_start, antar_years):
-    """Return list of (pratyantar_lord, start, end) within a given Antar, using proportional share of antar_years."""
     res=[]; t=antar_start; start_idx=ORDER.index(antar_lord)
     for i in range(9):
         L=ORDER[(start_idx+i)%9]
@@ -175,7 +160,6 @@ def pratyantars_in_antar(antar_lord, antar_start, antar_years):
     return res
 
 def next_ant_praty_in_days(now_local, md_segments, days_window):
-    """Return rows (Major, Antar, Pratyantar, End Date) within [now, now+window]."""
     rows=[]; horizon=now_local + datetime.timedelta(days=days_window)
     for seg in md_segments:
         MD = seg["planet"]; ms = seg["start"]; me = seg["end"]
@@ -188,27 +172,70 @@ def next_ant_praty_in_days(now_local, md_segments, days_window):
     rows.sort(key=lambda r:r["end"])
     return rows
 
-# ---- DOCX helpers ----
-def draw_blank_box(doc, title):
+# ---- Navamsa (D-9) ----
+def navamsa_sign_for_lon(lon):
+    sign_index = int(lon // 30)  # 0..11
+    deg_in_sign = lon % 30.0
+    pada = int((deg_in_sign * 9.0) // 30.0)  # 0..8
+    # Starting sign depends on element group
+    # Fire (1,5,9) -> start Aries(1) ; Earth (2,6,10) -> Capricorn(10)
+    # Air (3,7,11) -> Libra(7) ; Water (4,8,12) -> Cancer(4)
+    sign_group = (sign_index % 12) + 1
+    if sign_group in (1,5,9):
+        base = 1
+    elif sign_group in (2,6,10):
+        base = 10
+    elif sign_group in (3,7,11):
+        base = 7
+    else:
+        base = 4
+    nav_sign = ((base - 1) + pada) % 12 + 1  # 1..12
+    return nav_sign
+
+def build_navamsa_chart(sidelons):
+    # map sign-> list of planet abbreviations placed in that Navamsa sign
+    m = {i:[] for i in range(1,13)}
+    for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
+        lon = sidelons[code]
+        nav_sign = navamsa_sign_for_lon(lon)
+        m[nav_sign].append(ABBR[code])
+    return m
+
+def render_navamsa_html(mapping):
+    # simple 3x4 grid labeled with sign number and planets
+    order = [1,2,3,4,5,6,7,8,9,10,11,12]
+    cells = []
+    for s in order:
+        pls = ", ".join(mapping[s]) if mapping[s] else ""
+        cells.append(f"<div class='cell'><div class='sign'>[{s}]</div><div class='planets'>{pls}&nbsp;</div></div>")
+    grid = "<div class='grid'>" + "".join(cells) + "</div>"
+    style = """
+    <style>
+    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+    .cell{border:2px solid #777;border-radius:6px;min-height:70px;padding:6px;}
+    .sign{font-weight:700;margin-bottom:4px;}
+    .planets{font-size:0.95rem;}
+    </style>
+    """
+    return style + grid
+
+def add_navamsa_docx(doc, mapping, title):
     doc.add_paragraph(title).runs[0].bold = True
-    t = doc.add_table(rows=8, cols=8)
-    for row in t.rows:
-        for cell in row.cells:
-            tcPr = cell._tc.get_or_add_tcPr()
-            tcBorders = OxmlElement('w:tcBorders')
-            for edge in ('top','left','bottom','right'):
-                el = OxmlElement(f'w:{edge}')
-                el.set(qn('w:val'), 'single'); el.set(qn('w:sz'), '4')
-                tcBorders.append(el)
-            tcPr.append(tcBorders)
+    t = doc.add_table(rows=3, cols=4)
+    idx=1
+    for r in range(3):
+        row = t.rows[r].cells
+        for c in range(4):
+            txt = f"[{idx}] " + (", ".join(mapping[idx]) if mapping[idx] else "")
+            row[c].text = txt
+            idx += 1
     doc.add_paragraph("")
 
-def html_placeholder(title):
-    st.markdown(f"**{title}**")
-    st.markdown(
-        '<div style="border:2px solid #bbb; height:320px; margin:6px 0; border-radius:6px;"></div>',
-        unsafe_allow_html=True
-    )
+# ---- utils ----
+def sanitize_filename(name):
+    name = name.strip() or "Horoscope"
+    safe = re.sub(r'[^A-Za-z0-9._ -]', '_', name)
+    return f"{safe}_Horoscope.docx"
 
 def main():
     st.title("Kundali — Report Layout")
@@ -235,10 +262,10 @@ def main():
 
             # Compute positions
             _, _, sidelons = sidereal_positions(dt_utc)
-            df_positions, _ = positions_table(sidelons)
+            df_positions = positions_table(sidelons)
 
             # Mahadashas from birth
-            md_segments, birth_md_lord, birth_md_rem = build_mahadashas_from_birth(dt_local, sidelons['Mo'])
+            md_segments = build_mahadashas_from_birth(dt_local, sidelons['Mo'])
 
             # Vimshottari Mahadasha table (Planet | End Date | Age at end)
             df_md = pd.DataFrame([
@@ -263,6 +290,9 @@ def main():
                 for r in rows_ap
             ])
 
+            # Navamsa chart mapping and render
+            nav_map = build_navamsa_chart(sidelons)
+
             # Two-column display
             left, right = st.columns([1.2, 0.8])
             with left:
@@ -279,8 +309,10 @@ def main():
                 st.dataframe(df_ap, use_container_width=True)
 
             with right:
-                html_placeholder("Blank Lagna (D-1) Chart (North style)")
-                html_placeholder("Blank Navamsa (D-9) Chart (North Style)")
+                st.markdown("**Lagna (D-1) Chart (North style)**")
+                st.markdown("<div style='border:2px solid #bbb; height:320px; margin:6px 0; border-radius:6px;'></div>", unsafe_allow_html=True)
+                st.markdown("**Navamsa (D-9) Chart (North style)**")
+                st.markdown(render_navamsa_html(nav_map), unsafe_allow_html=True)
 
             # DOCX export
             doc = Document()
@@ -313,12 +345,12 @@ def main():
                 r=t3.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
 
-            # Right-side blank charts
-            draw_blank_box(doc, "Blank Lagna (D-1) Chart (North style)")
-            draw_blank_box(doc, "Blank Navamsa (D-9) Chart (North Style)")
+            # Navamsa chart in DOCX
+            add_navamsa_docx(doc, nav_map, "Navamsa (D-9) Chart (North style)")
 
             bio = BytesIO(); doc.save(bio)
-            st.download_button("⬇️ Download DOCX", bio.getvalue(), file_name="kundali_report.docx")
+            filename = sanitize_filename(name)
+            st.download_button("⬇️ Download DOCX", bio.getvalue(), file_name=filename)
 
         except Exception as e:
             st.error(str(e))
