@@ -22,8 +22,10 @@ def dms(deg):
     return d,m,s
 
 def fmt_deg_sign(lon_sid):
-    sign=int(lon_sid//30); deg=lon_sid - sign*30; d,m,s=dms(deg)
-    return f"{d:02d}°{m:02d}'{s:02d}\"", (sign+1)
+    sign=int(lon_sid//30) + 1  # 1..12
+    deg_in_sign = lon_sid % 30.0
+    d,m,s=dms(deg_in_sign)
+    return sign, f"{d:02d}°{m:02d}'{s:02d}\""
 
 def kp_sublord(lon_sid):
     part = lon_sid % 360.0
@@ -79,9 +81,11 @@ def sidereal_positions(dt_utc):
 def positions_table(sidelons):
     rows=[]
     for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
-        lon=sidelons[code]; deg,sign=fmt_deg_sign(lon); lord,sub=kp_sublord(lon)
-        rows.append([HN[code], deg, sign, HN[lord], HN[sub]])
-    return pd.DataFrame(rows, columns=["Planet","Degree","Sign","Lord","Sub-Lord"])
+        lon=sidelons[code]
+        sign, deg_str = fmt_deg_sign(lon)
+        lord, sub = kp_sublord(lon)
+        rows.append([HN[code], sign, deg_str, HN[lord], HN[sub]])
+    return pd.DataFrame(rows, columns=["Planet","Sign","Degree","Lord","Sub-Lord"])
 
 # ---- Vimshottari ----
 def moon_balance(moon_sid):
@@ -98,7 +102,7 @@ def add_years(dt, y):
 
 def build_mahadashas_from_birth(birth_local_dt, moon_sid):
     """Return MD segments starting at birth, capped to 100 years.
-    Each segment dict: {'planet', 'start', 'end', 'years_used'}.
+    Each segment dict: {'planet','start','end','years_used'}.
     First segment is the balance of birth MD (start=birth, end=birth+rem)."""
     md_lord, rem = moon_balance(moon_sid)
     end_limit = add_years(birth_local_dt, 100.0)  # cap at 100 years
@@ -138,7 +142,6 @@ def build_mahadashas_from_birth(birth_local_dt, moon_sid):
 def antars_in_md(md_lord, md_start, md_years):
     """Return list of (antar_lord, start, end, antar_years) for this specific MD segment duration (md_years)."""
     res=[]; t=md_start; start_idx=ORDER.index(md_lord)
-    # Antar proportions across 9 lords sum to md_years
     for i in range(9):
         L=ORDER[(start_idx+i)%9]
         yrs = YEARS[L]*(md_years/120.0)  # proportional share
@@ -163,19 +166,15 @@ def pratyantars_in_antar(antar_lord, antar_start, antar_years):
     return res
 
 def next_2y_ant_praty(now_local, birth_local_dt, md_segments):
-    """Compute Antars & Pratyantars for all MD segments, but only return rows that end within next 2 years.
-       Uses END dates (not starts)."""
+    """Compute Antars & Pratyantars for all MD segments, return rows that end within next 2 years.
+       Uses END dates only."""
     rows=[]; horizon=now_local + datetime.timedelta(days=2*365)
-    # Go through each MD segment; use the segment's ACTUAL duration for Antar sizing
     for seg in md_segments:
         MD = seg["planet"]
         ms = seg["start"]; me = seg["end"]
         md_years_effective = seg["years_used"]  # balance/full/truncated
-        # Build Antars for this MD segment
         for AL, as_, ae, ay in antars_in_md(MD, ms, md_years_effective):
-            # Only consider Antars intersecting the window
             if ae < now_local or as_ > horizon: continue
-            # Within each Antar, build Pratyantars sized off the Antar years 'ay'
             for PL, ps, pe in pratyantars_in_antar(AL, as_, ay):
                 if pe < now_local or ps > horizon: continue
                 rows.append({"major":MD,"antar":AL,"pratyantar":PL,"end":pe})
@@ -205,49 +204,63 @@ def main():
                 tzname, tz_hours, dt_utc = tz_from_latlon(lat, lon, dt_local)
             st.info(f"Resolved {disp} → lat {lat:.6f}, lon {lon:.6f}, tz {tzname} (UTC{tz_hours:+.2f})")
 
-            # Planets
+            # Planetary Positions
             _, _, sidelons = sidereal_positions(dt_utc)
             df_pos = positions_table(sidelons)
-            st.subheader("Planetary Positions (Lord & Sub-Lord)"); st.dataframe(df_pos, use_container_width=True)
+            st.subheader("Planetary Positions")
+            st.dataframe(df_pos, use_container_width=True)
 
-            # Vimshottari MD segments starting *from birth*, capped to 100 years — show only END
+            # Vimshottari Mahadasha — from birth, ≤100y, End Date only + Age (at start)
             md_segments, birth_md_lord, birth_md_rem = build_mahadashas_from_birth(dt_local, sidelons['Mo'])
             df_md = pd.DataFrame([
-                {"Planet":HN[s["planet"]], "End": s["end"].strftime("%d-%m-%Y"),
-                 "Age at End (yrs)": round(((s["end"] - dt_local).days / YEAR_DAYS), 1)}
+                {
+                    "Planet": HN[s["planet"]],
+                    "End Date": s["end"].strftime("%d-%m-%Y"),
+                    "Age (at start)": round(((s["start"] - dt_local).days / YEAR_DAYS), 1),
+                }
                 for s in md_segments
             ])
-            st.subheader("Vimshottari Mahadasha — End Dates (from birth, ≤100y)")
+            st.subheader("Vimshottari Mahadasha")
             st.dataframe(df_md, use_container_width=True)
 
-            # Antar/Pratyantar — compute using segment-effective durations, report END only
+            # Antar / Pratyantar for next 2 years — End Date only
             now_local = datetime.datetime.now()
             ant_rows = next_2y_ant_praty(now_local, dt_local, md_segments)
             df_ant = pd.DataFrame([
-                {"Major":HN[r["major"]], "Antar":HN[r["antar"]], "Pratyantar":HN[r["pratyantar"]], "End": r["end"].strftime("%d-%m-%Y")}
+                {
+                    "Major Dasha": HN[r["major"]],
+                    "Antar Dasha": HN[r["antar"]],
+                    "Pratyantar Dasha": HN[r["pratyantar"]],
+                    "End Date": r["end"].strftime("%d-%m-%Y"),
+                }
                 for r in ant_rows
             ])
-            st.subheader("Antar / Pratyantar — Next 2 years (End Dates)")
+            st.subheader("Antar / Pratyantar for next 2 years")
             st.dataframe(df_ant, use_container_width=True)
 
-            # DOCX export reflecting the same
-            doc = Document(); doc.add_heading(f"Kundali — {name}", 0)
-            doc.add_paragraph(f"DOB: {dob}, TOB: {tob}, Place: {disp} (UTC{tz_hours:+.2f})")
+            # DOCX export matching same titles + column orders
+            doc = Document()
+            doc.add_heading(f"Kundali — {name}", 0)
+            doc.add_paragraph(f"Name: {name}")
+            doc.add_paragraph(f"Date of Birth: {dob}")
+            doc.add_paragraph(f"Time of Birth: {tob}")
+            doc.add_paragraph(f"Place of Birth: {disp} (UTC{tz_hours:+.2f})")
+
             doc.add_heading("Planetary Positions", level=2)
-            t = doc.add_table(rows=1, cols=len(df_pos.columns)); hdr=t.rows[0].cells
+            t1 = doc.add_table(rows=1, cols=len(df_pos.columns)); hdr=t1.rows[0].cells
             for i,c in enumerate(df_pos.columns): hdr[i].text=c
             for _,row in df_pos.iterrows():
-                r=t.add_row().cells
+                r=t1.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
 
-            doc.add_heading("Vimshottari Mahadasha — End Dates (from birth, ≤100y)", level=2)
+            doc.add_heading("Vimshottari Mahadasha", level=2)
             t2 = doc.add_table(rows=1, cols=len(df_md.columns)); h2=t2.rows[0].cells
             for i,c in enumerate(df_md.columns): h2[i].text=c
             for _,row in df_md.iterrows():
                 r=t2.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
 
-            doc.add_heading("Antar / Pratyantar — Next 2 years (End Dates)", level=2)
+            doc.add_heading("Antar / Pratyantar for next 2 years", level=2)
             t3 = doc.add_table(rows=1, cols=len(df_ant.columns)); h3=t3.rows[0].cells
             for i,c in enumerate(df_ant.columns): h3[i].text=c
             for _,row in df_ant.iterrows():
