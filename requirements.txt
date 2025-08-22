@@ -1,6 +1,7 @@
 streamlit
-pyswisseph
-pytz
 pandas
-python-docx
+pyswisseph
 requests
+timezonefinder
+pytz
+python-docx
