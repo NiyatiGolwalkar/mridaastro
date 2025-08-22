@@ -5,3 +5,4 @@ requests
 timezonefinder
 pytz
 python-docx
+Pillow
