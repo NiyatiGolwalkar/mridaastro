@@ -1,184 +1,201 @@
-# kundali-streamlit/app.py
-# ---------------------------------
-# Streamlit Kundali (Sidereal Lahiri) using Swiss Ephemeris
-# Fix: st.time_input now supports 1-minute precision (step=60)
-# Also: Ketu = Rahu + 180°
 
-import os
-import math
-from datetime import datetime, timedelta, time as dtime
-import requests
-import pytz
-import pandas as pd
+import os, datetime, requests, pytz
 import streamlit as st
+import pandas as pd
 import swisseph as swe
+from timezonefinder import TimezoneFinder
+from math import floor
+from docx import Document
+from io import BytesIO
 
-APP_TITLE = "🕉️ Vedic Horoscope (Sidereal Lahiri)"
-USE_TRUE_NODE = False  # False = Mean Rahu; True = True Rahu
-SIDEREAL_FLAG = swe.FLG_SIDEREAL
+st.set_page_config(page_title="Kundali – Hindi KP (Mahadasha + Antar/Pratyantar)", layout="wide", page_icon="🪔")
 
-# Optional: Geoapify API key for better geocoding (else fallback to Nominatim)
-GEOAPIFY_API_KEY = os.environ.get("GEOAPIFY_API_KEY", "")
+HN = {'Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Me':'बुध','Ju':'गुरु','Ve':'शुक्र','Sa':'शनि','Ra':'राहु','Ke':'केतु'}
+ORDER = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
+YEARS = {'Ke':7,'Ve':20,'Su':6,'Mo':10,'Ma':7,'Ra':18,'Ju':16,'Sa':19,'Me':17}
+NAK = 360.0/27.0
 
-DASHA_YEARS = {
-    "केतु": 7, "शुक्र": 20, "सूर्य": 6, "चंद्र": 10,
-    "मंगल": 7, "राहु": 18, "गुरु": 16, "शनि": 19, "बुध": 17
-}
-DASHA_ORDER = ["केतु", "शुक्र", "सूर्य", "चंद्र", "मंगल", "राहु", "गुरु", "शनि", "बुध"]
-YEAR_DAYS = 365.2425
+def set_sidereal(): swe.set_sid_mode(swe.SIDM_LAHIRI, 0, 0)
 
-PLANETS = [
-    (swe.SUN, "सूर्य"),
-    (swe.MOON, "चंद्र"),
-    (swe.MARS, "मंगल"),
-    (swe.MERCURY, "बुध"),
-    (swe.JUPITER, "गुरु"),
-    (swe.VENUS, "शुक्र"),
-    (swe.SATURN, "शनि"),
-    ((swe.TRUE_NODE if USE_TRUE_NODE else swe.MEAN_NODE), "राहु"),
-]
-# NOTE: No swe.KETU in pyswisseph; we compute it as Rahu + 180°.
+def dms(deg): d=int(deg); m=int((deg-d)*60); s=int(round((deg-d-m/60)*3600)); return d,m,s
+def fmt_deg_sign(lon_sid):
+    sign=int(lon_sid//30); deg=lon_sid - sign*30; d,m,s=dms(deg); return f"{d:02d}°{m:02d}'{s:02d}\"", (sign+1)
 
-def deg_to_dms(deg):
-    d = int(deg)
-    m = int((deg - d) * 60)
-    s = round((deg - d - m/60) * 3600, 2)
-    return f"{d:02d}° {m:02d}' {s:04.1f}\""
+def kp_sublord(lon_sid):
+    part = lon_sid % 360.0
+    ni = int(part // NAK); pos = part - ni*NAK
+    lord = ORDER[ni % 9]
+    start = ORDER.index(lord)
+    seq = [ORDER[(start+i)%9] for i in range(9)]
+    acc = 0.0
+    for L in seq:
+        seg = NAK * (YEARS[L]/120.0)
+        if pos <= acc + seg + 1e-9: return lord, L
+        acc += seg
+    return lord, seq[-1]
 
-def geocode(place):
-    if not place:
-        return None
-    try:
-        if GEOAPIFY_API_KEY:
-            r = requests.get(
-                "https://api.geoapify.com/v1/geocode/search",
-                params={"text": place, "format": "json", "apiKey": GEOAPIFY_API_KEY},
-                timeout=10,
-            )
-            r.raise_for_status()
-            js = r.json()
-            if js.get("results"):
-                it = js["results"][0]
-                return float(it["lat"]), float(it["lon"]), it.get("timezone", {}).get("name", "UTC")
-        # Fallback to free Nominatim
-        r = requests.get(
-            "https://nominatim.openstreetmap.org/search",
-            params={"q": place, "format": "json", "limit": 1},
-            headers={"User-Agent": "kundali-streamlit"},
-            timeout=10,
-        )
-        r.raise_for_status()
-        arr = r.json()
-        if arr:
-            it = arr[0]
-            return float(it["lat"]), float(it["lon"]), "UTC"
-    except Exception:
-        return None
-    return None
+def geocode(place, api_key):
+    if not api_key: raise RuntimeError("Geoapify key missing. Add GEOAPIFY_API_KEY in Secrets.")
+    url="https://api.geoapify.com/v1/geocode/search"
+    r=requests.get(url, params={"text":place, "format":"json", "limit":1, "apiKey":api_key}, timeout=12)
+    j=r.json()
+    if r.status_code!=200: raise RuntimeError(f"Geoapify {r.status_code}: {j.get('message', str(j)[:150])}")
+    if j.get("results"):
+        res=j["results"][0]; return float(res["lat"]), float(res["lon"]), res.get("formatted", place)
+    if j.get("features"):
+        lon,lat=j["features"][0]["geometry"]["coordinates"]; return float(lat), float(lon), place
+    raise RuntimeError("Place not found.")
 
-def to_julian_ut(dt_local: datetime, tz_name: str):
-    try:
-        tz = pytz.timezone(tz_name)
-    except Exception:
-        tz = pytz.UTC
-    aware_local = tz.localize(dt_local)
-    utc_dt = aware_local.astimezone(pytz.UTC)
-    hour_decimal = utc_dt.hour + utc_dt.minute/60 + utc_dt.second/3600
-    return swe.julday(utc_dt.year, utc_dt.month, utc_dt.day, hour_decimal)
+def tz_from_latlon(lat, lon, dt_local):
+    tf = TimezoneFinder(); tzname = tf.timezone_at(lat=lat, lng=lon) or "Etc/UTC"
+    tz = pytz.timezone(tzname); dt_local_aware = tz.localize(dt_local)
+    dt_utc_naive = dt_local_aware.astimezone(pytz.utc).replace(tzinfo=None)
+    offset_hours = tz.utcoffset(dt_local_aware).total_seconds()/3600.0
+    return tzname, offset_hours, dt_utc_naive
 
-def planetary_positions(jd_ut):
-    swe.set_sid_mode(swe.SIDM_LAHIRI)
-    rows = []
-    rahu_lon = None
-    for pid, name in PLANETS:
-        lon, lat, dist, *_ = swe.calc_ut(jd_ut, pid, SIDEREAL_FLAG)
-        lon = lon % 360.0
-        sign = int(lon // 30) + 1
-        rows.append([name, lon, deg_to_dms(lon), sign])
-        if name == "राहु":
-            rahu_lon = lon
-    if rahu_lon is not None:
-        ketu_lon = (rahu_lon + 180.0) % 360.0
-        ketu_sign = int(ketu_lon // 30) + 1
-        rows.append(["केतु", ketu_lon, deg_to_dms(ketu_lon), ketu_sign])
-    df = pd.DataFrame(rows, columns=["ग्रह", "अंश (°)", "DMS", "राशि (1-12)"])
-    return df.sort_values("अंश (°)").reset_index(drop=True)
+def sidereal_positions(dt_utc):
+    jd = swe.julday(dt_utc.year, dt_utc.month, dt_utc.day, dt_utc.hour + dt_utc.minute/60 + dt_utc.second/3600)
+    set_sidereal(); ay = swe.get_ayanamsa_ut(jd); flags=swe.FLG_MOSEPH
+    out = {}
+    for code, p in [('Su',swe.SUN),('Mo',swe.MOON),('Ma',swe.MARS),('Me',swe.MERCURY),
+                    ('Ju',swe.JUPITER),('Ve',swe.VENUS),('Sa',swe.SATURN),('Ra',swe.MEAN_NODE)]:
+        xx,_ = swe.calc_ut(jd, p, flags)
+        out[code] = (xx[0] - ay) % 360.0
+    out['Ke'] = (out['Ra'] + 180.0) % 360.0
+    return jd, ay, out
 
-def vimshottari_mahadasha(moon_long: float, birth_dt: datetime):
-    nak_index = int((moon_long % 360.0) // (360.0/27.0))
-    nak_frac = ((moon_long % 360.0) / (360.0/27.0)) - nak_index
-    lord = DASHA_ORDER[nak_index % 9]
-    elapsed = nak_frac * DASHA_YEARS[lord]
-    md_start = birth_dt - timedelta(days=elapsed * YEAR_DAYS)
-    end_at = birth_dt + timedelta(days=120 * YEAR_DAYS)
+def positions_table(sidelons):
+    rows=[]
+    for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
+        lon=sidelons[code]; deg,sign=fmt_deg_sign(lon); lord,sub=kp_sublord(lon)
+        rows.append([HN[code], deg, sign, HN[lord], HN[sub]])
+    return pd.DataFrame(rows, columns=["Planet","Degree","Sign","Lord","Sub-Lord"])
 
-    out, idx = [], DASHA_ORDER.index(lord)
-    cur_start = md_start
-    for i in range(60):
-        l = DASHA_ORDER[(idx + i) % 9]
-        dur_days = DASHA_YEARS[l] * YEAR_DAYS
-        out.append([l, cur_start.date(), (cur_start + timedelta(days=dur_days)).date()])
-        cur_start += timedelta(days=dur_days)
-        if cur_start > end_at:
-            break
-    return pd.DataFrame(out, columns=["महादशा", "आरंभ", "समाप्त"])
+# ---- Vimshottari ----
+def moon_balance(moon_sid):
+    part = moon_sid % 360.0
+    ni = int(part // NAK)
+    pos = part - ni*NAK
+    md_lord = ORDER[ni % 9]
+    frac = pos/NAK
+    remaining_years = YEARS[md_lord]*(1 - frac)
+    return md_lord, remaining_years
+
+def add_years(dt, y): return dt + datetime.timedelta(days=y*365.2425)
+
+def build_mahadashas(birth_local_dt, moon_sid):
+    md_lord, rem = moon_balance(moon_sid)
+    first_change = add_years(birth_local_dt, rem)
+    seq=[]; idx=(ORDER.index(md_lord)+1)%9; t=first_change
+    while len(seq) < 27:
+        L=ORDER[idx]; yrs=YEARS[L]; end=add_years(t, yrs); age=int((t-birth_local_dt).days/365.2425 + 0.5)
+        seq.append({"planet":L,"start":t,"end":end,"age":age})
+        t=end; idx=(idx+1)%9
+    return seq, md_lord, rem
+
+def antars_in_md(md_lord, md_start, md_years):
+    res=[]; t=md_start; start_idx=ORDER.index(md_lord)
+    for i in range(9):
+        L=ORDER[(start_idx+i)%9]
+        yrs = YEARS[L]*(md_years/120.0)
+        days = yrs*365.2425
+        res.append((L, t, yrs))
+        t = t + datetime.timedelta(days=days)
+    return res
+
+def pratyantars_in_antar(antar_lord, antar_start, antar_years):
+    res=[]; t=antar_start; start_idx=ORDER.index(antar_lord)
+    for i in range(9):
+        L=ORDER[(start_idx+i)%9]
+        yrs = YEARS[L]*(antar_years/120.0)
+        days = yrs*365.2425
+        res.append((L, t))
+        t = t + datetime.timedelta(days=days)
+    return res
+
+def next_2y_ant_praty(now_local, birth_local_dt, moon_sid, md_list, birth_md_lord, birth_md_rem):
+    rows=[]; horizon=now_local + datetime.timedelta(days=730)
+    birth_end=add_years(birth_local_dt, birth_md_rem)
+    sched=[(birth_md_lord, birth_local_dt, birth_end)] + [(m['planet'], m['start'], m['end']) for m in md_list]
+    for MD, ms, me in sched:
+        if me < now_local or ms > horizon: continue
+        md_years = YEARS[MD]
+        for AL, as_, ay in antars_in_md(MD, ms, md_years):
+            if as_ > horizon: break
+            for PL, ps in pratyantars_in_antar(AL, as_, ay):
+                if ps > horizon: break
+                if ps >= now_local:
+                    rows.append({"major":MD,"antar":AL,"pratyantar":PL,"start":ps})
+    rows.sort(key=lambda r:r["start"])
+    return rows
 
 def main():
-    st.set_page_config(page_title=APP_TITLE, layout="centered")
-    st.title(APP_TITLE)
-    st.caption("Lahiri ayanāṁśa • Sidereal positions • Swiss Ephemeris")
+    st.title("Kundali — Hindi KP (with Vimshottari)")
 
-    with st.sidebar:
-        st.header("जन्म विवरण")
-        name = st.text_input("नाम", value="")
-        place = st.text_input("जन्म स्थान (City, Country)", value="Mumbai, India")
-        date = st.date_input("जन्म दिनांक", value=datetime(1990, 1, 1).date())
-        # Step=60 → allows selecting any minute, e.g. 10:21, 5:22
-        time_val = st.time_input("जन्म समय", value=dtime(6, 0), step=60)
-        tz_name = st.text_input("समय क्षेत्र (IANA TZ)", value="Asia/Kolkata")
-        st.write("उदा: Asia/Kolkata, Europe/London, America/New_York")
-        node_choice = st.selectbox("राहु नोड प्रकार", ["Mean (डिफ़ॉल्ट)", "True"])
-        global USE_TRUE_NODE
-        USE_TRUE_NODE = (node_choice == "True")
+    c1,c2 = st.columns([1,1])
+    with c1:
+        name = st.text_input("Name")
+        dob = st.date_input("Date of Birth", min_value=datetime.date(1900,1,1), max_value=datetime.date.today())
+        tob = st.time_input("Time of Birth", step=datetime.timedelta(minutes=1))
+    with c2:
+        place = st.text_input("Place of Birth (City, State, Country)")
+        tz_override = st.text_input("UTC offset override (optional, e.g., 5.5)", "")
+    api_key = st.secrets.get("GEOAPIFY_API_KEY","")
 
-    global PLANETS
-    PLANETS = [
-        (swe.SUN, "सूर्य"),
-        (swe.MOON, "चंद्र"),
-        (swe.MARS, "मंगल"),
-        (swe.MERCURY, "बुध"),
-        (swe.JUPITER, "गुरु"),
-        (swe.VENUS, "शुक्र"),
-        (swe.SATURN, "शनि"),
-        ((swe.TRUE_NODE if USE_TRUE_NODE else swe.MEAN_NODE), "राहु"),
-    ]
+    if st.button("Generate Horoscope"):
+        try:
+            lat, lon, disp = geocode(place, api_key)
+            dt_local = datetime.datetime.combine(dob, tob)
+            if tz_override.strip():
+                tz_hours = float(tz_override); dt_utc = dt_local - datetime.timedelta(hours=tz_hours); tzname=f"UTC{tz_hours:+.2f} (manual)"
+            else:
+                tzname, tz_hours, dt_utc = tz_from_latlon(lat, lon, dt_local)
+            st.info(f"Resolved {disp} → lat {lat:.6f}, lon {lon:.6f}, tz {tzname} (UTC{tz_hours:+.2f})")
 
-    if st.button("🔎 Calculate"):
-        latlon = geocode(place)
-        if latlon:
-            lat, lon, tz_guess = latlon
-            st.success(f"स्थान मिला: lat={lat:.4f}, lon={lon:.4f}, tz≈{tz_guess}")
-        else:
-            st.info("स्थान लोकेट नहीं कर पाए; दिए हुए timezone के साथ आगे बढ़ रहे हैं।")
+            # Planets
+            _, _, sidelons = sidereal_positions(dt_utc)
+            df_pos = positions_table(sidelons)
+            st.subheader("Planetary Positions (Lord & Sub-Lord)"); st.dataframe(df_pos)
 
-        dt_local = datetime.combine(date, time_val)
-        jd_ut = to_julian_ut(dt_local, tz_name)
+            # Vimshottari MD from Moon balance
+            md_list, birth_md_lord, birth_md_rem = build_mahadashas(dt_local, sidelons['Mo'])
+            df_md = pd.DataFrame([{"Planet":HN[m["planet"]],"Start":m["start"].strftime("%d-%m-%Y"),"Age (start)":m["age"]} for m in md_list])
+            st.subheader("Vimshottari Mahadasha (Start + Age)"); st.dataframe(df_md)
 
-        df = planetary_positions(jd_ut)
-        st.subheader("ग्रह स्थिति (साइडरेल)")
-        st.dataframe(df, use_container_width=True)
+            # Antar/Pratyantar next 2 years (start only)
+            now_local = datetime.datetime.now()
+            ant_rows = next_2y_ant_praty(now_local, dt_local, sidelons['Mo'], md_list, birth_md_lord, birth_md_rem)
+            df_ant = pd.DataFrame([{"Major":HN[r["major"]],"Antar":HN[r["antar"]],"Pratyantar":HN[r["pratyantar"]],"Start":r["start"].strftime("%d-%m-%Y")} for r in ant_rows])
+            st.subheader("Antar / Pratyantar — Next 2 years (Start only)"); st.dataframe(df_ant)
 
-        moon_row = df[df["ग्रह"] == "चंद्र"]
-        if not moon_row.empty:
-            moon_long = float(moon_row.iloc[0]["अंश (°)"])
-            md = vimshottari_mahadasha(moon_long, dt_local)
-            st.subheader("विंशोत्तरी महादशा (120 वर्ष)")
-            st.dataframe(md, use_container_width=True)
-        else:
-            st.warning("चंद्र स्थिति नहीं मिली, महादशा नहीं निकाल पाए।")
+            # DOCX export
+            doc = Document(); doc.add_heading(f"Kundali — {name}", 0)
+            doc.add_paragraph(f"DOB: {dob}, TOB: {tob}, Place: {disp} (UTC{tz_hours:+.2f})")
+            doc.add_heading("Planetary Positions", level=2)
+            t = doc.add_table(rows=1, cols=len(df_pos.columns)); hdr=t.rows[0].cells
+            for i,c in enumerate(df_pos.columns): hdr[i].text=c
+            for _,row in df_pos.iterrows():
+                r=t.add_row().cells
+                for i,c in enumerate(row): r[i].text=str(c)
 
-    st.markdown("---")
-    st.caption("Note: This app computes **Ketu = Rahu + 180°** because pyswisseph does not define `swe.KETU`.")
+            doc.add_heading("Vimshottari Mahadasha (Start + Age)", level=2)
+            t2 = doc.add_table(rows=1, cols=len(df_md.columns)); h2=t2.rows[0].cells
+            for i,c in enumerate(df_md.columns): h2[i].text=c
+            for _,row in df_md.iterrows():
+                r=t2.add_row().cells
+                for i,c in enumerate(row): r[i].text=str(c)
 
-if __name__ == "__main__":
+            doc.add_heading("Antar / Pratyantar — Next 2 years (Start only)", level=2)
+            t3 = doc.add_table(rows=1, cols=len(df_ant.columns)); h3=t3.rows[0].cells
+            for i,c in enumerate(df_ant.columns): h3[i].text=c
+            for _,row in df_ant.iterrows():
+                r=t3.add_row().cells
+                for i,c in enumerate(row): r[i].text=str(c)
+
+            bio = BytesIO(); doc.save(bio)
+            st.download_button("⬇️ Download DOCX", bio.getvalue(), file_name="kundali_vimshottari.docx")
+        except Exception as e:
+            st.error(str(e))
+
+if __name__=='__main__':
     main()
