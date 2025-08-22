@@ -1,5 +1,6 @@
 streamlit
-pandas
 pyswisseph
-requests
+pytz
+pandas
 python-docx
+requests
