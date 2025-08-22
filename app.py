@@ -1,12 +1,12 @@
 # kundali-streamlit/app.py
 # ---------------------------------
 # Streamlit Kundali (Sidereal Lahiri) using Swiss Ephemeris
-# Fix: pyswisseph has no swe.KETU. We compute Ketu = Rahu + 180°.
-# Also supports Mean/True node toggle and fallback geocoding.
+# Fix: st.time_input now supports 1-minute precision (step=60)
+# Also: Ketu = Rahu + 180°
 
 import os
 import math
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time as dtime
 import requests
 import pytz
 import pandas as pd
@@ -71,7 +71,6 @@ def geocode(place):
         arr = r.json()
         if arr:
             it = arr[0]
-            # no tz in response; guess using TimezoneFinder would need extra dep.
             return float(it["lat"]), float(it["lon"]), "UTC"
     except Exception:
         return None
@@ -106,20 +105,16 @@ def planetary_positions(jd_ut):
     return df.sort_values("अंश (°)").reset_index(drop=True)
 
 def vimshottari_mahadasha(moon_long: float, birth_dt: datetime):
-    # Determine nakshatra index and fraction completed
     nak_index = int((moon_long % 360.0) // (360.0/27.0))
     nak_frac = ((moon_long % 360.0) / (360.0/27.0)) - nak_index
-    # Starting lord is cyclic through 9
     lord = DASHA_ORDER[nak_index % 9]
     elapsed = nak_frac * DASHA_YEARS[lord]
-
     md_start = birth_dt - timedelta(days=elapsed * YEAR_DAYS)
     end_at = birth_dt + timedelta(days=120 * YEAR_DAYS)
 
     out, idx = [], DASHA_ORDER.index(lord)
     cur_start = md_start
-    # Build full 120 years
-    for i in range(60):  # 60 entries are enough
+    for i in range(60):
         l = DASHA_ORDER[(idx + i) % 9]
         dur_days = DASHA_YEARS[l] * YEAR_DAYS
         out.append([l, cur_start.date(), (cur_start + timedelta(days=dur_days)).date()])
@@ -138,14 +133,14 @@ def main():
         name = st.text_input("नाम", value="")
         place = st.text_input("जन्म स्थान (City, Country)", value="Mumbai, India")
         date = st.date_input("जन्म दिनांक", value=datetime(1990, 1, 1).date())
-        time = st.time_input("जन्म समय", value=datetime(1990, 1, 1, 6, 0).time())
+        # Step=60 → allows selecting any minute, e.g. 10:21, 5:22
+        time_val = st.time_input("जन्म समय", value=dtime(6, 0), step=60)
         tz_name = st.text_input("समय क्षेत्र (IANA TZ)", value="Asia/Kolkata")
         st.write("उदा: Asia/Kolkata, Europe/London, America/New_York")
         node_choice = st.selectbox("राहु नोड प्रकार", ["Mean (डिफ़ॉल्ट)", "True"])
         global USE_TRUE_NODE
         USE_TRUE_NODE = (node_choice == "True")
 
-    # Update planets list with current Rahu type
     global PLANETS
     PLANETS = [
         (swe.SUN, "सूर्य"),
@@ -159,7 +154,6 @@ def main():
     ]
 
     if st.button("🔎 Calculate"):
-        # Geocode (optional – only to show on the page)
         latlon = geocode(place)
         if latlon:
             lat, lon, tz_guess = latlon
@@ -167,15 +161,13 @@ def main():
         else:
             st.info("स्थान लोकेट नहीं कर पाए; दिए हुए timezone के साथ आगे बढ़ रहे हैं।")
 
-        dt_local = datetime.combine(date, time)
+        dt_local = datetime.combine(date, time_val)
         jd_ut = to_julian_ut(dt_local, tz_name)
 
-        # Positions
         df = planetary_positions(jd_ut)
         st.subheader("ग्रह स्थिति (साइडरेल)")
         st.dataframe(df, use_container_width=True)
 
-        # Vimshottari (from Moon longitude)
         moon_row = df[df["ग्रह"] == "चंद्र"]
         if not moon_row.empty:
             moon_long = float(moon_row.iloc[0]["अंश (°)"])
