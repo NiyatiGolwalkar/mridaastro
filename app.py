@@ -1,4 +1,3 @@
-
 import os, datetime, requests, pytz
 import streamlit as st
 import pandas as pd
@@ -84,49 +83,67 @@ def moon_balance(moon_sid):
 def add_years(dt, y): return dt + datetime.timedelta(days=y*365.2425)
 
 def build_mahadashas(birth_local_dt, moon_sid):
+    """Return MD list capped to 100 years from birth, with start & end times for each MD after birth balance."""
     md_lord, rem = moon_balance(moon_sid)
     first_change = add_years(birth_local_dt, rem)
+    end_limit = add_years(birth_local_dt, 100.0)  # cap at 100 years
+
     seq=[]; idx=(ORDER.index(md_lord)+1)%9; t=first_change
-    while len(seq) < 27:
-        L=ORDER[idx]; yrs=YEARS[L]; end=add_years(t, yrs); age=int((t-birth_local_dt).days/365.2425 + 0.5)
-        seq.append({"planet":L,"start":t,"end":end,"age":age})
-        t=end; idx=(idx+1)%9
+    while True:
+        L=ORDER[idx]; yrs=YEARS[L]
+        end=add_years(t, yrs)
+        if t >= end_limit: break
+        end_clamped = min(end, end_limit)
+        age=int(((end_clamped - birth_local_dt).days)/365.2425 + 0.5)
+        seq.append({"planet":L,"start":t,"end":end_clamped,"age_at_end":age})
+        t=end
+        if t >= end_limit: break
+        idx=(idx+1)%9
     return seq, md_lord, rem
 
 def antars_in_md(md_lord, md_start, md_years):
+    """Return list of (antar_lord, start, end, antar_years) for the given MD."""
     res=[]; t=md_start; start_idx=ORDER.index(md_lord)
     for i in range(9):
         L=ORDER[(start_idx+i)%9]
         yrs = YEARS[L]*(md_years/120.0)
         days = yrs*365.2425
-        res.append((L, t, yrs))
-        t = t + datetime.timedelta(days=days)
+        start = t
+        end = t + datetime.timedelta(days=days)
+        res.append((L, start, end, yrs))
+        t = end
     return res
 
 def pratyantars_in_antar(antar_lord, antar_start, antar_years):
+    """Return list of (pratyantar_lord, start, end) within a given Antar."""
     res=[]; t=antar_start; start_idx=ORDER.index(antar_lord)
     for i in range(9):
         L=ORDER[(start_idx+i)%9]
         yrs = YEARS[L]*(antar_years/120.0)
         days = yrs*365.2425
-        res.append((L, t))
-        t = t + datetime.timedelta(days=days)
+        start = t
+        end = t + datetime.timedelta(days=days)
+        res.append((L, start, end))
+        t = end
     return res
 
 def next_2y_ant_praty(now_local, birth_local_dt, moon_sid, md_list, birth_md_lord, birth_md_rem):
+    """Return upcoming Antar/Pratyantar within next 2 years, reporting END dates (not starts)."""
     rows=[]; horizon=now_local + datetime.timedelta(days=730)
     birth_end=add_years(birth_local_dt, birth_md_rem)
     sched=[(birth_md_lord, birth_local_dt, birth_end)] + [(m['planet'], m['start'], m['end']) for m in md_list]
+
     for MD, ms, me in sched:
         if me < now_local or ms > horizon: continue
         md_years = YEARS[MD]
-        for AL, as_, ay in antars_in_md(MD, ms, md_years):
+        for AL, as_, ae, ay in antars_in_md(MD, ms, md_years):
             if as_ > horizon: break
-            for PL, ps in pratyantars_in_antar(AL, as_, ay):
+            if ae < now_local: continue
+            for PL, ps, pe in pratyantars_in_antar(AL, as_, ay):
                 if ps > horizon: break
-                if ps >= now_local:
-                    rows.append({"major":MD,"antar":AL,"pratyantar":PL,"start":ps})
-    rows.sort(key=lambda r:r["start"])
+                if pe >= now_local and ps <= horizon:
+                    rows.append({"major":MD,"antar":AL,"pratyantar":PL,"end":pe})
+    rows.sort(key=lambda r:r["end"])
     return rows
 
 def main():
@@ -155,20 +172,28 @@ def main():
             # Planets
             _, _, sidelons = sidereal_positions(dt_utc)
             df_pos = positions_table(sidelons)
-            st.subheader("Planetary Positions (Lord & Sub-Lord)"); st.dataframe(df_pos)
+            st.subheader("Planetary Positions (Lord & Sub-Lord)"); st.dataframe(df_pos, use_container_width=True)
 
-            # Vimshottari MD from Moon balance
+            # Vimshottari MD from Moon balance — capped to 100 years, END date only
             md_list, birth_md_lord, birth_md_rem = build_mahadashas(dt_local, sidelons['Mo'])
-            df_md = pd.DataFrame([{"Planet":HN[m["planet"]],"Start":m["start"].strftime("%d-%m-%Y"),"Age (start)":m["age"]} for m in md_list])
-            st.subheader("Vimshottari Mahadasha (Start + Age)"); st.dataframe(df_md)
+            df_md = pd.DataFrame([
+                {"Planet":HN[m["planet"]], "End": m["end"].strftime("%d-%m-%Y"), "Age at End (yrs)": m["age_at_end"]}
+                for m in md_list
+            ])
+            st.subheader("Vimshottari Mahadasha — End Dates (capped to 100 years)")
+            st.dataframe(df_md, use_container_width=True)
 
-            # Antar/Pratyantar next 2 years (start only)
+            # Antar/Pratyantar next 2 years — show END date
             now_local = datetime.datetime.now()
             ant_rows = next_2y_ant_praty(now_local, dt_local, sidelons['Mo'], md_list, birth_md_lord, birth_md_rem)
-            df_ant = pd.DataFrame([{"Major":HN[r["major"]],"Antar":HN[r["antar"]],"Pratyantar":HN[r["pratyantar"]],"Start":r["start"].strftime("%d-%m-%Y")} for r in ant_rows])
-            st.subheader("Antar / Pratyantar — Next 2 years (Start only)"); st.dataframe(df_ant)
+            df_ant = pd.DataFrame([
+                {"Major":HN[r["major"]], "Antar":HN[r["antar"]], "Pratyantar":HN[r["pratyantar"]], "End": r["end"].strftime("%d-%m-%Y")}
+                for r in ant_rows
+            ])
+            st.subheader("Antar / Pratyantar — Next 2 years (End Dates)")
+            st.dataframe(df_ant, use_container_width=True)
 
-            # DOCX export
+            # DOCX export reflecting the same
             doc = Document(); doc.add_heading(f"Kundali — {name}", 0)
             doc.add_paragraph(f"DOB: {dob}, TOB: {tob}, Place: {disp} (UTC{tz_hours:+.2f})")
             doc.add_heading("Planetary Positions", level=2)
@@ -178,14 +203,14 @@ def main():
                 r=t.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
 
-            doc.add_heading("Vimshottari Mahadasha (Start + Age)", level=2)
+            doc.add_heading("Vimshottari Mahadasha — End Dates (≤100y)", level=2)
             t2 = doc.add_table(rows=1, cols=len(df_md.columns)); h2=t2.rows[0].cells
             for i,c in enumerate(df_md.columns): h2[i].text=c
             for _,row in df_md.iterrows():
                 r=t2.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
 
-            doc.add_heading("Antar / Pratyantar — Next 2 years (Start only)", level=2)
+            doc.add_heading("Antar / Pratyantar — Next 2 years (End Dates)", level=2)
             t3 = doc.add_table(rows=1, cols=len(df_ant.columns)); h3=t3.rows[0].cells
             for i,c in enumerate(df_ant.columns): h3[i].text=c
             for _,row in df_ant.iterrows():
