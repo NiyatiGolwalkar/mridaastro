@@ -4,9 +4,11 @@ import pandas as pd
 import swisseph as swe
 from timezonefinder import TimezoneFinder
 from docx import Document
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
 from io import BytesIO
 
-st.set_page_config(page_title="Kundali – Hindi KP (Mahadasha + Antar/Pratyantar)", layout="wide", page_icon="🪔")
+st.set_page_config(page_title="Kundali – Vimshottari & Positions", layout="wide", page_icon="🪔")
 
 HN = {'Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Me':'बुध','Ju':'गुरु','Ve':'शुक्र','Sa':'शनि','Ra':'राहु','Ke':'केतु'}
 ORDER = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
@@ -28,6 +30,7 @@ def fmt_deg_sign(lon_sid):
     return sign, f"{d:02d}°{m:02d}'{s:02d}\""
 
 def kp_sublord(lon_sid):
+    """Return (nakshatra_lord, sub_lord) — i.e., Nakshatra Lord and sub-Nakshatra Lord (KP style)."""
     part = lon_sid % 360.0
     ni = int(part // NAK); pos = part - ni*NAK
     lord = ORDER[ni % 9]
@@ -79,13 +82,19 @@ def sidereal_positions(dt_utc):
     return jd, ay, out
 
 def positions_table(sidelons):
-    rows=[]
+    """Return two DataFrames:
+    - df_display: Planet | Sign number | Degree | Nakshatra Lord | Sub Nakshatra Lord
+    - df_kp: Planet | Sign | Degree | Lord | Sub-Lord (for any internal use)"""
+    rows_disp=[]; rows_kp=[]
     for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
         lon=sidelons[code]
         sign, deg_str = fmt_deg_sign(lon)
-        lord, sub = kp_sublord(lon)
-        rows.append([HN[code], sign, deg_str, HN[lord], HN[sub]])
-    return pd.DataFrame(rows, columns=["Planet","Sign","Degree","Lord","Sub-Lord"])
+        nak_lord, sub_lord = kp_sublord(lon)
+        rows_disp.append([HN[code], sign, deg_str, HN[nak_lord], HN[sub_lord]])
+        rows_kp.append([HN[code], sign, deg_str, HN[nak_lord], HN[sub_lord]])
+    df_display = pd.DataFrame(rows_disp, columns=["Planet","Sign number","Degree","Nakshatra Lord","Sub Nakshatra Lord"])
+    df_kp = pd.DataFrame(rows_kp, columns=["Planet","Sign","Degree","Lord","Sub-Lord"])
+    return df_display, df_kp
 
 # ---- Vimshottari ----
 def moon_balance(moon_sid):
@@ -165,14 +174,12 @@ def pratyantars_in_antar(antar_lord, antar_start, antar_years):
         t = end
     return res
 
-def next_2y_ant_praty(now_local, birth_local_dt, md_segments):
-    """Compute Antars & Pratyantars for all MD segments, return rows that end within next 2 years.
-       Uses END dates only."""
-    rows=[]; horizon=now_local + datetime.timedelta(days=2*365)
+def next_ant_praty_in_days(now_local, md_segments, days_window):
+    """Return rows (Major, Antar, Pratyantar, End Date) within [now, now+window]."""
+    rows=[]; horizon=now_local + datetime.timedelta(days=days_window)
     for seg in md_segments:
-        MD = seg["planet"]
-        ms = seg["start"]; me = seg["end"]
-        md_years_effective = seg["years_used"]  # balance/full/truncated
+        MD = seg["planet"]; ms = seg["start"]; me = seg["end"]
+        md_years_effective = seg["years_used"]
         for AL, as_, ae, ay in antars_in_md(MD, ms, md_years_effective):
             if ae < now_local or as_ > horizon: continue
             for PL, ps, pe in pratyantars_in_antar(AL, as_, ay):
@@ -181,9 +188,32 @@ def next_2y_ant_praty(now_local, birth_local_dt, md_segments):
     rows.sort(key=lambda r:r["end"])
     return rows
 
-def main():
-    st.title("Kundali — Hindi KP (with Vimshottari)")
+# ---- DOCX helpers ----
+def draw_blank_box(doc, title):
+    doc.add_paragraph(title).runs[0].bold = True
+    t = doc.add_table(rows=8, cols=8)
+    for row in t.rows:
+        for cell in row.cells:
+            tcPr = cell._tc.get_or_add_tcPr()
+            tcBorders = OxmlElement('w:tcBorders')
+            for edge in ('top','left','bottom','right'):
+                el = OxmlElement(f'w:{edge}')
+                el.set(qn('w:val'), 'single'); el.set(qn('w:sz'), '4')
+                tcBorders.append(el)
+            tcPr.append(tcBorders)
+    doc.add_paragraph("")
 
+def html_placeholder(title):
+    st.markdown(f"**{title}**")
+    st.markdown(
+        '<div style="border:2px solid #bbb; height:320px; margin:6px 0; border-radius:6px;"></div>',
+        unsafe_allow_html=True
+    )
+
+def main():
+    st.title("Kundali — Report Layout")
+
+    # Inputs
     c1,c2 = st.columns([1,1])
     with c1:
         name = st.text_input("Name")
@@ -194,7 +224,7 @@ def main():
         tz_override = st.text_input("UTC offset override (optional, e.g., 5.5)", "")
     api_key = st.secrets.get("GEOAPIFY_API_KEY","")
 
-    if st.button("Generate Horoscope"):
+    if st.button("Generate"):
         try:
             lat, lon, disp = geocode(place, api_key)
             dt_local = datetime.datetime.combine(dob, tob)
@@ -202,54 +232,70 @@ def main():
                 tz_hours = float(tz_override); dt_utc = dt_local - datetime.timedelta(hours=tz_hours); tzname=f"UTC{tz_hours:+.2f} (manual)"
             else:
                 tzname, tz_hours, dt_utc = tz_from_latlon(lat, lon, dt_local)
-            st.info(f"Resolved {disp} → lat {lat:.6f}, lon {lon:.6f}, tz {tzname} (UTC{tz_hours:+.2f})")
 
-            # Planetary Positions
+            # Compute positions
             _, _, sidelons = sidereal_positions(dt_utc)
-            df_pos = positions_table(sidelons)
-            st.subheader("Planetary Positions")
-            st.dataframe(df_pos, use_container_width=True)
+            df_positions, _ = positions_table(sidelons)
 
-            # Vimshottari Mahadasha — from birth, ≤100y, End Date only + Age (at start)
+            # Mahadashas from birth
             md_segments, birth_md_lord, birth_md_rem = build_mahadashas_from_birth(dt_local, sidelons['Mo'])
+
+            # Vimshottari Mahadasha table (Planet | End Date | Age at end)
             df_md = pd.DataFrame([
                 {
                     "Planet": HN[s["planet"]],
                     "End Date": s["end"].strftime("%d-%m-%Y"),
-                    "Age (at start)": round(((s["start"] - dt_local).days / YEAR_DAYS), 1),
+                    "Age (at end)": round(((s["end"] - dt_local).days / YEAR_DAYS), 1),
                 }
                 for s in md_segments
             ])
-            st.subheader("Vimshottari Mahadasha")
-            st.dataframe(df_md, use_container_width=True)
 
-            # Antar / Pratyantar for next 2 years — End Date only
+            # Antar/Pratyantar (next 2 years) — End only
             now_local = datetime.datetime.now()
-            ant_rows = next_2y_ant_praty(now_local, dt_local, md_segments)
-            df_ant = pd.DataFrame([
+            rows_ap = next_ant_praty_in_days(now_local, md_segments, days_window=2*365)
+            df_ap = pd.DataFrame([
                 {
                     "Major Dasha": HN[r["major"]],
                     "Antar Dasha": HN[r["antar"]],
                     "Pratyantar Dasha": HN[r["pratyantar"]],
                     "End Date": r["end"].strftime("%d-%m-%Y"),
                 }
-                for r in ant_rows
+                for r in rows_ap
             ])
-            st.subheader("Antar / Pratyantar for next 2 years")
-            st.dataframe(df_ant, use_container_width=True)
 
-            # DOCX export matching same titles + column orders
+            # Two-column display
+            left, right = st.columns([1.2, 0.8])
+            with left:
+                st.subheader("Personal Details")
+                st.markdown(f"**Name:** {name or '—'}  \n**Date of Birth:** {dob}  \n**Time of Birth:** {tob}  \n**Place of Birth:** {disp}")
+
+                st.subheader("Planetary Positions")
+                st.dataframe(df_positions, use_container_width=True)
+
+                st.subheader("Vimshottari Mahadasha")
+                st.dataframe(df_md, use_container_width=True)
+
+                st.subheader("Current Antar Dasha / Pratyantar Dasha (Next 2 year)")
+                st.dataframe(df_ap, use_container_width=True)
+
+            with right:
+                html_placeholder("Blank Lagna (D-1) Chart (North style)")
+                html_placeholder("Blank Navamsa (D-9) Chart (North Style)")
+
+            # DOCX export
             doc = Document()
-            doc.add_heading(f"Kundali — {name}", 0)
+            doc.add_heading("Kundali — Report", 0)
+
+            doc.add_heading("Personal Details", level=2)
             doc.add_paragraph(f"Name: {name}")
             doc.add_paragraph(f"Date of Birth: {dob}")
             doc.add_paragraph(f"Time of Birth: {tob}")
             doc.add_paragraph(f"Place of Birth: {disp} (UTC{tz_hours:+.2f})")
 
             doc.add_heading("Planetary Positions", level=2)
-            t1 = doc.add_table(rows=1, cols=len(df_pos.columns)); hdr=t1.rows[0].cells
-            for i,c in enumerate(df_pos.columns): hdr[i].text=c
-            for _,row in df_pos.iterrows():
+            t1 = doc.add_table(rows=1, cols=len(df_positions.columns)); hdr=t1.rows[0].cells
+            for i,c in enumerate(df_positions.columns): hdr[i].text=c
+            for _,row in df_positions.iterrows():
                 r=t1.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
 
@@ -260,15 +306,20 @@ def main():
                 r=t2.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
 
-            doc.add_heading("Antar / Pratyantar for next 2 years", level=2)
-            t3 = doc.add_table(rows=1, cols=len(df_ant.columns)); h3=t3.rows[0].cells
-            for i,c in enumerate(df_ant.columns): h3[i].text=c
-            for _,row in df_ant.iterrows():
+            doc.add_heading("Current Antar Dasha / Pratyantar Dasha (Next 2 year)", level=2)
+            t3 = doc.add_table(rows=1, cols=len(df_ap.columns)); h3=t3.rows[0].cells
+            for i,c in enumerate(df_ap.columns): h3[i].text=c
+            for _,row in df_ap.iterrows():
                 r=t3.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
 
+            # Right-side blank charts
+            draw_blank_box(doc, "Blank Lagna (D-1) Chart (North style)")
+            draw_blank_box(doc, "Blank Navamsa (D-9) Chart (North Style)")
+
             bio = BytesIO(); doc.save(bio)
-            st.download_button("⬇️ Download DOCX", bio.getvalue(), file_name="kundali_vimshottari.docx")
+            st.download_button("⬇️ Download DOCX", bio.getvalue(), file_name="kundali_report.docx")
+
         except Exception as e:
             st.error(str(e))
 
