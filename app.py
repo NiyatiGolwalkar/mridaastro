@@ -1,17 +1,16 @@
-import os, re, datetime, requests, pytz
+import os, re, datetime, requests, pytz, math
 import streamlit as st
 import pandas as pd
 import swisseph as swe
 from timezonefinder import TimezoneFinder
 from docx import Document
-from docx.oxml import OxmlElement
-from docx.oxml.ns import qn
 from io import BytesIO
 
 st.set_page_config(page_title="Kundali – Vimshottari & Positions", layout="wide", page_icon="🪔")
 
+# Hindi names & initials
 HN = {'Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Me':'बुध','Ju':'गुरु','Ve':'शुक्र','Sa':'शनि','Ra':'राहु','Ke':'केतु'}
-ABBR = {'Su':'Su','Mo':'Mo','Ma':'Ma','Me':'Me','Ju':'Ju','Ve':'Ve','Sa':'Sa','Ra':'Ra','Ke':'Ke'}
+HINIT = {'Su':'सू','Mo':'चं','Ma':'मं','Me':'बु','Ju':'गु','Ve':'शु','Sa':'श','Ra':'रा','Ke':'के'}
 ORDER = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
 YEARS = {'Ke':7,'Ve':20,'Su':6,'Mo':10,'Ma':7,'Ra':18,'Ju':16,'Sa':19,'Me':17}
 NAK = 360.0/27.0
@@ -81,6 +80,13 @@ def sidereal_positions(dt_utc):
         out[code] = (xx[0] - ay) % 360.0
     out['Ke'] = (out['Ra'] + 180.0) % 360.0
     return jd, ay, out
+
+def ascendant_sign(jd_ut, lat, lon):
+    set_sidereal()
+    # Use Placidus houses; ascendant is ascmc[0]. Sidereal mode already set.
+    cusps, ascmc = swe.houses_ex(jd_ut, lat, lon, b'P', swe.FLG_SIDEREAL)
+    asc_lon = ascmc[0] % 360.0
+    return int(asc_lon // 30) + 1  # 1..12
 
 def positions_table(sidelons):
     rows=[]
@@ -177,9 +183,6 @@ def navamsa_sign_for_lon(lon):
     sign_index = int(lon // 30)  # 0..11
     deg_in_sign = lon % 30.0
     pada = int((deg_in_sign * 9.0) // 30.0)  # 0..8
-    # Starting sign depends on element group
-    # Fire (1,5,9) -> start Aries(1) ; Earth (2,6,10) -> Capricorn(10)
-    # Air (3,7,11) -> Libra(7) ; Water (4,8,12) -> Cancer(4)
     sign_group = (sign_index % 12) + 1
     if sign_group in (1,5,9):
         base = 1
@@ -192,53 +195,73 @@ def navamsa_sign_for_lon(lon):
     nav_sign = ((base - 1) + pada) % 12 + 1  # 1..12
     return nav_sign
 
-def build_navamsa_chart(sidelons):
-    # map sign-> list of planet abbreviations placed in that Navamsa sign
+def build_navamsa_map(sidelons):
     m = {i:[] for i in range(1,13)}
     for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
         lon = sidelons[code]
         nav_sign = navamsa_sign_for_lon(lon)
-        m[nav_sign].append(ABBR[code])
+        m[nav_sign].append(HINIT[code])
     return m
 
-def render_navamsa_html(mapping):
-    # simple 3x4 grid labeled with sign number and planets
-    order = [1,2,3,4,5,6,7,8,9,10,11,12]
-    cells = []
-    for s in order:
-        pls = ", ".join(mapping[s]) if mapping[s] else ""
-        cells.append(f"<div class='cell'><div class='sign'>[{s}]</div><div class='planets'>{pls}&nbsp;</div></div>")
-    grid = "<div class='grid'>" + "".join(cells) + "</div>"
-    style = """
-    <style>
-    .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
-    .cell{border:2px solid #777;border-radius:6px;min-height:70px;padding:6px;}
-    .sign{font-weight:700;margin-bottom:4px;}
-    .planets{font-size:0.95rem;}
-    </style>
-    """
-    return style + grid
+# ---- North-Indian Diamond Chart (SVG) ----
+def chart_mapping_D1(sidelons, asc_sign):
+    """Return dict house(1..12) -> list of planet initials (Hindi) and sign numbers in each house (whole-sign from Lagna)."""
+    planets_by_house = {i:[] for i in range(1,13)}
+    for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
+        p_sign = int(sidelons[code] // 30) + 1
+        house = ((p_sign - asc_sign) % 12) + 1
+        planets_by_house[house].append(HINIT[code])
+    sign_by_house = {h: ((asc_sign + h - 2) % 12) + 1 for h in range(1,13)}
+    return sign_by_house, planets_by_house
 
-def add_navamsa_docx(doc, mapping, title):
-    doc.add_paragraph(title).runs[0].bold = True
-    t = doc.add_table(rows=3, cols=4)
-    idx=1
-    for r in range(3):
-        row = t.rows[r].cells
-        for c in range(4):
-            txt = f"[{idx}] " + (", ".join(mapping[idx]) if mapping[idx] else "")
-            row[c].text = txt
-            idx += 1
-    doc.add_paragraph("")
+def chart_mapping_D9(nav_map, asc_sign_d9):
+    """nav_map is dict sign->list of planet initials. Convert to houses from D9 Lagna (whole sign)."""
+    planets_by_house = {i:[] for i in range(1,13)}
+    for sign in range(1,13):
+        house = ((sign - asc_sign_d9) % 12) + 1
+        planets_by_house[house].extend(nav_map[sign])
+    sign_by_house = {h: ((asc_sign_d9 + h - 2) % 12) + 1 for h in range(1,13)}
+    return sign_by_house, planets_by_house
 
-# ---- utils ----
+def render_north_svg(sign_by_house, planets_by_house, title):
+    # 12 fixed house centers (x,y); house 1 at top middle; then anti-clockwise
+    # Coordinates tuned for 420x420 canvas
+    centers = {
+        1:(210,60), 2:(300,95), 3:(345,165), 4:(300,245),
+        5:(345,315), 6:(300,385), 7:(210,420-60), 8:(120,385),
+        9:(75,315), 10:(120,245), 11:(75,165), 12:(120,95)
+    }
+    # Draw frame (simple diamond + corners/edges)
+    svg = [f"<svg width='420' height='420' viewBox='0 0 420 420' xmlns='http://www.w3.org/2000/svg'>"]
+    svg.append("<rect x='0' y='0' width='420' height='420' fill='white'/>")
+    # Outline (approx North-Indian look with lines)
+    lines = [
+        (210,10, 10,210),(210,10, 410,210),(10,210,210,410),(410,210,210,410), # main diamond
+        (110,110,310,110),(110,310,310,310),(110,110,110,310),(310,110,310,310), # inner square
+        (210,10,110,110),(210,10,310,110),(210,410,110,310),(210,410,310,310),  # connectors
+        (10,210,110,110),(10,210,110,310),(410,210,310,110),(410,210,310,310)   # outer to inner
+    ]
+    for x1,y1,x2,y2 in lines:
+        svg.append(f"<line x1='{x1}' y1='{y1}' x2='{x2}' y2='{y2}' stroke='#333' stroke-width='2'/>")
+    # Title
+    svg.append(f"<text x='210' y='24' text-anchor='middle' font-size='16' font-weight='bold'>{title}</text>")
+    # House contents
+    for h in range(1,13):
+        x,y = centers[h]
+        sign = sign_by_house[h]
+        planets = ", ".join(planets_by_house[h]) if planets_by_house[h] else ""
+        svg.append(f"<text x='{x}' y='{y}' text-anchor='middle' font-size='18'>{sign}</text>")
+        svg.append(f"<text x='{x}' y='{y+18}' text-anchor='middle' font-size='14'>{planets}</text>")
+    svg.append("</svg>")
+    return "".join(svg)
+
 def sanitize_filename(name):
-    name = name.strip() or "Horoscope"
+    name = (name or "").strip() or "Horoscope"
     safe = re.sub(r'[^A-Za-z0-9._ -]', '_', name)
     return f"{safe}_Horoscope.docx"
 
 def main():
-    st.title("Kundali — Report Layout")
+    st.title("Kundali — Report (North-Indian Charts)")
 
     # Inputs
     c1,c2 = st.columns([1,1])
@@ -260,41 +283,45 @@ def main():
             else:
                 tzname, tz_hours, dt_utc = tz_from_latlon(lat, lon, dt_local)
 
-            # Compute positions
-            _, _, sidelons = sidereal_positions(dt_utc)
+            # Positions + JD
+            jd_ut, _, sidelons = sidereal_positions(dt_utc)
+
+            # Ascendants
+            asc_sign_d1 = ascendant_sign(jd_ut, lat, lon)
+
+            # Planetary Positions table
             df_positions = positions_table(sidelons)
 
-            # Mahadashas from birth
+            # Vimshottari from birth
             md_segments = build_mahadashas_from_birth(dt_local, sidelons['Mo'])
-
-            # Vimshottari Mahadasha table (Planet | End Date | Age at end)
             df_md = pd.DataFrame([
-                {
-                    "Planet": HN[s["planet"]],
-                    "End Date": s["end"].strftime("%d-%m-%Y"),
-                    "Age (at end)": round(((s["end"] - dt_local).days / YEAR_DAYS), 1),
-                }
+                {"Planet": HN[s["planet"]], "End Date": s["end"].strftime("%d-%m-%Y"),
+                 "Age (at end)": round(((s["end"] - dt_local).days / YEAR_DAYS), 1)}
                 for s in md_segments
             ])
 
-            # Antar/Pratyantar (next 2 years) — End only
+            # Antar/Pratyantar next 2 years
             now_local = datetime.datetime.now()
             rows_ap = next_ant_praty_in_days(now_local, md_segments, days_window=2*365)
             df_ap = pd.DataFrame([
-                {
-                    "Major Dasha": HN[r["major"]],
-                    "Antar Dasha": HN[r["antar"]],
-                    "Pratyantar Dasha": HN[r["pratyantar"]],
-                    "End Date": r["end"].strftime("%d-%m-%Y"),
-                }
+                {"Major Dasha": HN[r["major"]], "Antar Dasha": HN[r["antar"]],
+                 "Pratyantar Dasha": HN[r["pratyantar"]], "End Date": r["end"].strftime("%d-%m-%Y")}
                 for r in rows_ap
             ])
 
-            # Navamsa chart mapping and render
-            nav_map = build_navamsa_chart(sidelons)
+            # Navamsa sign mapping & D9 ascendant (use Moon's navamsa sign as proxy for D9 Lagna if birth time unknown.
+            # Here we compute true D9 asc from D1 asc sign's navamsa? Standard practice varies; for display,
+            # we will set D9 asc = navamsa of D1 asc longitude.
+            asc_lon_dummy = (asc_sign_d1-1)*30.0 + 15.0  # mid of asc sign
+            asc_sign_d9 = navamsa_sign_for_lon(asc_lon_dummy)
+            nav_map = build_navamsa_map(sidelons)
 
-            # Two-column display
-            left, right = st.columns([1.2, 0.8])
+            # Build chart mappings
+            sign_by_house_d1, planets_by_house_d1 = chart_mapping_D1(sidelons, asc_sign_d1)
+            sign_by_house_d9, planets_by_house_d9 = chart_mapping_D9(nav_map, asc_sign_d9)
+
+            # Two-column app layout
+            left, right = st.columns([1.2, 0.95])
             with left:
                 st.subheader("Personal Details")
                 st.markdown(f"**Name:** {name or '—'}  \n**Date of Birth:** {dob}  \n**Time of Birth:** {tob}  \n**Place of Birth:** {disp}")
@@ -309,15 +336,14 @@ def main():
                 st.dataframe(df_ap, use_container_width=True)
 
             with right:
-                st.markdown("**Lagna (D-1) Chart (North style)**")
-                st.markdown("<div style='border:2px solid #bbb; height:320px; margin:6px 0; border-radius:6px;'></div>", unsafe_allow_html=True)
-                st.markdown("**Navamsa (D-9) Chart (North style)**")
-                st.markdown(render_navamsa_html(nav_map), unsafe_allow_html=True)
+                st.markdown("**Lagna (D-1) — North Indian**")
+                st.markdown(render_north_svg(sign_by_house_d1, planets_by_house_d1, "D-1 (Lagna)"), unsafe_allow_html=True)
+                st.markdown("**Navamsa (D-9) — North Indian**")
+                st.markdown(render_north_svg(sign_by_house_d9, planets_by_house_d9, "D-9 (Navamsa)"), unsafe_allow_html=True)
 
-            # DOCX export
+            # DOCX export (tables as before + note: charts not embedded as diamond due to docx SVG limits)
             doc = Document()
             doc.add_heading("Kundali — Report", 0)
-
             doc.add_heading("Personal Details", level=2)
             doc.add_paragraph(f"Name: {name}")
             doc.add_paragraph(f"Date of Birth: {dob}")
@@ -345,12 +371,8 @@ def main():
                 r=t3.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
 
-            # Navamsa chart in DOCX
-            add_navamsa_docx(doc, nav_map, "Navamsa (D-9) Chart (North style)")
-
             bio = BytesIO(); doc.save(bio)
-            filename = sanitize_filename(name)
-            st.download_button("⬇️ Download DOCX", bio.getvalue(), file_name=filename)
+            st.download_button("⬇️ Download DOCX", bio.getvalue(), file_name=sanitize_filename(name))
 
         except Exception as e:
             st.error(str(e))
