@@ -5,3 +5,4 @@ timezonefinder
 pytz
 python-docx
 matplotlib
+reportlab
