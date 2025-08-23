@@ -1,5 +1,5 @@
 
-import os, re, io, datetime, json, urllib.parse, urllib.request
+import os, io, datetime, json, urllib.parse, urllib.request
 import streamlit as st
 import pandas as pd
 import swisseph as swe
@@ -20,16 +20,19 @@ HN = {'Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Me':'�
 SYMB = {'Su':'☉','Mo':'☾','Ma':'♂','Me':'☿','Ju':'♃','Ve':'♀','Sa':'♄','Ra':'☊','Ke':'☋'}
 
 def set_sidereal(): swe.set_sid_mode(swe.SIDM_LAHIRI, 0, 0)
+
 def dms(deg):
     d=int(deg); m=int((deg-d)*60); s=int(round((deg-d-m/60)*3600))
     if s==60: s=0; m+=1
     if m==60: m=0; d+=1
     return d,m,s
+
 def fmt_deg_sign(lon_sid):
     sign=int(lon_sid//30) + 1
     deg_in_sign = lon_sid % 30.0
     d,m,s=dms(deg_in_sign)
     return sign, f"{d:02d}°{m:02d}'{s:02d}\""
+
 def kp_sublord(lon_sid):
     NAK=360.0/27.0
     ORDER = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
@@ -97,8 +100,11 @@ def moon_balance(moon_sid):
     NAK=360.0/27.0
     ORDER = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
     YEARS = {'Ke':7,'Ve':20,'Su':6,'Mo':10,'Ma':7,'Ra':18,'Ju':16,'Sa':19,'Me':17}
-    part = moon_sid % 360.0; ni = int(part // NAK); pos = part - ni*NAK
-    md_lord = ORDER[ni % 9]; frac = pos/NAK
+    part = moon_sid % 360.0
+    ni = int(part // NAK)
+    pos = part - ni*NAK
+    md_lord = ORDER[ni % 9]
+    frac = pos/NAK
     remaining_years = YEARS[md_lord]*(1 - frac)
     return md_lord, remaining_years
 
@@ -175,16 +181,17 @@ def render_north_diamond(size_px=900, stroke=3):
     buf = BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', pad_inches=0.02)
     plt.close(fig); buf.seek(0); return buf
 
-def add_table_borders(table, size=6):
-    for row in table.rows:
-        for cell in row.cells:
-            tcPr = cell._tc.get_or_add_tcPr()
-            tcBorders = OxmlElement('w:tcBorders')
-            for edge in ('top','left','bottom','right'):
-                el = OxmlElement(f'w:{edge}')
-                el.set(qn('w:val'), 'single'); el.set(qn('w:sz'), str(size))
-                tcBorders.append(el)
-            tcPr.append(tcBorders)
+# ---- DOCX helpers ----
+def hide_table_borders(table):
+    """Keep table structure but visually hide all borders."""
+    tbl = table._tbl
+    tblPr = tbl.tblPr
+    tblBorders = OxmlElement('w:tblBorders')
+    for edge in ('top','left','bottom','right','insideH','insideV'):
+        el = OxmlElement(f'w:{edge}')
+        el.set(qn('w:val'), 'nil')  # no border rendered
+        tblBorders.append(el)
+    tblPr.append(tblBorders)
 
 def set_table_font(table, pt=9):
     for row in table.rows:
@@ -193,29 +200,16 @@ def set_table_font(table, pt=9):
                 for r in p.runs: r.font.size = Pt(pt)
 
 def center_header_row(table):
-    for p in table.rows[0].cells:
-        for par in p.paragraphs:
+    for cell in table.rows[0].cells:
+        for par in cell.paragraphs:
             par.alignment = WD_ALIGN_PARAGRAPH.CENTER
             if par.runs: par.runs[0].bold = True
 
 def set_col_widths(table, widths_inch):
+    table.autofit = False
     for row in table.rows:
         for i, w in enumerate(widths_inch):
             row.cells[i].width = Inches(w)
-    table.autofit = False
-
-def set_table_exact_width(table, width_inch):
-    tbl = table._tbl; tblPr = tbl.tblPr
-    tblW = OxmlElement('w:tblW')
-    tblW.set(qn('w:type'), 'dxa')
-    tblW.set(qn('w:w'), str(int(width_inch * 1440)))
-    tblPr.append(tblW); table.autofit = False
-
-def set_cell_margins(cell, left=80, right=80, top=40, bottom=40):
-    tcPr = cell._tc.get_or_add_tcPr(); tcMar = OxmlElement('w:tcMar')
-    for tag, val in (('top',top),('left',left),('bottom',bottom),('right',right)):
-        el = OxmlElement(f'w:{tag}'); el.set(qn('w:w'), str(val)); el.set(qn('w:type'), 'dxa'); tcMar.append(el)
-    tcPr.append(tcMar)
 
 def sanitize_filename(name: str) -> str:
     if not name: return "Horoscope"
@@ -223,6 +217,7 @@ def sanitize_filename(name: str) -> str:
     cleaned = cleaned.strip().replace(" ", "_")
     return cleaned or "Horoscope"
 
+# ---- App ----
 def main():
     st.title(APP_TITLE)
 
@@ -253,19 +248,30 @@ def main():
 
             _, _, sidelons = sidereal_positions(dt_utc)
             df_positions = positions_table(sidelons)
+
             md_segments, _, _ = build_mahadashas_from_birth(dt_local, sidelons['Mo'])
-            df_md = pd.DataFrame([{"Planet": HN[s["planet"]], "End Date": s["end"].strftime("%d-%m-%Y"), "Age (at end)": round(((s["end"] - dt_local).days / 365.2425), 1)} for s in md_segments])
+            # Whole years only:
+            df_md = pd.DataFrame([
+                {"Planet": HN[s["planet"]], "End Date": s["end"].strftime("%d-%m-%Y"),
+                 "Age (at end)": int(((s["end"] - dt_local).days / 365.2425))}
+                for s in md_segments
+            ])
+
             now_local = datetime.datetime.now()
             rows_ap = next_ant_praty_in_days(now_local, md_segments, days_window=2*365)
-            df_ap = pd.DataFrame([{"Major Dasha": HN[r["major"]], "Antar Dasha": HN[r["antar"]], "Pratyantar Dasha": HN[r["pratyantar"]], "End Date": r["end"].strftime("%d-%m-%Y")} for r in rows_ap])
+            df_ap = pd.DataFrame([
+                {"Major Dasha": HN[r["major"]], "Antar Dasha": HN[r["antar"]],
+                 "Pratyantar Dasha": HN[r["pratyantar"]], "End Date": r["end"].strftime("%d-%m-%Y")}
+                for r in rows_ap
+            ])
 
             img_lagna = render_north_diamond(size_px=900, stroke=3)
             img_nav   = render_north_diamond(size_px=900, stroke=3)
 
-            # Build DOCX (ultra-safe layout)
+            # Build DOCX
             doc = Document()
             sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
-            margin = Mm(12)  # slightly larger for printers
+            margin = Mm(12)
             sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(10); sec.bottom_margin = Mm(10)
             style = doc.styles['Normal']; style.font.name = latin_font; style.font.size = Pt(base_font)
             style._element.rPr.rFonts.set(qn('w:eastAsia'), hindi_font); style._element.rPr.rFonts.set(qn('w:cs'), hindi_font)
@@ -274,8 +280,7 @@ def main():
 
             outer = doc.add_table(rows=1, cols=2); outer.autofit=False
             outer.columns[0].width = Inches(3.3); outer.columns[1].width = Inches(3.3)
-            set_table_exact_width(outer, 6.6)
-            set_cell_margins(outer.rows[0].cells[1], left=120, right=120, top=60, bottom=60)
+            hide_table_borders(outer)
 
             left = outer.rows[0].cells[0]
             p = left.add_paragraph("Personal Details"); p.runs[0].bold=True
@@ -285,51 +290,48 @@ def main():
             left.add_paragraph(f"Time Zone: {tzname} (UTC{tz_hours:+.2f})")
 
             left.add_paragraph("Planetary Positions").runs[0].bold=True
-            t1 = left.add_table(rows=1, cols=len(df_positions.columns)); set_table_exact_width(t1, 3.30); t1.autofit=False
+            t1 = left.add_table(rows=1, cols=len(df_positions.columns)); t1.autofit=False
             for i,c in enumerate(df_positions.columns): t1.rows[0].cells[i].text=c
             for _,row in df_positions.iterrows():
                 r=t1.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
-            add_table_borders(t1, size=6); set_table_font(t1, pt=base_font); center_header_row(t1)
-            # Sum <= 3.20"
-            set_col_widths(t1, [0.4,0.8,0.35,0.8,0.4,0.45])
+            center_header_row(t1); set_table_font(t1, pt=base_font); hide_table_borders(t1)
+            set_col_widths(t1, [0.4,0.8,0.5,0.9,0.8,1.0])
 
             left.add_paragraph("Vimshottari Mahadasha").runs[0].bold=True
-            t2 = left.add_table(rows=1, cols=len(df_md.columns)); set_table_exact_width(t2, 3.30); t2.autofit=False
+            t2 = left.add_table(rows=1, cols=len(df_md.columns)); t2.autofit=False
             for i,c in enumerate(df_md.columns): t2.rows[0].cells[i].text=c
             for _,row in df_md.iterrows():
                 r=t2.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
-            add_table_borders(t2, size=6); set_table_font(t2, pt=base_font); center_header_row(t2)
-            set_col_widths(t2, [1.0,1.1,1.0])  # 3.1"
+            center_header_row(t2); set_table_font(t2, pt=base_font); hide_table_borders(t2)
+            set_col_widths(t2, [1.1,1.0,0.9])
 
             left.add_paragraph("Antar / Pratyantar (Next 2 years)").runs[0].bold=True
-            t3 = left.add_table(rows=1, cols=len(df_ap.columns)); set_table_exact_width(t3, 3.30); t3.autofit=False
+            t3 = left.add_table(rows=1, cols=len(df_ap.columns)); t3.autofit=False
             for i,c in enumerate(df_ap.columns): t3.rows[0].cells[i].text=c
             for _,row in df_ap.iterrows():
                 r=t3.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
-            add_table_borders(t3, size=6); set_table_font(t3, pt=base_font); center_header_row(t3)
-            set_col_widths(t3, [1.0,1.0,1.0,0.8])  # 3.8? -> reduce
-            # Adjust down if sum > width:
-            set_col_widths(t3, [0.9,0.9,0.9,0.6])  # 3.3? -> 3.3; safe
+            center_header_row(t3); set_table_font(t3, pt=base_font); hide_table_borders(t3)
+            set_col_widths(t3, [1.0,1.0,1.0,0.9])
 
             right = outer.rows[0].cells[1]
-            img_lagna.seek(0); p1 = right.paragraphs[0]; p1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            p1.add_run().add_picture(img_lagna, width=Inches(3.0))
+            p1 = right.paragraphs[0]; p1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            img_lagna.seek(0); p1.add_run().add_picture(img_lagna, width=Inches(3.0))
             right.add_paragraph("")
-            img_nav.seek(0); p2 = right.add_paragraph(); p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            p2.add_run().add_picture(img_nav, width=Inches(3.0))
+            p2 = right.add_paragraph(); p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            img_nav.seek(0); p2.add_run().add_picture(img_nav, width=Inches(3.0))
 
             out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
 
-            # Previews
+            # Web previews WITHOUT serial index
             lc, rc = st.columns([1.2,0.8])
             with lc:
-                st.subheader("Planetary Positions"); st.dataframe(df_positions, use_container_width=True)
-                st.subheader("Vimshottari Mahadasha"); st.dataframe(df_md, use_container_width=True)
-                st.subheader("Antar / Pratyantar (Next 2 years)"); st.dataframe(df_ap, use_container_width=True)
+                st.subheader("Planetary Positions"); st.dataframe(df_positions.reset_index(drop=True), use_container_width=True)
+                st.subheader("Vimshottari Mahadasha"); st.dataframe(df_md.reset_index(drop=True), use_container_width=True)
+                st.subheader("Antar / Pratyantar (Next 2 years)"); st.dataframe(df_ap.reset_index(drop=True), use_container_width=True)
             with rc:
                 st.subheader("Lagna Kundali"); st.image(img_lagna, use_container_width=True)
                 st.subheader("Navamsa Kundali"); st.image(img_nav, use_container_width=True)
