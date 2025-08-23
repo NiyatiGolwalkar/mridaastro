@@ -16,7 +16,6 @@ import matplotlib.pyplot as plt
 APP_TITLE = "DevoAstroBhav Kundali"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 
-# Fixed fonts & sizes (no UI to change)
 BASE_FONT_PT = 8.5
 LATIN_FONT = "Georgia"
 HINDI_FONT = "Mangal"
@@ -187,13 +186,12 @@ def render_north_diamond(size_px=900, stroke=3):
 
 # ---- DOCX helpers ----
 def hide_table_borders(table):
-    """Keep table structure but visually hide all borders."""
     tbl = table._tbl
     tblPr = tbl.tblPr
     tblBorders = OxmlElement('w:tblBorders')
     for edge in ('top','left','bottom','right','insideH','insideV'):
         el = OxmlElement(f'w:{edge}')
-        el.set(qn('w:val'), 'nil')  # no border rendered
+        el.set(qn('w:val'), 'nil')
         tblBorders.append(el)
     tblPr.append(tblBorders)
 
@@ -224,7 +222,6 @@ def sanitize_filename(name: str) -> str:
 def main():
     st.title(APP_TITLE)
 
-    # Inputs (no font controls)
     col1, col2 = st.columns(2)
     with col1:
         name = st.text_input("Name")
@@ -248,7 +245,6 @@ def main():
             df_positions = positions_table_no_symbol(sidelons)
 
             md_segments, _, _ = build_mahadashas_from_birth(dt_local, sidelons['Mo'])
-            # Whole years only:
             df_md = pd.DataFrame([
                 {"Planet": HN[s["planet"]], "End Date": s["end"].strftime("%d-%m-%Y"),
                  "Age (at end)": int(((s["end"] - dt_local).days / 365.2425))}
@@ -266,7 +262,7 @@ def main():
             img_lagna = render_north_diamond(size_px=900, stroke=3)
             img_nav   = render_north_diamond(size_px=900, stroke=3)
 
-            # Build DOCX
+            # ----- DOCX build (no borders) -----
             doc = Document()
             sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
             margin = Mm(12)
@@ -294,8 +290,7 @@ def main():
                 r=t1.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT); hide_table_borders(t1)
-            # ≤ 3.2" total
-            set_col_widths(t1, [0.8,0.4,0.7,0.65,0.65])
+            set_col_widths(t1, [0.8,0.4,0.7,0.7,0.7])
 
             left.add_paragraph("Vimshottari Mahadasha").runs[0].bold=True
             t2 = left.add_table(rows=1, cols=len(df_md.columns)); t2.autofit=False
@@ -304,7 +299,7 @@ def main():
                 r=t2.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t2); set_table_font(t2, pt=BASE_FONT_PT); hide_table_borders(t2)
-            set_col_widths(t2, [1.1,1.0,1.0])  # 3.1"
+            set_col_widths(t2, [1.1,1.0,1.0])
 
             left.add_paragraph("Antar / Pratyantar (Next 2 years)").runs[0].bold=True
             t3 = left.add_table(rows=1, cols=len(df_ap.columns)); t3.autofit=False
@@ -313,7 +308,7 @@ def main():
                 r=t3.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t3); set_table_font(t3, pt=BASE_FONT_PT); hide_table_borders(t3)
-            set_col_widths(t3, [0.8,0.8,0.8,0.6])  # 3.0"
+            set_col_widths(t3, [0.9,0.9,0.9,0.6])
 
             right = outer.rows[0].cells[1]
             p1 = right.paragraphs[0]; p1.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -325,10 +320,20 @@ def main():
             out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
 
-            # Web previews WITHOUT serial/index
-            st.subheader("Planetary Positions"); st.dataframe(df_positions.reset_index(drop=True), use_container_width=True)
-            st.subheader("Vimshottari Mahadasha"); st.dataframe(df_md.reset_index(drop=True), use_container_width=True)
-            st.subheader("Antar / Pratyantar (Next 2 years)"); st.dataframe(df_ap.reset_index(drop=True), use_container_width=True)
+            # ----- Web preview: tables on the left, kundali on the right -----
+            lc, rc = st.columns([1.2, 0.8])
+            with lc:
+                st.subheader("Planetary Positions")
+                st.dataframe(df_positions.reset_index(drop=True), use_container_width=True, hide_index=True)
+                st.subheader("Vimshottari Mahadasha")
+                st.dataframe(df_md.reset_index(drop=True), use_container_width=True, hide_index=True)
+                st.subheader("Antar / Pratyantar (Next 2 years)")
+                st.dataframe(df_ap.reset_index(drop=True), use_container_width=True, hide_index=True)
+            with rc:
+                st.subheader("Lagna Kundali")
+                st.image(img_lagna, use_container_width=True)
+                st.subheader("Navamsa Kundali")
+                st.image(img_nav, use_container_width=True)
 
         except Exception as e:
             st.error(str(e))
