@@ -1,5 +1,5 @@
 
-import os, re, io, csv, zipfile, datetime, json, urllib.parse, urllib.request
+import os, re, io, zipfile, datetime, json, urllib.parse, urllib.request
 import streamlit as st
 import pandas as pd
 import swisseph as swe
@@ -13,12 +13,14 @@ from io import BytesIO
 import pytz
 import matplotlib.pyplot as plt
 
-# PDF generation
+# PDF generation with embedded font
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib.utils import ImageReader
 
-st.set_page_config(page_title="AstroDesk — Refined Kundali Suite", layout="wide", page_icon="🪔")
+st.set_page_config(page_title="AstroDesk — Kundali (Auto Hindi PDF + Stacked Charts DOCX)", layout="wide", page_icon="🪔")
 
 # ----------------- Constants -----------------
 HN = {'Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Me':'बुध','Ju':'गुरु','Ve':'शुक्र','Sa':'शनि','Ra':'राहु','Ke':'केतु'}
@@ -27,7 +29,6 @@ ORDER = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
 YEARS = {'Ke':7,'Ve':20,'Su':6,'Mo':10,'Ma':7,'Ra':18,'Ju':16,'Sa':19,'Me':17}
 NAK = 360.0/27.0
 YEAR_DAYS = 365.2425
-DEVANAGARI_DIGITS = {str(i):"०१२३४५६७८९"[i] for i in range(10)}
 
 # ----------------- Helpers -----------------
 def set_sidereal():
@@ -40,18 +41,20 @@ def dms(deg):
     return d,m,s
 
 def fmt_deg_sign(lon_sid):
-    sign=int(lon_sid//30) + 1  # 1..12
+    sign=int(lon_sid//30) + 1
     deg_in_sign = lon_sid % 30.0
     d,m,s=dms(deg_in_sign)
     return sign, f"{d:02d}°{m:02d}'{s:02d}\""
 
 def kp_sublord(lon_sid):
     part = lon_sid % 360.0
-    ni = int(part // NAK); pos = part - ni*NAK
+    ni = int(part // (360.0/27.0)); pos = part - ni*(360.0/27.0)
+    ORDER = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
+    YEARS = {'Ke':7,'Ve':20,'Su':6,'Mo':10,'Ma':7,'Ra':18,'Ju':16,'Sa':19,'Me':17}
     lord = ORDER[ni % 9]
     start = ORDER.index(lord)
     seq = [ORDER[(start+i)%9] for i in range(9)]
-    acc = 0.0
+    acc = 0.0; NAK=360.0/27.0
     for L in seq:
         seg = NAK * (YEARS[L]/120.0)
         if pos <= acc + seg + 1e-9:
@@ -95,69 +98,71 @@ def sidereal_positions(dt_utc):
     out['Ke'] = (out['Ra'] + 180.0) % 360.0
     return jd, ay, out
 
-def positions_table(sidelons, include_symbols=True):
+def positions_table(sidelons):
     rows=[]
     for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
         lon=sidelons[code]
         sign, deg_str = fmt_deg_sign(lon)
         nak_lord, sub_lord = kp_sublord(lon)
-        if include_symbols:
-            rows.append([SYMB[code], HN[code], sign, deg_str, HN[nak_lord], HN[sub_lord]])
-        else:
-            rows.append([HN[code], sign, deg_str, HN[nak_lord], HN[sub_lord]])
-    if include_symbols:
-        cols = ["Symbol","Planet","Sign","Degree","Nakshatra","Sub-Nakshatra"]
-    else:
-        cols = ["Planet","Sign","Degree","Nakshatra","Sub-Nakshatra"]
+        rows.append([{'Su':'☉','Mo':'☾','Ma':'♂','Me':'☿','Ju':'♃','Ve':'♀','Sa':'♄','Ra':'☊','Ke':'☋'}[code],
+                     {'Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Me':'बुध','Ju':'गुरु','Ve':'शुक्र','Sa':'शनि','Ra':'राहु','Ke':'केतु'}[code],
+                     sign, deg_str, {'Ke':'केतु','Ve':'शुक्र','Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Ra':'राहु','Ju':'गुरु','Sa':'शनि','Me':'बुध'}[nak_lord],
+                     {'Ke':'केतु','Ve':'शुक्र','Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Ra':'राहु','Ju':'गुरु','Sa':'शनि','Me':'बुध'}[sub_lord]])
+    cols = ["Symbol","Planet","Sign","Degree","Nakshatra","Sub‑Nakshatra"]
     return pd.DataFrame(rows, columns=cols)
 
 # ----------------- Vimshottari -----------------
 def moon_balance(moon_sid):
     part = moon_sid % 360.0
-    ni = int(part // NAK)
-    pos = part - ni*NAK
+    ni = int(part // (360.0/27.0))
+    pos = part - ni*(360.0/27.0)
+    ORDER = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
+    YEARS = {'Ke':7,'Ve':20,'Su':6,'Mo':10,'Ma':7,'Ra':18,'Ju':16,'Sa':19,'Me':17}
     md_lord = ORDER[ni % 9]
-    frac = pos/NAK
+    frac = pos/(360.0/27.0)
     remaining_years = YEARS[md_lord]*(1 - frac)
     return md_lord, remaining_years
 
-def add_years(dt, y): return dt + datetime.timedelta(days=y*YEAR_DAYS)
+def add_years(dt, y): return dt + datetime.timedelta(days=y*365.2425)
 
 def build_mahadashas_from_birth(birth_local_dt, moon_sid):
     md_lord, rem = moon_balance(moon_sid)
     end_limit = add_years(birth_local_dt, 100.0)
+    ORDER2 = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
+    YEARS2 = {'Ke':7,'Ve':20,'Su':6,'Mo':10,'Ma':7,'Ra':18,'Ju':16,'Sa':19,'Me':17}
     segments = []
     birth_md_start = birth_local_dt
     birth_md_end = min(add_years(birth_md_start, rem), end_limit)
-    segments.append({"planet": md_lord, "start": birth_md_start,
-                     "end": birth_md_end,
-                     "years_used": (birth_md_end - birth_md_start).days / YEAR_DAYS})
-    idx = (ORDER.index(md_lord) + 1) % 9
+    segments.append({"planet": md_lord, "start": birth_md_start, "end": birth_md_end, "years_used": (birth_md_end - birth_md_start).days / 365.2425})
+    idx = (ORDER2.index(md_lord) + 1) % 9
     t = birth_md_end
     while t < end_limit:
-        L = ORDER[idx]; end = add_years(t, YEARS[L])
+        L = ORDER2[idx]; end = add_years(t, YEARS2[L])
         if end > end_limit: end = end_limit
-        segments.append({"planet": L, "start": t, "end": end,
-                         "years_used": (end - t).days / YEAR_DAYS})
+        segments.append({"planet": L, "start": t, "end": end, "years_used": (end - t).days / 365.2425})
         t = end; idx = (idx + 1) % 9
     return segments, md_lord, rem
 
 def antars_in_md(md_lord, md_start, md_years):
-    res=[]; t=md_start; start_idx=ORDER.index(md_lord)
+    ORDER2 = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
+    YEARS2 = {'Ke':7,'Ve':20,'Su':6,'Mo':10,'Ma':7,'Ra':18,'Ju':16,'Sa':19,'Me':17}
+    res=[]; t=md_start; start_idx=ORDER2.index(md_lord)
     for i in range(9):
-        L=ORDER[(start_idx+i)%9]
-        yrs = YEARS[L]*(md_years/120.0)
-        days = yrs*YEAR_DAYS
+        L=ORDER2[(start_idx+i)%9]
+        yrs = YEARS2[L]*(md_years/120.0)
+        days = yrs*365.2425
         start = t; end = t + datetime.timedelta(days=days)
         res.append((L, start, end, yrs)); t = end
     return res
 
 def pratyantars_in_antar(antar_lord, antar_start, antar_years):
-    res=[]; t=antar_start; start_idx=ORDER.index(antar_lord)
+    ORDER2 = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
+    YEARS2 = {'Ke':7,'Ve':20,'Su':6,'Mo':10,'Ma':7,'Ra':18,'Ju':16,'Sa':19,'Me':17}
+    res=[]; t=antar_start; start_idx=ORDER2.index(antar_lord)
     for i in range(9):
-        L=ORDER[(start_idx+i)%9]
-        yrs = YEARS[L]*(antar_years/120.0)
-        days = yrs*YEAR_DAYS
+        L=ORDER2[(start_idx+i)%9]
+        yrs = YEARS2[L]*(antar_years/120.0)
+        days = yrs*365.2425
         start = t; end = t + datetime.timedelta(days=days)
         res.append((L, start, end)); t = end
     return res
@@ -175,66 +180,27 @@ def next_ant_praty_in_days(now_local, md_segments, days_window):
     rows.sort(key=lambda r:r["end"])
     return rows
 
-# ----------------- Ascendant & Charts -----------------
-def ascendant_lon(jd_ut, lat, lon):
-    set_sidereal()
-    cusps, ascmc = swe.houses_ex(jd_ut, lat, lon, b'P')
-    ay = swe.get_ayanamsa_ut(jd_ut)
-    asc = (ascmc[0] - ay) % 360.0
-    return asc
-
-def house_sign_numbers_from_sign(start_sign):
-    return [((start_sign-1+i)%12)+1 for i in range(12)]
-
-def house_sign_numbers_from_asc(asc_sid):
-    start_sign = int(asc_sid//30) + 1
-    return house_sign_numbers_from_sign(start_sign)
-
-def navamsa_sign_of_lon(lon_sid):
-    sign = int(lon_sid//30) + 1
-    deg_in = lon_sid % 30.0
-    part = int(deg_in // (30.0/9.0))
-    if sign in (1,4,7,10): start = sign
-    elif sign in (2,5,8,11): start = ((sign + 8 - 1) % 12) + 1
-    else: start = ((sign + 4 - 1) % 12) + 1
-    return ((start - 1 + part) % 12) + 1
-
-def to_devanagari(num):
-    s = str(num)
-    return ''.join(DEVANAGARI_DIGITS.get(ch, ch) for ch in s)
-
-def render_north_diamond(house_numbers=None, show_numbers=False, numerals='English', size_px=900, font_pts=18, stroke=3):
+# ----------------- Charts -----------------
+def render_north_diamond(size_px=900, stroke=3):
     fig = plt.figure(figsize=(size_px/100, size_px/100), dpi=100)
     ax = fig.add_axes([0,0,1,1]); ax.axis('off')
-    # Outer rectangle
     ax.plot([0.02,0.98,0.98,0.02,0.02],[0.02,0.02,0.98,0.98,0.02], linewidth=stroke, color='black')
-    # Diagonals
     L,R,B,T = 0.02,0.98,0.02,0.98
     cx, cy = 0.5, 0.5
     ax.plot([L,R],[T,B], linewidth=stroke, color='black')
     ax.plot([L,R],[B,T], linewidth=stroke, color='black')
-    # Mid connectors
     midL=(L,cy); midR=(R,cy); midT=(cx,T); midB=(cx,B)
     ax.plot([midL[0], midT[0]],[midL[1], midT[1]], linewidth=stroke, color='black')
     ax.plot([midT[0], midR[0]],[midT[1], midR[1]], linewidth=stroke, color='black')
     ax.plot([midR[0], midB[0]],[midR[1], midB[1]], linewidth=stroke, color='black')
     ax.plot([midB[0], midL[0]],[midB[1], midL[1]], linewidth=stroke, color='black')
-    # Numbers optional
-    if show_numbers and house_numbers is not None:
-        pos = [
-            (cx, T-0.06),(L+0.18, T-0.18),(L+0.08, cy),(L+0.18, B+0.18),
-            (cx, B+0.06),(R-0.18, B+0.18),(R-0.08, cy),(R-0.18, T-0.18),
-            (cx, cy),(cx+0.12, cy+0.12),(cx-0.12, cy+0.12),(cx-0.12, cy-0.12)
-        ]
-        for i,(x,y) in enumerate(pos):
-            val = house_numbers[i]
-            label = to_devanagari(val) if numerals=='Hindi' else str(val)
-            ax.text(x,y,label, ha='center', va='center', fontsize=font_pts, fontweight='bold', color='black')
     buf = BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', pad_inches=0.02)
     plt.close(fig); buf.seek(0); return buf
 
 # ---- DOCX helpers ----
 def add_table_borders(table, size=6):
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
     for row in table.rows:
         for cell in row.cells:
             tcPr = cell._tc.get_or_add_tcPr()
@@ -263,27 +229,13 @@ def set_col_widths(table, widths_inch):
             row.cells[i].width = Inches(w)
     table.autofit = False
 
-def add_divider(doc, thickness=4):
-    p = doc.add_paragraph()
-    pPr = p._p.get_or_add_pPr()
-    pBdr = OxmlElement('w:pBdr')
-    bottom = OxmlElement('w:bottom')
-    bottom.set(qn('w:val'),'single')
-    bottom.set(qn('w:sz'), str(thickness))
-    bottom.set(qn('w:space'),'1')
-    bottom.set(qn('w:color'),'808080')
-    pBdr.append(bottom)
-    pPr.append(pBdr)
-
 def add_footer(section, brand="Generated by AstroDesk"):
     footer = section.footer
-    if not footer.paragraphs:
-        p = footer.add_paragraph()
-    else:
-        p = footer.paragraphs[0]
+    p = footer.paragraphs[0] if footer.paragraphs else footer.add_paragraph()
     p.text = brand + " • Page "
-    # Add page number field
     r = p.add_run()
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
     fldChar1 = OxmlElement('w:fldChar'); fldChar1.set(qn('w:fldCharType'),'begin')
     instrText = OxmlElement('w:instrText'); instrText.set(qn('xml:space'),'preserve'); instrText.text = " PAGE "
     fldChar2 = OxmlElement('w:fldChar'); fldChar2.set(qn('w:fldCharType'),'separate')
@@ -294,7 +246,6 @@ def apply_normal_style(doc, latin="Georgia", cjk="Mangal", size_pt=9):
     style = doc.styles['Normal']
     style.font.name = latin
     style.font.size = Pt(size_pt)
-    # Set complex script font for Hindi/Devanagari
     rFonts = style._element.rPr.rFonts
     rFonts.set(qn('w:eastAsia'), cjk)
     rFonts.set(qn('w:cs'), cjk)
@@ -303,93 +254,97 @@ def sanitize_filename(name):
     if not name: return "Horoscope"
     return re.sub(r'[^A-Za-z0-9_\- ]+', '', name).strip().replace(' ', '_') + "_Horoscope"
 
-# ----------------- PDF builder (simple) -----------------
-def build_pdf_single_page(title, details_lines, df_positions, df_md, df_ap, img_lagna_bytes, img_nav_bytes, brand="Generated by AstroDesk"):
+# ----------------- PDF builder with auto Hindi font -----------------
+def ensure_hindi_font():
+    # Try existing local files
+    candidates = ["Mangal.ttf","Nirmala.ttf","Nirmala UI.ttf","NotoSansDevanagari-Regular.ttf"]
+    for c in candidates:
+        for base in [".","/usr/share/fonts/truetype","/usr/share/fonts","/usr/local/share/fonts","/mnt/data"]:
+            p = os.path.join(base, c)
+            if os.path.exists(p):
+                try:
+                    pdfmetrics.registerFont(TTFont("HindiAuto", p))
+                    return "HindiAuto"
+                except Exception:
+                    pass
+    # Try to download NotoSansDevanagari
+    url = "https://github.com/google/fonts/raw/main/ofl/notosansdevanagari/NotoSansDevanagari-Regular.ttf"
+    try:
+        data = urllib.request.urlopen(url, timeout=15).read()
+        path = "/mnt/data/NotoSansDevanagari-Regular.ttf"
+        with open(path,"wb") as f: f.write(data)
+        pdfmetrics.registerFont(TTFont("HindiAuto", path))
+        return "HindiAuto"
+    except Exception:
+        return None
+
+def build_pdf_single_page(title, details_lines, df_positions, df_md, df_ap, img_lagna_bytes, img_nav_bytes, brand="Generated by AstroDesk", hindi_font_name=None):
     buf = BytesIO()
     c = canvas.Canvas(buf, pagesize=A4)
     width, height = A4
-    x_margin, y_margin = 28, 36  # points
+    x_margin, y_margin = 28, 36
     y = height - y_margin
 
     # Title
     c.setFont("Times-Bold", 14); c.drawString(x_margin, y, title); y -= 18
 
     # Details
-    c.setFont("Times-Roman", 9)
+    font_text = hindi_font_name or "Times-Roman"
+    c.setFont(font_text, 10)
     for line in details_lines:
         c.drawString(x_margin, y, line); y -= 12
 
-    # Grid images side-by-side
+    # Images stacked (one below another) on the right half
     lagna = ImageReader(BytesIO(img_lagna_bytes))
     nav   = ImageReader(BytesIO(img_nav_bytes))
-    img_w = 180; img_h = 180
-    c.drawImage(lagna, width - x_margin - img_w*2 - 12, height - y_margin - img_h, img_w, img_h, preserveAspectRatio=True, mask='auto')
-    c.drawImage(nav,   width - x_margin - img_w,       height - y_margin - img_h, img_w, img_h, preserveAspectRatio=True, mask='auto')
+    img_w = 200; img_h = 200
+    right_x = width - x_margin - img_w
+    top_y = height - y_margin - img_h
+    c.drawImage(lagna, right_x, top_y, img_w, img_h, preserveAspectRatio=True, mask='auto')
+    c.drawImage(nav,   right_x, top_y - img_h - 12, img_w, img_h, preserveAspectRatio=True, mask='auto')
 
-    # Planetary positions (minimal table-like)
-    y -= 8
-    c.setFont("Times-Bold", 10); c.drawString(x_margin, y, "Planetary Positions"); y -= 12
-    c.setFont("Times-Roman", 8)
+    # Planetary Positions (left column)
+    y -= 8; c.setFont("Times-Bold", 11); c.drawString(x_margin, y, "Planetary Positions"); y -= 12
+    c.setFont(font_text, 9)
     for _, row in df_positions.iterrows():
-        c.drawString(x_margin, y, f"{row[0]} {row[1]}  Sign:{row[2]}  Deg:{row[3]}  Nak:{row[4]}  Sub:{row[5]}"); y -= 10
-        if y < 100: break
+        sym = str(row["Symbol"]); planet = str(row["Planet"])
+        line1 = f"{sym}  "
+        c.setFont("Times-Roman", 9); c.drawString(x_margin, y, line1)
+        x2 = x_margin + pdfmetrics.stringWidth(line1, "Times-Roman", 9)
+        c.setFont(font_text, 9)
+        c.drawString(x2, y, f"{planet}  Sign:{row['Sign']}  Deg:{row['Degree']}  Nak:{row['Nakshatra']}  Sub:{row['Sub‑Nakshatra']}"); y -= 11
+        if y < 140: break
 
     # Mahadasha
-    y -= 6; c.setFont("Times-Bold", 10); c.drawString(x_margin, y, "Vimshottari Mahadasha"); y -= 12
-    c.setFont("Times-Roman", 8)
+    y -= 6; c.setFont("Times-Bold", 11); c.drawString(x_margin, y, "Vimshottari Mahadasha"); y -= 12
+    c.setFont(font_text, 9)
     for _, row in df_md.iterrows():
-        c.drawString(x_margin, y, f"{row[0]}  End:{row[1]}  Age:{row[2]}"); y -= 10
-        if y < 80: break
+        c.drawString(x_margin, y, f"{row['Planet']}  End:{row['End Date']}  Age:{row['Age (at end)']}"); y -= 11
+        if y < 100: break
 
     # Antar/Pratyantar
-    y -= 6; c.setFont("Times-Bold", 10); c.drawString(x_margin, y, "Antar / Pratyantar (Next 2 years)"); y -= 12
-    c.setFont("Times-Roman", 8)
+    y -= 4; c.setFont("Times-Bold", 11); c.drawString(x_margin, y, "Antar / Pratyantar (Next 2 years)"); y -= 12
+    c.setFont(font_text, 9)
     for _, row in df_ap.iterrows():
-        c.drawString(x_margin, y, f"{row[0]} > {row[1]} > {row[2]}  End:{row[3]}"); y -= 10
+        c.drawString(x_margin, y, f"{row['Major Dasha']} > {row['Antar Dasha']} > {row['Pratyantar Dasha']}  End:{row['End Date']}"); y -= 11
         if y < 60: break
 
     # Footer
     c.setFont("Times-Italic", 8)
     c.drawString(x_margin, 20, brand)
-    c.showPage(); c.save()
-    buf.seek(0); return buf.getvalue()
+    c.showPage(); c.save(); buf.seek(0)
+    return buf.getvalue()
 
 # ----------------- App -----------------
 def main():
-    st.title("AstroDesk — Refined Kundali Suite (North‑Indian)")
-    st.caption("Single‑page client‑ready report • DOCX + PDF • Batch mode • Brand watermark")
+    st.title("AstroDesk — Auto-Hindi PDF + Stacked Charts (DOCX)")
 
-    # Sidebar options
     with st.sidebar:
-        st.header("Layout & Style")
-        base_font = st.select_slider("Base font size (pt)", options=[8,8.5,9,9.5,10], value=9)
-        latin_font = st.selectbox("Latin font", ["Georgia","Times New Roman","Calibri"], index=0)
-        hindi_font = st.selectbox("Hindi/Devanagari font", ["Mangal","Nirmala UI","Kokila"], index=0)
+        base_font = st.select_slider("DOCX base font (pt)", options=[8,8.5,9,9.5,10], value=9)
+        latin_font = st.selectbox("DOCX Latin font", ["Georgia","Times New Roman","Calibri"], index=0)
+        hindi_font = st.selectbox("DOCX Hindi font", ["Mangal","Nirmala UI","Kokila"], index=0)
+        brand_text = st.text_input("Footer brand", "Generated by AstroDesk")
 
-        st.divider()
-        st.header("Chart Options")
-        show_numbers = st.checkbox("Show sign numbers inside charts", value=False)
-        numeral_style = st.radio("Numeral style", ["English","Hindi"], index=0, horizontal=True)
-
-        st.divider()
-        st.header("Astrology Options")
-        include_transit = st.checkbox("Include current transit positions", value=False)
-
-        st.divider()
-        st.header("Branding / Export")
-        brand_text = st.text_input("Footer brand text", "Generated by AstroDesk")
-        add_watermark = st.checkbox("Add header watermark text", value=False)
-        logo = st.file_uploader("Optional logo (PNG/JPG) for header", type=["png","jpg","jpeg"])
-        generate_pdf = st.checkbox("Also generate PDF", value=True)
-
-        st.divider()
-        st.header("Batch Mode")
-        batch = st.checkbox("Process a CSV of multiple births", value=False)
-        csv_file = None
-        if batch:
-            csv_file = st.file_uploader("Upload CSV (name,dob(YYYY-MM-DD),tob(HH:MM),place)", type=["csv"])
-
-    # Main inputs
     col1, col2 = st.columns(2)
     with col1:
         name = st.text_input("Name")
@@ -400,215 +355,109 @@ def main():
         tz_override = st.text_input("UTC offset override (optional, e.g., 5.5)", "")
     api_key = st.secrets.get("GEOAPIFY_API_KEY","")
 
-    # Action
-    if st.button("Generate Report(s)"):
+    if st.button("Generate"):
         try:
-            if batch and csv_file is not None:
-                # Batch generation: ZIP
-                zbuf = BytesIO()
-                zf = zipfile.ZipFile(zbuf, "w", zipfile.ZIP_DEFLATED)
-
-                df_csv = pd.read_csv(csv_file)
-                for idx, row in df_csv.iterrows():
-                    n = str(row.get("name",""))
-                    d = datetime.datetime.strptime(str(row.get("dob","")), "%Y-%m-%d").date()
-                    t = datetime.datetime.strptime(str(row.get("tob","")), "%H:%M").time()
-                    p = str(row.get("place",""))
-                    lat, lon, disp = geocode(p, api_key)
-
-                    dt_local = datetime.datetime.combine(d, t)
-                    tzname, tz_hours, dt_utc = tz_from_latlon(lat, lon, dt_local)
-
-                    # Compute
-                    jd_ut, _, sidelons = sidereal_positions(dt_utc)
-                    df_positions = positions_table(sidelons, include_symbols=True)
-
-                    md_segments, _, _ = build_mahadashas_from_birth(dt_local, sidelons['Mo'])
-                    df_md = pd.DataFrame([{"Planet": HN[s["planet"]], "End Date": s["end"].strftime("%d-%m-%Y"), "Age (at end)": round(((s["end"] - dt_local).days / YEAR_DAYS), 1)} for s in md_segments])
-                    now_local = datetime.datetime.now()
-                    rows_ap = next_ant_praty_in_days(now_local, md_segments, days_window=2*365)
-                    df_ap = pd.DataFrame([{"Major Dasha": HN[r["major"]], "Antar Dasha": HN[r["antar"]], "Pratyantar Dasha": HN[r["pratyantar"]], "End Date": r["end"].strftime("%d-%m-%Y")} for r in rows_ap])
-
-                    asc = ascendant_lon(jd_ut, lat, lon)
-                    house_nums_d1 = house_sign_numbers_from_asc(asc)
-                    asc_nav_sign = navamsa_sign_of_lon(asc)
-                    house_nums_d9 = house_sign_numbers_from_sign(asc_nav_sign)
-
-                    img_lagna = render_north_diamond(house_nums_d1, show_numbers=show_numbers, numerals=numeral_style, size_px=900, font_pts=18, stroke=3)
-                    img_nav   = render_north_diamond(house_nums_d9, show_numbers=show_numbers, numerals=numeral_style, size_px=900, font_pts=18, stroke=3)
-
-                    # DOCX
-                    fname = sanitize_filename(n) + ".docx"
-                    doc_bytes = build_docx(n, d, t, disp, tzname, tz_hours, df_positions, df_md, df_ap, img_lagna, img_nav,
-                                           base_font, latin_font, hindi_font, brand_text, add_watermark, logo, include_transit, dudt=dt_utc)
-                    zf.writestr(fname, doc_bytes)
-
-                    # PDF (optional)
-                    if generate_pdf:
-                        pdf_bytes = build_pdf_single_page(f"{n} — Horoscope",
-                                                          [f"DOB: {d}  |  TOB: {t}", f"Place: {disp}", f"Time Zone: {tzname} (UTC{tz_hours:+.2f})"],
-                                                          df_positions, df_md, df_ap,
-                                                          img_lagna.getvalue(), img_nav.getvalue(), brand=brand_text)
-                        zf.writestr(sanitize_filename(n) + ".pdf", pdf_bytes)
-
-                zf.close(); zbuf.seek(0)
-                st.download_button("⬇️ Download ZIP of Reports", zbuf.getvalue(), file_name="AstroDesk_Reports.zip")
+            lat, lon, disp = geocode(place, api_key)
+            dt_local = datetime.datetime.combine(dob, tob)
+            if tz_override.strip():
+                tz_hours = float(tz_override); dt_utc = dt_local - datetime.timedelta(hours=tz_hours); tzname=f"UTC{tz_hours:+.2f} (manual)"
             else:
-                # Single
-                lat, lon, disp = geocode(place, api_key)
-                dt_local = datetime.datetime.combine(dob, tob)
-                if tz_override.strip():
-                    tz_hours = float(tz_override); dt_utc = dt_local - datetime.timedelta(hours=tz_hours); tzname=f"UTC{tz_hours:+.2f} (manual)"
-                else:
-                    tzname, tz_hours, dt_utc = tz_from_latlon(lat, lon, dt_local)
+                tzname, tz_hours, dt_utc = tz_from_latlon(lat, lon, dt_local)
 
-                jd_ut, _, sidelons = sidereal_positions(dt_utc)
-                df_positions = positions_table(sidelons, include_symbols=True)
+            # Data
+            jd_ut, _, sidelons = sidereal_positions(dt_utc)
+            df_positions = positions_table(sidelons)
+            md_segments, _, _ = build_mahadashas_from_birth(dt_local, sidelons['Mo'])
+            df_md = pd.DataFrame([{"Planet": HN[s["planet"]], "End Date": s["end"].strftime("%d-%m-%Y"), "Age (at end)": round(((s["end"] - dt_local).days / 365.2425), 1)} for s in md_segments])
+            now_local = datetime.datetime.now()
+            rows_ap = next_ant_praty_in_days(now_local, md_segments, days_window=2*365)
+            df_ap = pd.DataFrame([{"Major Dasha": HN[r["major"]], "Antar Dasha": HN[r["antar"]], "Pratyantar Dasha": HN[r["pratyantar"]], "End Date": r["end"].strftime("%d-%m-%Y")} for r in rows_ap])
 
-                md_segments, _, _ = build_mahadashas_from_birth(dt_local, sidelons['Mo'])
-                df_md = pd.DataFrame([{"Planet": HN[s["planet"]], "End Date": s["end"].strftime("%d-%m-%Y"), "Age (at end)": round(((s["end"] - dt_local).days / YEAR_DAYS), 1)} for s in md_segments])
-                now_local = datetime.datetime.now()
-                rows_ap = next_ant_praty_in_days(now_local, md_segments, days_window=2*365)
-                df_ap = pd.DataFrame([{"Major Dasha": HN[r["major"]], "Antar Dasha": HN[r["antar"]], "Pratyantar Dasha": HN[r["pratyantar"]], "End Date": r["end"].strftime("%d-%m-%Y")} for r in rows_ap])
+            # Charts
+            img_lagna = render_north_diamond(size_px=900, stroke=3)
+            img_nav   = render_north_diamond(size_px=900, stroke=3)
 
-                if include_transit:
-                    now_utc = datetime.datetime.utcnow().replace(microsecond=0)
-                    _, _, transit = sidereal_positions(now_utc)
-                    df_transit = positions_table(transit, include_symbols=True)
-                else:
-                    df_transit = None
+            # DOCX (charts stacked)
+            doc = Document()
+            sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
+            margin = Mm(10); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(8); sec.bottom_margin = Mm(8)
+            # Normal style
+            style = doc.styles['Normal']; style.font.name = latin_font; style.font.size = Pt(base_font)
+            style._element.rPr.rFonts.set(qn('w:eastAsia'), hindi_font); style._element.rPr.rFonts.set(qn('w:cs'), hindi_font)
 
-                asc = ascendant_lon(jd_ut, lat, lon)
-                house_nums_d1 = house_sign_numbers_from_asc(asc)
-                asc_nav_sign = navamsa_sign_of_lon(asc)
-                house_nums_d9 = house_sign_numbers_from_sign(asc_nav_sign)
+            add_footer(sec, brand=brand_text)
+            title = doc.add_paragraph(f"{name or '—'} — Horoscope"); title.runs[0].font.size = Pt(base_font+4); title.runs[0].bold = True
 
-                img_lagna = render_north_diamond(house_nums_d1, show_numbers=show_numbers, numerals=numeral_style, size_px=900, font_pts=18, stroke=3)
-                img_nav   = render_north_diamond(house_nums_d9, show_numbers=show_numbers, numerals=numeral_style, size_px=900, font_pts=18, stroke=3)
+            layout = doc.add_table(rows=1, cols=2); layout.autofit=False
+            layout.columns[0].width = Inches(3.9); layout.columns[1].width = Inches(3.9)
 
-                # DOCX
-                doc_bytes = build_docx(name, dob, tob, disp, tzname, tz_hours, df_positions, df_md, df_ap, img_lagna, img_nav,
-                                       base_font, latin_font, hindi_font, brand_text, add_watermark, logo, include_transit, df_transit, dt_utc)
-                st.download_button("⬇️ Download DOCX", doc_bytes, file_name=sanitize_filename(name)+".docx")
+            # Left: text & tables
+            left = layout.rows[0].cells[0]
+            p = left.add_paragraph("Personal Details"); p.runs[0].bold=True
+            left.add_paragraph(f"Name: {name}")
+            left.add_paragraph(f"DOB: {dob}  |  TOB: {tob}")
+            left.add_paragraph(f"Place: {disp}")
+            left.add_paragraph(f"Time Zone: {tzname} (UTC{tz_hours:+.2f})")
 
-                # PDF
-                if generate_pdf:
-                    pdf_bytes = build_pdf_single_page(f"{name} — Horoscope",
-                                                      [f"DOB: {dob}  |  TOB: {tob}", f"Place: {disp}", f"Time Zone: {tzname} (UTC{tz_hours:+.2f})"],
-                                                      df_positions, df_md, df_ap,
-                                                      img_lagna.getvalue(), img_nav.getvalue(), brand=brand_text)
-                    st.download_button("⬇️ Download PDF", pdf_bytes, file_name=sanitize_filename(name)+".pdf")
+            left.add_paragraph("Planetary Positions").runs[0].bold=True
+            t1 = left.add_table(rows=1, cols=len(df_positions.columns)); t1.autofit=False
+            for i,c in enumerate(df_positions.columns): t1.rows[0].cells[i].text=c
+            for _,row in df_positions.iterrows():
+                r=t1.add_row().cells
+                for i,c in enumerate(row): r[i].text=str(c)
+            add_table_borders(t1, size=6); set_table_font(t1, pt=base_font); center_header_row(t1)
+            set_col_widths(t1, [0.5,1.0,0.6,0.9,1.0,1.0])
 
-                # On-screen previews
-                lc, rc = st.columns([1.15,0.85])
-                with lc:
-                    st.subheader("Planetary Positions"); st.dataframe(df_positions, use_container_width=True)
-                    st.subheader("Vimshottari Mahadasha"); st.dataframe(df_md, use_container_width=True)
-                    st.subheader("Antar / Pratyantar (Next 2 years)"); st.dataframe(df_ap, use_container_width=True)
-                    if include_transit and df_transit is not None:
-                        st.subheader("Current Transit"); st.dataframe(df_transit, use_container_width=True)
-                with rc:
-                    st.subheader("Lagna Kundali"); st.image(img_lagna, use_container_width=True)
-                    st.subheader("Navamsa Kundali"); st.image(img_nav, use_container_width=True)
+            left.add_paragraph("Vimshottari Mahadasha").runs[0].bold=True
+            t2 = left.add_table(rows=1, cols=len(df_md.columns)); t2.autofit=False
+            for i,c in enumerate(df_md.columns): t2.rows[0].cells[i].text=c
+            for _,row in df_md.iterrows():
+                r=t2.add_row().cells
+                for i,c in enumerate(row): r[i].text=str(c)
+            add_table_borders(t2, size=6); set_table_font(t2, pt=base_font); center_header_row(t2)
+            set_col_widths(t2, [1.0,1.0,0.8])
+
+            left.add_paragraph("Antar / Pratyantar (Next 2 years)").runs[0].bold=True
+            t3 = left.add_table(rows=1, cols=len(df_ap.columns)); t3.autofit=False
+            for i,c in enumerate(df_ap.columns): t3.rows[0].cells[i].text=c
+            for _,row in df_ap.iterrows():
+                r=t3.add_row().cells
+                for i,c in enumerate(row): r[i].text=str(c)
+            add_table_borders(t3, size=6); set_table_font(t3, pt=base_font); center_header_row(t3)
+            set_col_widths(t3, [1.0,1.0,1.1,0.9])
+
+            # Right: charts stacked
+            right = layout.rows[0].cells[1]
+            img_lagna.seek(0); p1 = right.paragraphs[0]; p1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p1.add_run().add_picture(img_lagna, width=Inches(3.2))
+            right.add_paragraph("")  # spacing
+            img_nav.seek(0); p2 = right.add_paragraph(); p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p2.add_run().add_picture(img_nav, width=Inches(3.2))
+
+            doc_bytes = BytesIO(); doc.save(doc_bytes); doc_bytes.seek(0)
+            st.download_button("⬇️ Download DOCX", doc_bytes.getvalue(), file_name=(re.sub(r'[^A-Za-z0-9_\\- ]+','',name).strip().replace(' ','_') or 'Horoscope') + "_Horoscope.docx")
+
+            # PDF (auto Hindi font)
+            hindi_font_name = ensure_hindi_font()
+            pdf_bytes = build_pdf_single_page(f"{name} — Horoscope",
+                                              [f"DOB: {dob}  |  TOB: {tob}", f"Place: {disp}", f"Time Zone: {tzname} (UTC{tz_hours:+.2f})"],
+                                              df_positions, df_md, df_ap,
+                                              img_lagna.getvalue(), img_nav.getvalue(),
+                                              brand=brand_text, hindi_font_name=hindi_font_name)
+            st.download_button("⬇️ Download PDF", pdf_bytes, file_name=(re.sub(r'[^A-Za-z0-9_\\- ]+','',name).strip().replace(' ','_') or 'Horoscope') + "_Horoscope.pdf")
+
+            # Preview
+            lc, rc = st.columns([1.2,0.8])
+            with lc:
+                st.subheader("Planetary Positions"); st.dataframe(df_positions, use_container_width=True)
+                st.subheader("Vimshottari Mahadasha"); st.dataframe(df_md, use_container_width=True)
+                st.subheader("Antar / Pratyantar (Next 2 years)"); st.dataframe(df_ap, use_container_width=True)
+            with rc:
+                st.subheader("Lagna Kundali"); st.image(img_lagna, use_container_width=True)
+                st.subheader("Navamsa Kundali"); st.image(img_nav, use_container_width=True)
 
         except Exception as e:
             st.error(str(e))
-
-def build_docx(name, dob, tob, disp, tzname, tz_hours, df_positions, df_md, df_ap, img_lagna, img_nav,
-               base_font, latin_font, hindi_font, brand_text, add_watermark, logo_file, include_transit, df_transit=None, dudt=None):
-    doc = Document()
-    # A4 & margins
-    sec = doc.sections[0]
-    sec.page_width = Mm(210); sec.page_height = Mm(297)
-    margin = Mm(10); sec.left_margin = sec.right_margin = margin
-    sec.top_margin = Mm(8); sec.bottom_margin = Mm(8)
-
-    apply_normal_style(doc, latin=latin_font, cjk=hindi_font, size_pt=base_font)
-
-    # Header watermark / logo
-    if add_watermark:
-        header = sec.header
-        p = header.paragraphs[0]
-        run = p.add_run(brand_text); run.font.size = Pt(12); run.font.color.rgb = None
-    if logo_file is not None:
-        header = sec.header
-        rp = header.paragraphs[0].add_run()
-        rp.add_picture(logo_file, width=Inches(0.6))
-
-    # Footer with brand and page number
-    add_footer(sec, brand=brand_text)
-
-    # Title
-    title = doc.add_paragraph(f"{name or '—'} — Horoscope")
-    title.runs[0].font.size = Pt(base_font+4); title.runs[0].bold = True
-
-    # 2-column layout
-    layout = doc.add_table(rows=1, cols=2); layout.autofit = True
-    layout.columns[0].width = Inches(3.9); layout.columns[1].width = Inches(3.9)
-
-    # LEFT: Details + Tables
-    left = layout.rows[0].cells[0]
-
-    p = left.add_paragraph("Personal Details"); r = p.add_run(); r.bold = True
-    left.add_paragraph(f"Name: {name}")
-    left.add_paragraph(f"DOB: {dob}  |  TOB: {tob}")
-    left.add_paragraph(f"Place: {disp}")
-    left.add_paragraph(f"Time Zone: {tzname} (UTC{tz_hours:+.2f})")
-
-    add_divider(doc)
-
-    left.add_paragraph("Planetary Positions").runs[0].bold = True
-    t1 = left.add_table(rows=1, cols=len(df_positions.columns))
-    for i,c in enumerate(df_positions.columns): cell=t1.rows[0].cells[i]; cell.text=c
-    for _,row in df_positions.iterrows():
-        r=t1.add_row().cells
-        for i,c in enumerate(row): r[i].text=str(c)
-    add_table_borders(t1, size=6); set_table_font(t1, pt=base_font); center_header_row(t1)
-    set_col_widths(t1, [0.5,1.0,0.6,0.9,1.0,1.0] if len(df_positions.columns)==6 else [1,0.6,0.9,1.0,1.0])
-
-    add_divider(doc)
-
-    left.add_paragraph("Vimshottari Mahadasha").runs[0].bold = True
-    t2 = left.add_table(rows=1, cols=len(df_md.columns))
-    for i,c in enumerate(df_md.columns): t2.rows[0].cells[i].text = c
-    for _,row in df_md.iterrows():
-        r=t2.add_row().cells
-        for i,c in enumerate(row): r[i].text=str(c)
-    add_table_borders(t2, size=6); set_table_font(t2, pt=base_font); center_header_row(t2)
-    set_col_widths(t2, [1.0,1.0,0.8])
-
-    add_divider(doc)
-
-    left.add_paragraph("Current Antar / Pratyantar (Next 2 years)").runs[0].bold = True
-    t3 = left.add_table(rows=1, cols=len(df_ap.columns))
-    for i,c in enumerate(df_ap.columns): t3.rows[0].cells[i].text = c
-    for _,row in df_ap.iterrows():
-        r=t3.add_row().cells
-        for i,c in enumerate(row): r[i].text=str(c)
-    add_table_borders(t3, size=6); set_table_font(t3, pt=base_font); center_header_row(t3)
-    set_col_widths(t3, [1.0,1.0,1.1,0.9])
-
-    if include_transit and df_transit is not None:
-        add_divider(doc)
-        left.add_paragraph("Current Transit Positions").runs[0].bold = True
-        t4 = left.add_table(rows=1, cols=len(df_transit.columns))
-        for i,c in enumerate(df_transit.columns): t4.rows[0].cells[i].text = c
-        for _,row in df_transit.iterrows():
-            r=t4.add_row().cells
-            for i,c in enumerate(row): r[i].text=str(c)
-        add_table_borders(t4, size=6); set_table_font(t4, pt=base_font); center_header_row(t4)
-        set_col_widths(t4, [0.5,1.0,0.6,0.9,1.0,1.0])
-
-    # RIGHT: Charts side-by-side
-    right = layout.rows[0].cells[1]
-    # a table with one row, two columns to place charts side by side
-    chart_tbl = right.add_table(rows=1, cols=2)
-    c1, c2 = chart_tbl.rows[0].cells
-    img_lagna.seek(0); c1.paragraphs[0].add_run().add_picture(img_lagna, width=Inches(3.2))
-    img_nav.seek(0);   c2.paragraphs[0].add_run().add_picture(img_nav,   width=Inches(3.2))
-
-    # Save
-    out = BytesIO(); doc.save(out); out.seek(0); return out.getvalue()
 
 if __name__=='__main__':
     main()
