@@ -185,33 +185,44 @@ def render_north_diamond(size_px=900, stroke=3):
     plt.close(fig); buf.seek(0); return buf
 
 def add_kundali_skeleton_vml(cell, title_text):
+    """Insert a VML-based North-Indian style Kundali skeleton with 12 empty textboxes.
+       Scales to ~45% height of the cell so two can stack vertically."""
     p_title = cell.add_paragraph(title_text)
     p_title.runs[0].bold = True
     p = cell.add_paragraph()
     pict = OxmlElement('w:pict')
+
     v_group = OxmlElement('v:group')
-    v_group.set(qn('v:coordsize'), '1000,1000')
-    v_group.set(qn('v:style'), 'width:100%;height:45%')
+    v_group.set('coordsize', '1000,1000')
+    v_group.set('style', 'width:100%;height:45%')
+
     rect = OxmlElement('v:rect')
-    rect.set(qn('v:style'), 'position:relative;left:0;top:0;width:1000;height:1000')
-    rect.set(qn('v:strokecolor'), '#000000')
-    rect.set(qn('v:strokeweight'), '1pt')
+    rect.set('style', 'position:relative;left:0;top:0;width:1000;height:1000')
+    rect.set('strokecolor', '#000000')
+    rect.set('strokeweight', '1pt')
     v_group.append(rect)
+
     def v_line(from_xy, to_xy):
         ln = OxmlElement('v:line')
-        ln.set(qn('v:from'), f'{from_xy[0]},{from_xy[1]}')
-        ln.set(qn('v:to'), f'{to_xy[0]},{to_xy[1]}')
-        ln.set(qn('v:strokecolor'), '#000000')
-        ln.set(qn('v:strokeweight'), '1pt')
+        ln.set('from', f'{from_xy[0]},{from_xy[1]}')
+        ln.set('to', f'{to_xy[0]},{to_xy[1]}')
+        ln.set('strokecolor', '#000000')
+        ln.set('strokeweight', '1pt')
         v_group.append(ln)
+
+    # diagonals + cross
     v_line((0,0),(1000,1000))
     v_line((0,1000),(1000,0))
     v_line((500,0),(500,1000))
     v_line((0,500),(1000,500))
+
+    # inner diamond
     v_line((0,500),(500,0))
     v_line((500,0),(1000,500))
     v_line((1000,500),(500,1000))
     v_line((500,1000),(0,500))
+
+    # 12 empty text boxes
     house_boxes = [
         (420, 20, 160, 120),
         (700, 80, 250, 160),
@@ -226,10 +237,11 @@ def add_kundali_skeleton_vml(cell, title_text):
         (650, 660, 300, 160),
         (350, 660, 300, 160),
     ]
+
     for (l,t,w,h) in house_boxes:
         shape = OxmlElement('v:shape')
-        shape.set(qn('v:style'), f'position:absolute;left:{l};top:{t};width:{w};height:{h}')
-        shape.set(qn('v:stroked'), 'f')
+        shape.set('style', f'position:absolute;left:{l};top:{t};width:{w};height:{h}')
+        shape.set('stroked', 'f')
         textbox = OxmlElement('v:textbox')
         txp = OxmlElement('w:txbxContent')
         p_inner = OxmlElement('w:p')
@@ -237,6 +249,7 @@ def add_kundali_skeleton_vml(cell, title_text):
         t_inner = OxmlElement('w:t'); t_inner.text = ''
         r_inner.append(t_inner); p_inner.append(r_inner); txp.append(p_inner)
         textbox.append(txp); shape.append(textbox); v_group.append(shape)
+
     pict.append(v_group)
     p._p.append(pict)
 
@@ -318,6 +331,7 @@ def main():
             img_lagna = render_north_diamond(size_px=900, stroke=3)
             img_nav   = render_north_diamond(size_px=900, stroke=3)
 
+            # DOCX build
             doc = Document()
             sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
             margin = Mm(12)
@@ -366,14 +380,13 @@ def main():
             set_col_widths(t3, [0.9,0.9,0.9,0.6])
 
             right = outer.rows[0].cells[1]
-            # Insert VML-based Kundali skeletons (auto-scale)
             add_kundali_skeleton_vml(right, "Lagna Kundali")
             add_kundali_skeleton_vml(right, "Navamsa Kundali")
 
             out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
 
-            # Web preview: PNG charts on right
+            # Web preview
             lc, rc = st.columns([1.2, 0.8])
             with lc:
                 st.subheader("Planetary Positions")
