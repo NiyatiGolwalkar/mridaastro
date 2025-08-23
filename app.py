@@ -245,8 +245,8 @@ def main():
     c1,c2 = st.columns([1,1])
     with c1:
         name = st.text_input("Name")
-        dob = st.date_input("Date of Birth")
-        tob = st.time_input("Time of Birth")
+        dob = st.date_input("Date of Birth", min_value=datetime.date(1800,1,1), max_value=datetime.date(2100,12,31))
+        tob = st.time_input("Time of Birth", step=datetime.timedelta(minutes=1))
     with c2:
         place = st.text_input("Place of Birth (City, State, Country)")
         tz_override = st.text_input("UTC offset override (optional, e.g., 5.5)", "")
