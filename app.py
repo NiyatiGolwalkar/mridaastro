@@ -13,7 +13,9 @@ from io import BytesIO
 import pytz
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="AstroDesk — DOCX (No Clip)", layout="wide", page_icon="🪔")
+# ---- App title (constant) ----
+APP_TITLE = "DevoAstroBhav Kundali"
+st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 
 HN = {'Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Me':'बुध','Ju':'गुरु','Ve':'शुक्र','Sa':'शनि','Ra':'राहु','Ke':'केतु'}
 SYMB = {'Su':'☉','Mo':'☾','Ma':'♂','Me':'☿','Ju':'♃','Ve':'♀','Sa':'♄','Ra':'☊','Ke':'☋'}
@@ -213,17 +215,16 @@ def set_col_widths(table, widths_inch):
     table.autofit = False
 
 def set_table_exact_width(table, width_inch):
-    """Prevent Word from stretching the table to page edge."""
-    table.autofit = False
-    tblPr = table._tbl.tblPr
-    # preferred width
-    tblW = tblPr.tblW if tblPr.tblW is not None else OxmlElement('w:tblW')
+    """Set an explicit table width using w:tblW (twips), avoiding attribute access."""
+    tbl = table._tbl
+    tblPr = tbl.tblPr
+    tblW = OxmlElement('w:tblW')
     tblW.set(qn('w:type'), 'dxa')
-    tblW.set(qn('w:w'), str(int(width_inch * 1440)))  # twips
+    tblW.set(qn('w:w'), str(int(width_inch * 1440)))
     tblPr.append(tblW)
+    table.autofit = False
 
 def set_cell_margins(cell, left=80, right=80, top=40, bottom=40):
-    """Set inner cell padding in twips to ensure borders are visible."""
     tcPr = cell._tc.get_or_add_tcPr()
     tcMar = OxmlElement('w:tcMar')
     for tag, val in (('top',top),('left',left),('bottom',bottom),('right',right)):
@@ -249,7 +250,7 @@ def sanitize_filename(name: str) -> str:
 
 # ----------------- App -----------------
 def main():
-    st.title("AstroDesk — Single‑Page DOCX (Hindi) • No PDF • No Clipping")
+    st.title(APP_TITLE)
 
     with st.sidebar:
         base_font = st.select_slider("DOCX base font (pt)", options=[8,8.5,9,9.5,10], value=9)
@@ -276,7 +277,6 @@ def main():
             else:
                 tzname, tz_hours, dt_utc = tz_from_latlon(lat, lon, dt_local)
 
-            # Data
             _, _, sidelons = sidereal_positions(dt_utc)
             df_positions = positions_table(sidelons)
             md_segments, _, _ = build_mahadashas_from_birth(dt_local, sidelons['Mo'])
@@ -288,7 +288,7 @@ def main():
             img_lagna = render_north_diamond(size_px=900, stroke=3)
             img_nav   = render_north_diamond(size_px=900, stroke=3)
 
-            # Build DOCX: tighten widths with explicit table width & padding
+            # Build DOCX
             doc = Document()
             sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
             margin = Mm(10); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(8); sec.bottom_margin = Mm(8)
@@ -298,14 +298,11 @@ def main():
 
             title = doc.add_paragraph(f"{name or '—'} — Horoscope"); title.runs[0].font.size = Pt(base_font+4); title.runs[0].bold = True
 
-            # Outer 2-column layout: 3.45'' + 3.45'' = 6.9'' (plenty of room)
             outer = doc.add_table(rows=1, cols=2); outer.autofit=False
             outer.columns[0].width = Inches(3.45); outer.columns[1].width = Inches(3.45)
             set_table_exact_width(outer, 6.9)
-            # small inner padding on right cell to keep border visible
             set_cell_margins(outer.rows[0].cells[1], left=100, right=100, top=60, bottom=60)
 
-            # LEFT: text & tables (force table widths)
             left = outer.rows[0].cells[0]
             p = left.add_paragraph("Personal Details"); p.runs[0].bold=True
             left.add_paragraph(f"Name: {name}")
@@ -340,7 +337,6 @@ def main():
             add_table_borders(t3, size=6); set_table_font(t3, pt=base_font); center_header_row(t3)
             set_col_widths(t3, [1.0,1.0,1.0,0.8])
 
-            # RIGHT: stacked charts (3.25'' so border never clips)
             right = outer.rows[0].cells[1]
             img_lagna.seek(0); p1 = right.paragraphs[0]; p1.alignment = WD_ALIGN_PARAGRAPH.CENTER
             p1.add_run().add_picture(img_lagna, width=Inches(3.25))
