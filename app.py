@@ -185,13 +185,15 @@ def render_north_diamond(size_px=900, stroke=3):
     plt.close(fig); buf.seek(0); return buf
 
 # ---- DOCX helpers ----
-def hide_table_borders(table):
+def add_table_borders(table, size=6):
+    """Full grid borders (all cells). Size in eighths of a point (Word 'sz')."""
     tbl = table._tbl
     tblPr = tbl.tblPr
     tblBorders = OxmlElement('w:tblBorders')
     for edge in ('top','left','bottom','right','insideH','insideV'):
         el = OxmlElement(f'w:{edge}')
-        el.set(qn('w:val'), 'nil')
+        el.set(qn('w:val'), 'single')
+        el.set(qn('w:sz'), str(size))  # thin
         tblBorders.append(el)
     tblPr.append(tblBorders)
 
@@ -262,7 +264,7 @@ def main():
             img_lagna = render_north_diamond(size_px=900, stroke=3)
             img_nav   = render_north_diamond(size_px=900, stroke=3)
 
-            # ----- DOCX build (no borders) -----
+            # ----- DOCX build with GRID BORDERS -----
             doc = Document()
             sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
             margin = Mm(12)
@@ -274,7 +276,7 @@ def main():
 
             outer = doc.add_table(rows=1, cols=2); outer.autofit=False
             outer.columns[0].width = Inches(3.3); outer.columns[1].width = Inches(3.3)
-            hide_table_borders(outer)
+            add_table_borders(outer, size=6)
 
             left = outer.rows[0].cells[0]
             p = left.add_paragraph("Personal Details"); p.runs[0].bold=True
@@ -289,7 +291,7 @@ def main():
             for _,row in df_positions.iterrows():
                 r=t1.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
-            center_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT); hide_table_borders(t1)
+            center_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT); add_table_borders(t1, size=6)
             set_col_widths(t1, [0.8,0.4,0.7,0.7,0.7])
 
             left.add_paragraph("Vimshottari Mahadasha").runs[0].bold=True
@@ -298,7 +300,7 @@ def main():
             for _,row in df_md.iterrows():
                 r=t2.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
-            center_header_row(t2); set_table_font(t2, pt=BASE_FONT_PT); hide_table_borders(t2)
+            center_header_row(t2); set_table_font(t2, pt=BASE_FONT_PT); add_table_borders(t2, size=6)
             set_col_widths(t2, [1.1,1.0,1.0])
 
             left.add_paragraph("Antar / Pratyantar (Next 2 years)").runs[0].bold=True
@@ -307,7 +309,7 @@ def main():
             for _,row in df_ap.iterrows():
                 r=t3.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
-            center_header_row(t3); set_table_font(t3, pt=BASE_FONT_PT); hide_table_borders(t3)
+            center_header_row(t3); set_table_font(t3, pt=BASE_FONT_PT); add_table_borders(t3, size=6)
             set_col_widths(t3, [0.9,0.9,0.9,0.6])
 
             right = outer.rows[0].cells[1]
@@ -320,7 +322,7 @@ def main():
             out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
 
-            # ----- Web preview: tables on the left, kundali on the right -----
+            # ----- Web preview: hide index & show charts on right -----
             lc, rc = st.columns([1.2, 0.8])
             with lc:
                 st.subheader("Planetary Positions")
