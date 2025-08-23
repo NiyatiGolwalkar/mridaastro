@@ -12,6 +12,12 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from io import BytesIO
 import pytz
 import matplotlib.pyplot as plt
+from lxml import etree
+
+# Register VML/Office namespaces once for the whole docx build
+etree.register_namespace('v',   'urn:schemas-microsoft-com:vml')
+etree.register_namespace('o',   'urn:schemas-microsoft-com:office:office')
+etree.register_namespace('w10', 'urn:schemas-microsoft-com:office:word')
 
 APP_TITLE = "DevoAstroBhav Kundali"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
@@ -112,8 +118,7 @@ def moon_balance(moon_sid):
     remaining_years = YEARS[md_lord]*(1 - frac)
     return md_lord, remaining_years
 
-def add_years(dt, y):
-    return dt + datetime.timedelta(days=y*365.2425)
+def add_years(dt, y): return dt + datetime.timedelta(days=y*365.2425)
 
 def build_mahadashas_from_birth(birth_local_dt, moon_sid):
     ORDER = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
@@ -187,17 +192,10 @@ def render_north_diamond(size_px=900, stroke=3):
     plt.close(fig); buf.seek(0); return buf
 
 def add_kundali_skeleton_vml(cell, title_text):
-    """Insert a VML-based North-Indian Kundali skeleton with 12 empty textboxes.
-       Declares VML namespaces on w:pict so 'v:*' works. Two such skeletons can
-       be stacked by calling this twice; each uses height:45% of the cell."""
-    p_title = cell.add_paragraph(title_text)
-    p_title.runs[0].bold = True
+    """VML Kundali skeleton with text boxes. Namespaces are registered via lxml.register_namespace."""
+    p_title = cell.add_paragraph(title_text); p_title.runs[0].bold = True
     p = cell.add_paragraph()
     pict = OxmlElement('w:pict')
-    # Declare VML namespaces
-    pict.set('xmlns:v', 'urn:schemas-microsoft-com:vml')
-    pict.set('xmlns:o', 'urn:schemas-microsoft-com:office:office')
-    pict.set('xmlns:w10', 'urn:schemas-microsoft-com:office:word')
 
     v_group = OxmlElement('v:group')
     v_group.set('coordsize', '1000,1000')
@@ -217,31 +215,15 @@ def add_kundali_skeleton_vml(cell, title_text):
         ln.set('strokeweight', '1pt')
         v_group.append(ln)
 
-    # outer diagonals + cross
-    v_line((0,0),(1000,1000))
-    v_line((0,1000),(1000,0))
-    v_line((500,0),(500,1000))
-    v_line((0,500),(1000,500))
-    # inner diamond
-    v_line((0,500),(500,0))
-    v_line((500,0),(1000,500))
-    v_line((1000,500),(500,1000))
-    v_line((500,1000),(0,500))
+    v_line((0,0),(1000,1000)); v_line((0,1000),(1000,0))
+    v_line((500,0),(500,1000)); v_line((0,500),(1000,500))
+    v_line((0,500),(500,0)); v_line((500,0),(1000,500))
+    v_line((1000,500),(500,1000)); v_line((500,1000),(0,500))
 
-    # 12 empty text boxes (positions approximate)
     house_boxes = [
-        (420, 20, 160, 120),
-        (700, 80, 250, 160),
-        (820, 300, 160, 160),
-        (700, 560, 250, 160),
-        (420, 740, 160, 120),
-        (140, 560, 250, 160),
-        (20, 300, 160, 160),
-        (140, 80, 250, 160),
-        (350, 180, 300, 160),
-        (650, 180, 300, 160),
-        (650, 660, 300, 160),
-        (350, 660, 300, 160),
+        (420, 20, 160, 120),(700, 80, 250, 160),(820, 300, 160, 160),(700, 560, 250, 160),
+        (420, 740, 160, 120),(140, 560, 250, 160),(20, 300, 160, 160),(140, 80, 250, 160),
+        (350, 180, 300, 160),(650, 180, 300, 160),(650, 660, 300, 160),(350, 660, 300, 160),
     ]
     for (l,t,w,h) in house_boxes:
         shape = OxmlElement('v:shape')
@@ -249,23 +231,19 @@ def add_kundali_skeleton_vml(cell, title_text):
         shape.set('stroked', 'f')
         textbox = OxmlElement('v:textbox')
         txp = OxmlElement('w:txbxContent')
-        p_inner = OxmlElement('w:p')
-        r_inner = OxmlElement('w:r')
+        p_inner = OxmlElement('w:p'); r_inner = OxmlElement('w:r')
         t_inner = OxmlElement('w:t'); t_inner.text = ''
         r_inner.append(t_inner); p_inner.append(r_inner); txp.append(p_inner)
         textbox.append(txp); shape.append(textbox); v_group.append(shape)
 
-    pict.append(v_group)
-    p._p.append(pict)
+    pict.append(v_group); p._p.append(pict)
 
 def add_table_borders(table, size=6):
-    tbl = table._tbl
-    tblPr = tbl.tblPr
+    tbl = table._tbl; tblPr = tbl.tblPr
     tblBorders = OxmlElement('w:tblBorders')
     for edge in ('top','left','bottom','right','insideH','insideV'):
         el = OxmlElement(f'w:{edge}')
-        el.set(qn('w:val'), 'single')
-        el.set(qn('w:sz'), str(size))
+        el.set(qn('w:val'), 'single'); el.set(qn('w:sz'), str(size))
         tblBorders.append(el)
     tblPr.append(tblBorders)
 
@@ -273,21 +251,18 @@ def set_table_font(table, pt=8.5):
     for row in table.rows:
         for cell in row.cells:
             for p in cell.paragraphs:
-                for r in p.runs:
-                    r.font.size = Pt(pt)
+                for r in p.runs: r.font.size = Pt(pt)
 
 def center_header_row(table):
     for cell in table.rows[0].cells:
         for par in cell.paragraphs:
             par.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            if par.runs:
-                par.runs[0].bold = True
+            if par.runs: par.runs[0].bold = True
 
 def set_col_widths(table, widths_inch):
     table.autofit = False
     for row in table.rows:
-        for i, w in enumerate(widths_inch):
-            row.cells[i].width = Inches(w)
+        for i, w in enumerate(widths_inch): row.cells[i].width = Inches(w)
 
 def sanitize_filename(name: str) -> str:
     if not name: return "Horoscope"
@@ -313,9 +288,7 @@ def main():
             lat, lon, disp = geocode(place, api_key)
             dt_local = datetime.datetime.combine(dob, tob)
             if tz_override.strip():
-                tz_hours = float(tz_override)
-                dt_utc = dt_local - datetime.timedelta(hours=tz_hours)
-                tzname=f"UTC{tz_hours:+.2f} (manual)"
+                tz_hours = float(tz_override); dt_utc = dt_local - datetime.timedelta(hours=tz_hours); tzname=f"UTC{tz_hours:+.2f} (manual)"
             else:
                 tzname, tz_hours, dt_utc = tz_from_latlon(lat, lon, dt_local)
 
@@ -340,24 +313,14 @@ def main():
             img_lagna = render_north_diamond(size_px=900, stroke=3)
             img_nav   = render_north_diamond(size_px=900, stroke=3)
 
-            # ----- DOCX build -----
             doc = Document()
-            sec = doc.sections[0]
-            sec.page_width = Mm(210); sec.page_height = Mm(297)
+            sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
             margin = Mm(12)
-            sec.left_margin = sec.right_margin = margin
-            sec.top_margin = Mm(10); sec.bottom_margin = Mm(10)
+            sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(10); sec.bottom_margin = Mm(10)
+            style = doc.styles['Normal']; style.font.name = LATIN_FONT; style.font.size = Pt(BASE_FONT_PT)
+            style._element.rPr.rFonts.set(qn('w:eastAsia'), HINDI_FONT); style._element.rPr.rFonts.set(qn('w:cs'), HINDI_FONT)
 
-            style = doc.styles['Normal']
-            style.font.name = LATIN_FONT
-            style.font.size = Pt(BASE_FONT_PT)
-            # Map Hindi to EastAsia and ComplexScript so Devanagari renders
-            style._element.rPr.rFonts.set(qn('w:eastAsia'), HINDI_FONT)
-            style._element.rPr.rFonts.set(qn('w:cs'), HINDI_FONT)
-
-            title = doc.add_paragraph(f"{name or '—'} — Horoscope")
-            title.runs[0].font.size = Pt(BASE_FONT_PT+3)
-            title.runs[0].bold = True
+            title = doc.add_paragraph(f"{name or '—'} — Horoscope"); title.runs[0].font.size = Pt(BASE_FONT_PT+3); title.runs[0].bold = True
 
             outer = doc.add_table(rows=1, cols=2); outer.autofit=False
             outer.columns[0].width = Inches(3.3); outer.columns[1].width = Inches(3.3)
@@ -404,7 +367,6 @@ def main():
             out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
 
-            # ----- Web preview (PNG images on the right) -----
             lc, rc = st.columns([1.2, 0.8])
             with lc:
                 st.subheader("Planetary Positions")
