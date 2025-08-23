@@ -184,16 +184,70 @@ def render_north_diamond(size_px=900, stroke=3):
     buf = BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', pad_inches=0.02)
     plt.close(fig); buf.seek(0); return buf
 
-# ---- DOCX helpers ----
+def add_kundali_skeleton_vml(cell, title_text):
+    p_title = cell.add_paragraph(title_text)
+    p_title.runs[0].bold = True
+    p = cell.add_paragraph()
+    pict = OxmlElement('w:pict')
+    v_group = OxmlElement('v:group')
+    v_group.set(qn('v:coordsize'), '1000,1000')
+    v_group.set(qn('v:style'), 'width:100%;height:45%')
+    rect = OxmlElement('v:rect')
+    rect.set(qn('v:style'), 'position:relative;left:0;top:0;width:1000;height:1000')
+    rect.set(qn('v:strokecolor'), '#000000')
+    rect.set(qn('v:strokeweight'), '1pt')
+    v_group.append(rect)
+    def v_line(from_xy, to_xy):
+        ln = OxmlElement('v:line')
+        ln.set(qn('v:from'), f'{from_xy[0]},{from_xy[1]}')
+        ln.set(qn('v:to'), f'{to_xy[0]},{to_xy[1]}')
+        ln.set(qn('v:strokecolor'), '#000000')
+        ln.set(qn('v:strokeweight'), '1pt')
+        v_group.append(ln)
+    v_line((0,0),(1000,1000))
+    v_line((0,1000),(1000,0))
+    v_line((500,0),(500,1000))
+    v_line((0,500),(1000,500))
+    v_line((0,500),(500,0))
+    v_line((500,0),(1000,500))
+    v_line((1000,500),(500,1000))
+    v_line((500,1000),(0,500))
+    house_boxes = [
+        (420, 20, 160, 120),
+        (700, 80, 250, 160),
+        (820, 300, 160, 160),
+        (700, 560, 250, 160),
+        (420, 740, 160, 120),
+        (140, 560, 250, 160),
+        (20, 300, 160, 160),
+        (140, 80, 250, 160),
+        (350, 180, 300, 160),
+        (650, 180, 300, 160),
+        (650, 660, 300, 160),
+        (350, 660, 300, 160),
+    ]
+    for (l,t,w,h) in house_boxes:
+        shape = OxmlElement('v:shape')
+        shape.set(qn('v:style'), f'position:absolute;left:{l};top:{t};width:{w};height:{h}')
+        shape.set(qn('v:stroked'), 'f')
+        textbox = OxmlElement('v:textbox')
+        txp = OxmlElement('w:txbxContent')
+        p_inner = OxmlElement('w:p')
+        r_inner = OxmlElement('w:r')
+        t_inner = OxmlElement('w:t'); t_inner.text = ''
+        r_inner.append(t_inner); p_inner.append(r_inner); txp.append(p_inner)
+        textbox.append(txp); shape.append(textbox); v_group.append(shape)
+    pict.append(v_group)
+    p._p.append(pict)
+
 def add_table_borders(table, size=6):
-    """Full grid borders (all cells). Size in eighths of a point (Word 'sz')."""
     tbl = table._tbl
     tblPr = tbl.tblPr
     tblBorders = OxmlElement('w:tblBorders')
     for edge in ('top','left','bottom','right','insideH','insideV'):
         el = OxmlElement(f'w:{edge}')
         el.set(qn('w:val'), 'single')
-        el.set(qn('w:sz'), str(size))  # thin
+        el.set(qn('w:sz'), str(size))
         tblBorders.append(el)
     tblPr.append(tblBorders)
 
@@ -264,7 +318,6 @@ def main():
             img_lagna = render_north_diamond(size_px=900, stroke=3)
             img_nav   = render_north_diamond(size_px=900, stroke=3)
 
-            # ----- DOCX build with GRID BORDERS -----
             doc = Document()
             sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
             margin = Mm(12)
@@ -313,16 +366,14 @@ def main():
             set_col_widths(t3, [0.9,0.9,0.9,0.6])
 
             right = outer.rows[0].cells[1]
-            p1 = right.paragraphs[0]; p1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            img_lagna.seek(0); p1.add_run().add_picture(img_lagna, width=Inches(3.0))
-            right.add_paragraph("")
-            p2 = right.add_paragraph(); p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            img_nav.seek(0); p2.add_run().add_picture(img_nav, width=Inches(3.0))
+            # Insert VML-based Kundali skeletons (auto-scale)
+            add_kundali_skeleton_vml(right, "Lagna Kundali")
+            add_kundali_skeleton_vml(right, "Navamsa Kundali")
 
             out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
 
-            # ----- Web preview: hide index & show charts on right -----
+            # Web preview: PNG charts on right
             lc, rc = st.columns([1.2, 0.8])
             with lc:
                 st.subheader("Planetary Positions")
@@ -332,9 +383,9 @@ def main():
                 st.subheader("Antar / Pratyantar (Next 2 years)")
                 st.dataframe(df_ap.reset_index(drop=True), use_container_width=True, hide_index=True)
             with rc:
-                st.subheader("Lagna Kundali")
+                st.subheader("Lagna Kundali (Preview)")
                 st.image(img_lagna, use_container_width=True)
-                st.subheader("Navamsa Kundali")
+                st.subheader("Navamsa Kundali (Preview)")
                 st.image(img_nav, use_container_width=True)
 
         except Exception as e:
