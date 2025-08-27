@@ -207,6 +207,55 @@ def planets_by_sign_navamsa(sidelons):
     return bins
 
 
+def ascendant_sidereal(jd, lat, lon, ay):
+    # Swiss Ephemeris houses_ex returns tropical; subtract ayanamsa for sidereal
+    ascmc, cusps = swe.houses_ex(jd, lat, lon, b'P')  # Placidus; asc at index 0
+    asc_tropical = ascmc[0] % 360.0
+    asc_sid = (asc_tropical - ay) % 360.0
+    return asc_sid
+
+def rotate_bins_by_lagna(sign_bins, asc_sign):
+    # Map zodiac signs (1..12) to houses with house-1 = asc_sign, anti-clockwise
+    house_bins = {i: [] for i in range(1,13)}
+    for sign in range(1,13):
+        house = ((sign - asc_sign) % 12) + 1  # where this sign falls as a house
+        house_bins[house].extend(sign_bins.get(sign, []))
+    return house_bins
+
+def render_north_chart_with_bins(bins, size_px=900, stroke=3, show_house_numbers=True):
+    fig = plt.figure(figsize=(size_px/100, size_px/100), dpi=100)
+    ax = fig.add_axes([0,0,1,1]); ax.axis('off')
+    # frame
+    ax.plot([0.02,0.98,0.98,0.02,0.02],[0.02,0.02,0.98,0.98,0.02], linewidth=stroke, color="black")
+    L,R,B,T = 0.02,0.98,0.02,0.98
+    cx, cy = 0.5, 0.5
+    ax.plot([L,R],[T,B], linewidth=stroke, color="black")
+    ax.plot([L,R],[B,T], linewidth=stroke, color="black")
+    midL=(L,cy); midR=(R,cy); midT=(cx,T); midB=(cx,B)
+    ax.plot([midL[0], midT[0]],[midL[1], midT[1]], linewidth=stroke, color="black")
+    ax.plot([midT[0], midR[0]],[midT[1], midR[1]], linewidth=stroke, color="black")
+    ax.plot([midR[0], midB[0]],[midR[1], midB[1]], linewidth=stroke, color="black")
+    ax.plot([midB[0], midL[0]],[midB[1], midL[1]], linewidth=stroke, color="black")
+
+    pos = house_coords_north()
+    # optional small house numbers
+    if show_house_numbers:
+        nums = {1:(0.50,0.08), 2:(0.70,0.18), 3:(0.86,0.34), 4:(0.92,0.50),
+                5:(0.86,0.66), 6:(0.70,0.82), 7:(0.50,0.92), 8:(0.30,0.82),
+                9:(0.14,0.66), 10:(0.08,0.50), 11:(0.14,0.34), 12:(0.30,0.18)}
+        for h,(x,y) in nums.items():
+            ax.text(x,y,str(h), fontsize=10, ha='center', va='center')
+
+    for h in range(1,13):
+        labels = bins.get(h, [])
+        if not labels: continue
+        x,y = pos[h]
+        txt = "\\n".join(labels)
+        ax.text(x, y, txt, ha='center', va='center', fontsize=14)
+
+    buf = BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', pad_inches=0.02)
+    plt.close(fig); buf.seek(0); return buf
+
 def render_north_chart_with_bins(bins, size_px=900, stroke=3):
     fig = plt.figure(figsize=(size_px/100, size_px/100), dpi=100)
     ax = fig.add_axes([0,0,1,1]); ax.axis('off')
@@ -328,10 +377,17 @@ def main():
             ])
 
             # --------- NEW: build populated Lagna & Navamsa charts ----------
-            bins_lagna = planets_by_sign(sidelons)
-            bins_nav   = planets_by_sign_navamsa(sidelons)
-            img_lagna = render_north_chart_with_bins(bins_lagna, size_px=900, stroke=3)
-            img_nav   = render_north_chart_with_bins(bins_nav, size_px=900, stroke=3)
+            # Ascendant rotation so House-1 corresponds to sidereal Lagna
+            jd, ay, _junk = sidereal_positions(dt_utc)
+            asc_sid = ascendant_sidereal(jd, lat, lon, ay)
+            asc_sign = int(asc_sid // 30) + 1
+
+            sign_bins_lagna = planets_by_sign(sidelons)
+            sign_bins_nav   = planets_by_sign_navamsa(sidelons)
+            bins_lagna = rotate_bins_by_lagna(sign_bins_lagna, asc_sign)
+            bins_nav   = rotate_bins_by_lagna(sign_bins_nav, asc_sign)
+            img_lagna = render_north_chart_with_bins(bins_lagna, size_px=900, stroke=3, show_house_numbers=True)
+            img_nav   = render_north_chart_with_bins(bins_nav, size_px=900, stroke=3, show_house_numbers=True)
             # ----------------------------------------------------------------
 
             # ----- DOCX build with GRID BORDERS -----
