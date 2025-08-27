@@ -206,28 +206,29 @@ def planets_by_sign_navamsa(sidelons):
         bins[sign].append(HN[code])
     return bins
 
+
 def render_north_chart_with_bins(bins, size_px=900, stroke=3):
     fig = plt.figure(figsize=(size_px/100, size_px/100), dpi=100)
     ax = fig.add_axes([0,0,1,1]); ax.axis('off')
-    # frame
-    ax.plot([0.02,0.98,0.98,0.02,0.02],[0.02,0.02,0.98,0.98,0.02], linewidth=stroke)
+    # frame (force black lines so it doesn't look multicolored)
+    ax.plot([0.02,0.98,0.98,0.02,0.02],[0.02,0.02,0.98,0.98,0.02], linewidth=stroke, color="black")
     L,R,B,T = 0.02,0.98,0.02,0.98
     cx, cy = 0.5, 0.5
-    ax.plot([L,R],[T,B], linewidth=stroke)
-    ax.plot([L,R],[B,T], linewidth=stroke)
+    ax.plot([L,R],[T,B], linewidth=stroke, color="black")
+    ax.plot([L,R],[B,T], linewidth=stroke, color="black")
     midL=(L,cy); midR=(R,cy); midT=(cx,T); midB=(cx,B)
-    ax.plot([midL[0], midT[0]],[midL[1], midT[1]], linewidth=stroke)
-    ax.plot([midT[0], midR[0]],[midT[1], midR[1]], linewidth=stroke)
-    ax.plot([midR[0], midB[0]],[midR[1], midB[1]], linewidth=stroke)
-    ax.plot([midB[0], midL[0]],[midB[1], midL[1]], linewidth=stroke)
+    ax.plot([midL[0], midT[0]],[midL[1], midT[1]], linewidth=stroke, color="black")
+    ax.plot([midT[0], midR[0]],[midT[1], midR[1]], linewidth=stroke, color="black")
+    ax.plot([midR[0], midB[0]],[midR[1], midB[1]], linewidth=stroke, color="black")
+    ax.plot([midB[0], midL[0]],[midB[1], midL[1]], linewidth=stroke, color="black")
 
     pos = house_coords_north()
     for h in range(1,13):
         labels = bins.get(h, [])
         if not labels: continue
         x,y = pos[h]
-        txt = " ".join(labels)
-        ax.text(x, y, txt, ha='center', va='center', fontsize=12, fontfamily='DejaVu Sans')
+        txt = "\n".join(labels)  # stack vertically for clarity
+        ax.text(x, y, txt, ha='center', va='center', fontsize=14)
 
     buf = BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', pad_inches=0.02)
     plt.close(fig); buf.seek(0); return buf
