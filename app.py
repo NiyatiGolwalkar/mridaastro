@@ -14,27 +14,6 @@ from io import BytesIO
 import pytz
 import matplotlib.pyplot as plt
 
-def _apply_hindi_caption_style(paragraph, size_pt=11):
-    """Apply bold+underline+size and set eastAsia font to Hindi for first run."""
-    if not paragraph.runs:
-        paragraph.add_run("")
-    r = paragraph.runs[0]
-    r.bold = True
-    r.underline = True
-    r.font.size = Pt(size_pt)
-    # Ensure rPr exists
-    rpr = r._element.rPr
-    if rpr is None:
-        rpr = OxmlElement('w:rPr')
-        r._element.append(rpr)
-    # Ensure w:rFonts exists
-    rfonts = rpr.find(qn('w:rFonts'))
-    if rfonts is None:
-        rfonts = OxmlElement('w:rFonts')
-        rpr.append(rfonts)
-    rfonts.set(qn('w:eastAsia'), "Mangal")
-
-
 APP_TITLE = "DevoAstroBhav Kundali (Editable Kundali in DOCX)"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 
@@ -43,6 +22,23 @@ LATIN_FONT = "Georgia"
 HINDI_FONT = "Mangal"
 
 HN = {'Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Me':'बुध','Ju':'गुरु','Ve':'शुक्र','Sa':'शनि','Ra':'राहु','Ke':'केतु'}
+
+def _apply_hindi_caption_style(paragraph, size_pt=11, underline=True, bold=True):
+    if not paragraph.runs:
+        paragraph.add_run("")
+    r = paragraph.runs[0]
+    r.bold = bold
+    r.underline = underline
+    r.font.size = Pt(size_pt)
+    rpr = r._element.rPr
+    if rpr is None:
+        rpr = OxmlElement('w:rPr')
+        r._element.append(rpr)
+    rfonts = rpr.find(qn('w:rFonts'))
+    if rfonts is None:
+        rfonts = OxmlElement('w:rFonts')
+        rpr.append(rfonts)
+    rfonts.set(qn('w:eastAsia'), HINDI_FONT)
 
 def set_sidereal():
     swe.set_sid_mode(swe.SIDM_LAHIRI, 0, 0)
@@ -57,7 +53,6 @@ def fmt_deg_sign(lon_sid):
     sign=int(lon_sid//30) + 1
     deg_in_sign = lon_sid % 30.0
     d,m,s=dms(deg_in_sign)
-    # Fixed escaping: seconds mark is a single double-quote character
     return sign, f"{d:02d}°{m:02d}'{s:02d}\""
 
 def kp_sublord(lon_sid):
@@ -114,21 +109,23 @@ def sidereal_positions(dt_utc):
     return jd, ay, out
 
 def ascendant_sign(jd, lat, lon, ay):
-    # Tropical ASC from houses_ex, convert to sidereal via ayanamsa
     cusps, ascmc = swe.houses_ex(jd, lat, lon, b'P')
-    asc_trop = ascmc[0]  # degrees
+    asc_trop = ascmc[0]
     asc_sid = (asc_trop - ay) % 360.0
     return int(asc_sid // 30) + 1, asc_sid
 
 def navamsa_sign_from_lon_sid(lon_sid):
+    # Compute Navamsa (D9) using modality: movable->same, fixed->9th, dual->5th; then advance by pada
     sign = int(lon_sid // 30) + 1
     deg_in_sign = lon_sid % 30.0
-    pada = int(deg_in_sign // (30.0/9.0))  # 0..8
-    if sign % 2 == 1:  # odd sign
-        nav = (sign + pada - 1) % 12 + 1
-    else:              # even sign → starts from 9th sign
-        start = (sign + 8 - 1) % 12 + 1
-        nav = (start + pada - 1) % 12 + 1
+    pada = int(deg_in_sign // (30.0/9.0))
+    if sign in (1,4,7,10):
+        start = sign
+    elif sign in (2,5,8,11):
+        start = ((sign + 8 - 1) % 12) + 1
+    else:
+        start = ((sign + 4 - 1) % 12) + 1
+    nav = ((start - 1 + pada) % 12) + 1
     return nav
 
 def positions_table_no_symbol(sidelons):
@@ -213,16 +210,16 @@ def next_ant_praty_in_days(now_local, md_segments, days_window):
 def render_north_diamond(size_px=900, stroke=3):
     fig = plt.figure(figsize=(size_px/100, size_px/100), dpi=100)
     ax = fig.add_axes([0,0,1,1]); ax.axis('off')
-    ax.plot([0.02,0.98,0.98,0.02,0.02],[0.02,0.02,0.98,0.98,0.02], linewidth=3)
+    ax.plot([0.02,0.98,0.98,0.02,0.02],[0.02,0.02,0.98,0.98,0.02], linewidth=3, color='black')
     L,R,B,T = 0.02,0.98,0.02,0.98
     cx, cy = 0.5, 0.5
-    ax.plot([L,R],[T,B], linewidth=3)
-    ax.plot([L,R],[B,T], linewidth=3)
+    ax.plot([L,R],[T,B], linewidth=3, color='black')
+    ax.plot([L,R],[B,T], linewidth=3, color='black')
     midL=(L,cy); midR=(R,cy); midT=(cx,T); midB=(cx,B)
-    ax.plot([midL[0], midT[0]],[midL[1], midT[1]], linewidth=3)
-    ax.plot([midT[0], midR[0]],[midT[1], midR[1]], linewidth=3)
-    ax.plot([midR[0], midB[0]],[midR[1], midB[1]], linewidth=3)
-    ax.plot([midB[0], midL[0]],[midB[1], midL[1]], linewidth=3)
+    ax.plot([midL[0], midT[0]],[midL[1], midT[1]], linewidth=3, color='black')
+    ax.plot([midT[0], midR[0]],[midT[1], midR[1]], linewidth=3, color='black')
+    ax.plot([midR[0], midB[0]],[midR[1], midB[1]], linewidth=3, color='black')
+    ax.plot([midB[0], midL[0]],[midB[1], midL[1]], linewidth=3, color='black')
     buf = BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', pad_inches=0.02)
     plt.close(fig); buf.seek(0); return buf
 
@@ -239,9 +236,7 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
     S=size_pt; L,T,R,B=0,0,S,S
     TM=(S/2,0); RM=(S,S/2); BM=(S/2,S); LM=(0,S/2)
     P_lt=(S/4,S/4); P_rt=(3*S/4,S/4); P_rb=(3*S/4,3*S/4); P_lb=(S/4,3*S/4); O=(S/2,S/2)
-
     labels = rotated_house_labels(lagna_sign)
-
     houses = {
         "1":  [TM, P_rt, O, P_lt],
         "2":  [(0,0), TM, P_lt],
@@ -256,7 +251,6 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
         "11": [(S,0), RM, P_rt],
         "12": [TM, (S,0), P_rt],
     }
-
     def centroid(poly):
         A=Cx=Cy=0.0; n=len(poly)
         for i in range(n):
@@ -267,7 +261,6 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
         if abs(A)<1e-9:
             xs,ys=zip(*poly); return (sum(xs)/n, sum(ys)/n)
         return (Cx/(6*A), Cy/(6*A))
-
     w=h=20; boxes=[]
     for k,poly in houses.items():
         x,y = centroid(poly); left = x - w/2; top = y - h/2
@@ -281,8 +274,7 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
           </v:textbox>
         </v:rect>
         ''')
-    boxes_xml = "\\n".join(boxes)
-
+    boxes_xml = "\n".join(boxes)
     xml = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
       <w:r>
@@ -362,7 +354,6 @@ def main():
 
             jd, ay, sidelons = sidereal_positions(dt_utc)
 
-            # Ascendant sign (Rāśi) and Navāṁśa Lagna
             lagna_sign, asc_sid = ascendant_sign(jd, lat, lon, ay)
             nav_lagna_sign = navamsa_sign_from_lon_sid(asc_sid)
 
@@ -383,11 +374,9 @@ def main():
                 for r in rows_ap
             ])
 
-            # Web preview images
             img_lagna = render_north_diamond(size_px=900, stroke=3)
             img_nav   = render_north_diamond(size_px=900, stroke=3)
 
-            # Build DOCX
             doc = Document()
             sec = doc.sections[0]
             sec.page_width = Mm(210); sec.page_height = Mm(297)
@@ -444,48 +433,31 @@ def main():
             set_col_widths(t3, [0.9,0.9,0.9,0.6])
 
             right = outer.rows[0].cells[1]
-
-            # Stack kundalis in a 2-row table; row height and spacers to avoid overlap
             kt = right.add_table(rows=2, cols=1); kt.autofit=False
             kt.columns[0].width = Inches(right_width_in)
             for row in kt.rows:
                 row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
-                row.height = Pt(340)  # generous room for caption
+                row.height = Pt(340)
 
-            # Row 1: Lagna chart with dynamic numbering
             cell1 = kt.rows[0].cells[0]
-            cell1.add_paragraph()  # spacer
+            cell1.add_paragraph()
             cap1 = cell1.add_paragraph("लग्न कुंडली")
             cap1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            _apply_hindi_caption_style(cap1)
+            _apply_hindi_caption_style(cap1, size_pt=11, underline=True, bold=True)
             p1 = cell1.add_paragraph()
             p1._p.addnext(kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=lagna_sign))
-            cap1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            if cap1.runs:
-                cap1.runs[0].bold = True
-                cap1.runs[0].font.name = "Georgia"
-                cap1.runs[0].font.size = Pt(9)
-                cap1.runs[0]._element.rPr.rFonts.set(qn("w:eastAsia"), "Mangal")
 
-            # Row 2: Navamsa chart with dynamic numbering
             cell2 = kt.rows[1].cells[0]
-            cell2.add_paragraph()  # spacer
-            cap2 = cell2.add_paragraph("नवांश कुंडली")
+            cell2.add_paragraph()
+            cap2 = cell2.add_paragraph("נवांश कुंडली".replace("נ","न"))  # ensure correct Devanagari
             cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            _apply_hindi_caption_style(cap2)
+            _apply_hindi_caption_style(cap2, size_pt=11, underline=True, bold=True)
             p2 = cell2.add_paragraph()
             p2._p.addnext(kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=nav_lagna_sign))
-            cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            if cap2.runs:
-                cap2.runs[0].bold = True
-                cap2.runs[0].font.name = "Georgia"
-                cap2.runs[0].font.size = Pt(9)
-                cap2.runs[0]._element.rPr.rFonts.set(qn("w:eastAsia"), "Mangal")
 
             out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
 
-            # Web preview (simple diamond only)
             lc, rc = st.columns([1.2, 0.8])
             with lc:
                 st.subheader("Planetary Positions")
