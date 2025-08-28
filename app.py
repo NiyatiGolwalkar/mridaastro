@@ -429,7 +429,7 @@ def main():
             kt.columns[0].width = Inches(right_width_in)
             for row in kt.rows:
                 row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
-                row.height = Pt(280)  # generous room for caption
+                row.height = Pt(320)  # generous room for caption
 
             # Row 1: Lagna chart with dynamic numbering
             cell1 = kt.rows[0].cells[0]
@@ -438,8 +438,11 @@ def main():
             p1._p.addnext(kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=lagna_sign))
             cap1 = cell1.add_paragraph("लग्न कुंडली")
             cap1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            if cap1.runs: cap1.runs[0].bold = True
-            cell1.add_paragraph()  # spacer
+            if cap1.runs:
+                cap1.runs[0].bold = True
+                cap1.runs[0].font.name = "Georgia"
+                cap1.runs[0].font.size = Pt(9)
+                cap1.runs[0]._element.rPr.rFonts.set(qn("w:eastAsia"), "Mangal")
 
             # Row 2: Navamsa chart with dynamic numbering
             cell2 = kt.rows[1].cells[0]
@@ -448,8 +451,11 @@ def main():
             p2._p.addnext(kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=nav_lagna_sign))
             cap2 = cell2.add_paragraph("नवांश कुंडली")
             cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            if cap2.runs: cap2.runs[0].bold = True
-            cell2.add_paragraph()  # spacer
+            if cap2.runs:
+                cap2.runs[0].bold = True
+                cap2.runs[0].font.name = "Georgia"
+                cap2.runs[0].font.size = Pt(9)
+                cap2.runs[0]._element.rPr.rFonts.set(qn("w:eastAsia"), "Mangal")
 
             out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
