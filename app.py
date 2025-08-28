@@ -6,14 +6,14 @@ import swisseph as swe
 from timezonefinder import TimezoneFinder
 from docx import Document
 from docx.shared import Inches, Pt, Mm
-from docx.oxml import OxmlElement
+from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from io import BytesIO
 import pytz
 import matplotlib.pyplot as plt
 
-APP_TITLE = "DevoAstroBhav Kundali"
+APP_TITLE = "DevoAstroBhav Kundali (Editable Kundali in DOCX)"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 
 BASE_FONT_PT = 8.5
@@ -168,6 +168,7 @@ def next_ant_praty_in_days(now_local, md_segments, days_window):
     rows.sort(key=lambda r:r["end"])
     return rows
 
+# ----- Preview image (unchanged) -----
 def render_north_diamond(size_px=900, stroke=3):
     fig = plt.figure(figsize=(size_px/100, size_px/100), dpi=100)
     ax = fig.add_axes([0,0,1,1]); ax.axis('off')
@@ -184,16 +185,94 @@ def render_north_diamond(size_px=900, stroke=3):
     buf = BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', pad_inches=0.02)
     plt.close(fig); buf.seek(0); return buf
 
+# ----- VML Kundali for DOCX (editable) -----
+def kundali_w_p_with_centroid_labels(size_pt=300, label_top="1"):
+    S=size_pt; L,T,R,B=0,0,S,S
+    cx, cy = S/2, S/2
+
+    TL=(0,0); TR=(S,0); BR=(S,S); BL=(0,S)
+    TM=(S/2,0); RM=(S,S/2); BM=(S/2,S); LM=(0,S/2)
+    P_lt=(S/4,S/4); P_rt=(3*S/4,S/4); P_rb=(3*S/4,3*S/4); P_lb=(S/4,3*S/4)
+    O=(S/2,S/2)
+
+    # label sequence: top diamond then CCW 2..12
+    labels = {
+        "1":  label_top,
+        "2":  "2","3":"3","4":"4","5":"5","6":"6",
+        "7":"7","8":"8","9":"9","10":"10","11":"11","12":"12"
+    }
+
+    houses = {
+        "1":  [TM, P_rt, O, P_lt],
+        "2":  [TL, TM, P_lt],
+        "3":  [TL, LM, P_lt],
+        "4":  [LM, O, P_lt, P_lb],
+        "5":  [LM, BL, P_lb],
+        "6":  [BL, BM, P_lb],
+        "7":  [BM, P_rb, O, P_lb],
+        "8":  [BM, BR, P_rb],
+        "9":  [RM, BR, P_rb],
+        "10": [RM, O, P_rt, P_rb],
+        "11": [TR, RM, P_rt],
+        "12": [TM, TR, P_rt],
+    }
+
+    def centroid(poly):
+        A=Cx=Cy=0.0; n=len(poly)
+        for i in range(n):
+            x1,y1 = poly[i]; x2,y2 = poly[(i+1)%n]
+            cross = x1*y2 - x2*y1
+            A += cross; Cx += (x1+x2)*cross; Cy += (y1+y2)*cross
+        A *= 0.5
+        if abs(A) < 1e-9:
+            xs,ys = zip(*poly); return (sum(xs)/n, sum(ys)/n)
+        return (Cx/(6*A), Cy/(6*A))
+
+    w,h = 22,22
+    boxes=[]
+    for k,poly in houses.items():
+        x,y = centroid(poly); left = x - w/2; top = y - h/2
+        txt = labels[k]
+        boxes.append(f'''
+        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{w}pt;height:{h}pt;z-index:5" strokecolor="none">
+          <v:textbox inset="0,0,0,0">
+            <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+              <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
+            </w:txbxContent>
+          </v:textbox>
+        </v:rect>
+        ''')
+    boxes_xml = "\\n".join(boxes)
+
+    xml = f'''
+    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+      <w:r>
+        <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
+          <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
+            <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
+            <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.5pt"/>
+            <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
+            <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
+            <v:line style="position:absolute;z-index:2" from="{R},{S/2}" to="{S/2},{B}" strokecolor="black" strokeweight="1.5pt"/>
+            <v:line style="position:absolute;z-index:2" from="{S/2},{B}" to="{L},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
+            <v:line style="position:absolute;z-index:2" from="{L},{S/2}" to="{S/2},{T}" strokecolor="black" strokeweight="1.5pt"/>
+            {boxes_xml}
+          </v:group>
+        </w:pict>
+      </w:r>
+    </w:p>
+    '''
+    return parse_xml(xml)
+
 # ---- DOCX helpers ----
 def add_table_borders(table, size=6):
-    """Full grid borders (all cells). Size in eighths of a point (Word 'sz')."""
     tbl = table._tbl
     tblPr = tbl.tblPr
     tblBorders = OxmlElement('w:tblBorders')
     for edge in ('top','left','bottom','right','insideH','insideV'):
         el = OxmlElement(f'w:{edge}')
         el.set(qn('w:val'), 'single')
-        el.set(qn('w:sz'), str(size))  # thin
+        el.set(qn('w:sz'), str(size))
         tblBorders.append(el)
     tblPr.append(tblBorders)
 
@@ -261,10 +340,11 @@ def main():
                 for r in rows_ap
             ])
 
+            # Web preview images
             img_lagna = render_north_diamond(size_px=900, stroke=3)
             img_nav   = render_north_diamond(size_px=900, stroke=3)
 
-            # ----- DOCX build with GRID BORDERS -----
+            # ----- DOCX build with EDITABLE KUNDALIS -----
             doc = Document()
             sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
             margin = Mm(12)
@@ -314,15 +394,20 @@ def main():
 
             right = outer.rows[0].cells[1]
             p1 = right.paragraphs[0]; p1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            img_lagna.seek(0); p1.add_run().add_picture(img_lagna, width=Inches(3.0))
+            # Instead of images, append editable VML kundalis
+            # Lagna (1 at top). Change 'label_top' to 'Lagna' or 'AS' if desired.
+            right._tc.get_or_add_tcPr()  # ensure exists
+            # Insert a paragraph container and append VML
+            p_container1 = right.add_paragraph()
+            p_container1._p.addnext(kundali_w_p_with_centroid_labels(size_pt=300, label_top="1"))
             right.add_paragraph("")
-            p2 = right.add_paragraph(); p2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            img_nav.seek(0); p2.add_run().add_picture(img_nav, width=Inches(3.0))
+            p_container2 = right.add_paragraph()
+            p_container2._p.addnext(kundali_w_p_with_centroid_labels(size_pt=300, label_top="1"))
 
             out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
 
-            # ----- Web preview: hide index & show charts on right -----
+            # ----- Web preview -----
             lc, rc = st.columns([1.2, 0.8])
             with lc:
                 st.subheader("Planetary Positions")
@@ -332,9 +417,9 @@ def main():
                 st.subheader("Antar / Pratyantar (Next 2 years)")
                 st.dataframe(df_ap.reset_index(drop=True), use_container_width=True, hide_index=True)
             with rc:
-                st.subheader("Lagna Kundali")
+                st.subheader("Lagna Kundali (Preview)")
                 st.image(img_lagna, use_container_width=True)
-                st.subheader("Navamsa Kundali")
+                st.subheader("Navamsa Kundali (Preview)")
                 st.image(img_nav, use_container_width=True)
 
         except Exception as e:
