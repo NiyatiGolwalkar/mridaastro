@@ -14,6 +14,27 @@ from io import BytesIO
 import pytz
 import matplotlib.pyplot as plt
 
+def _apply_hindi_caption_style(paragraph, size_pt=11):
+    """Apply bold+underline+size and set eastAsia font to Hindi for first run."""
+    if not paragraph.runs:
+        paragraph.add_run("")
+    r = paragraph.runs[0]
+    r.bold = True
+    r.underline = True
+    r.font.size = Pt(size_pt)
+    # Ensure rPr exists
+    rpr = r._element.rPr
+    if rpr is None:
+        rpr = OxmlElement('w:rPr')
+        r._element.append(rpr)
+    # Ensure w:rFonts exists
+    rfonts = rpr.find(qn('w:rFonts'))
+    if rfonts is None:
+        rfonts = OxmlElement('w:rFonts')
+        rpr.append(rfonts)
+    rfonts.set(qn('w:eastAsia'), "Mangal")
+
+
 APP_TITLE = "DevoAstroBhav Kundali (Editable Kundali in DOCX)"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 
@@ -436,11 +457,7 @@ def main():
             cell1.add_paragraph()  # spacer
             cap1 = cell1.add_paragraph("लग्न कुंडली")
             cap1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            if cap1.runs:
-                cap1.runs[0].bold = True
-                cap1.runs[0].underline = True
-                cap1.runs[0].font.size = Pt(11)
-                cap1.runs[0]._element.rPr.rFonts.set(qn("w:eastAsia"), "Mangal")
+            _apply_hindi_caption_style(cap1)
             p1 = cell1.add_paragraph()
             p1._p.addnext(kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=lagna_sign))
             cap1.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -455,11 +472,7 @@ def main():
             cell2.add_paragraph()  # spacer
             cap2 = cell2.add_paragraph("नवांश कुंडली")
             cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            if cap2.runs:
-                cap2.runs[0].bold = True
-                cap2.runs[0].underline = True
-                cap2.runs[0].font.size = Pt(11)
-                cap2.runs[0]._element.rPr.rFonts.set(qn("w:eastAsia"), "Mangal")
+            _apply_hindi_caption_style(cap2)
             p2 = cell2.add_paragraph()
             p2._p.addnext(kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=nav_lagna_sign))
             cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER
