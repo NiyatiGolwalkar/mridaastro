@@ -9,6 +9,7 @@ from docx.shared import Inches, Pt, Mm
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.table import WD_ROW_HEIGHT_RULE
 from io import BytesIO
 import pytz
 import matplotlib.pyplot as plt
@@ -22,7 +23,8 @@ HINDI_FONT = "Mangal"
 
 HN = {'Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Me':'बुध','Ju':'गुरु','Ve':'शुक्र','Sa':'शनि','Ra':'राहु','Ke':'केतु'}
 
-def set_sidereal(): swe.set_sid_mode(swe.SIDM_LAHIRI, 0, 0)
+def set_sidereal():
+    swe.set_sid_mode(swe.SIDM_LAHIRI, 0, 0)
 
 def dms(deg):
     d=int(deg); m=int((deg-d)*60); s=int(round((deg-d-m/60)*3600))
@@ -111,7 +113,8 @@ def moon_balance(moon_sid):
     remaining_years = YEARS[md_lord]*(1 - frac)
     return md_lord, remaining_years
 
-def add_years(dt, y): return dt + datetime.timedelta(days=y*365.2425)
+def add_years(dt, y):
+    return dt + datetime.timedelta(days=y*365.2425)
 
 def build_mahadashas_from_birth(birth_local_dt, moon_sid):
     ORDER = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
@@ -169,8 +172,6 @@ def next_ant_praty_in_days(now_local, md_segments, days_window):
     return rows
 
 def render_north_diamond(size_px=900, stroke=3):
-    import matplotlib.pyplot as plt
-    from io import BytesIO
     fig = plt.figure(figsize=(size_px/100, size_px/100), dpi=100)
     ax = fig.add_axes([0,0,1,1]); ax.axis('off')
     ax.plot([0.02,0.98,0.98,0.02,0.02],[0.02,0.02,0.98,0.98,0.02], linewidth=3, color='black')
@@ -187,7 +188,7 @@ def render_north_diamond(size_px=900, stroke=3):
     plt.close(fig); buf.seek(0); return buf
 
 def kundali_w_p_with_centroid_labels(size_pt=220, label_top="1"):
-    # size_pt reduced to 220pt (< 3.3in cell width) to avoid clipping
+    # Size kept at 220pt so it fits in ~3.3in column without clipping
     S=size_pt; L,T,R,B=0,0,S,S
     TM=(S/2,0); RM=(S,S/2); BM=(S/2,S); LM=(0,S/2)
     P_lt=(S/4,S/4); P_rt=(3*S/4,S/4); P_rb=(3*S/4,3*S/4); P_lb=(S/4,3*S/4); O=(S/2,S/2)
@@ -330,21 +331,30 @@ def main():
                 for r in rows_ap
             ])
 
+            # Web preview images
             img_lagna = render_north_diamond(size_px=900, stroke=3)
             img_nav   = render_north_diamond(size_px=900, stroke=3)
 
+            # Build DOCX
             doc = Document()
-            sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
+            sec = doc.sections[0]
+            sec.page_width = Mm(210); sec.page_height = Mm(297)
             margin = Mm(12)
-            sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(10); sec.bottom_margin = Mm(10)
-            style = doc.styles['Normal']; style.font.name = LATIN_FONT; style.font.size = Pt(BASE_FONT_PT)
-            style._element.rPr.rFonts.set(qn('w:eastAsia'), HINDI_FONT); style._element.rPr.rFonts.set(qn('w:cs'), HINDI_FONT)
+            sec.left_margin = sec.right_margin = margin
+            sec.top_margin = Mm(10); sec.bottom_margin = Mm(10)
 
-            title = doc.add_paragraph(f"{name or '—'} — Horoscope"); title.runs[0].font.size = Pt(BASE_FONT_PT+3); title.runs[0].bold = True
+            style = doc.styles['Normal']
+            style.font.name = LATIN_FONT; style.font.size = Pt(BASE_FONT_PT)
+            style._element.rPr.rFonts.set(qn('w:eastAsia'), HINDI_FONT)
+            style._element.rPr.rFonts.set(qn('w:cs'), HINDI_FONT)
+
+            title = doc.add_paragraph(f"{name or '—'} — Horoscope")
+            title.runs[0].font.size = Pt(BASE_FONT_PT+3); title.runs[0].bold = True
 
             outer = doc.add_table(rows=1, cols=2); outer.autofit=False
             right_width_in = 3.3
-            outer.columns[0].width = Inches(3.3); outer.columns[1].width = Inches(right_width_in)
+            outer.columns[0].width = Inches(3.3)
+            outer.columns[1].width = Inches(right_width_in)
             add_table_borders(outer, size=6)
 
             left = outer.rows[0].cells[0]
@@ -383,20 +393,33 @@ def main():
 
             right = outer.rows[0].cells[1]
 
-            # Stack kundalis in a 2-row table
+            # Stack kundalis in a 2-row table; set row height and add spacers to avoid overlap
             kt = right.add_table(rows=2, cols=1); kt.autofit=False
             kt.columns[0].width = Inches(right_width_in)
 
+            # enforce row height
+            for row in kt.rows:
+                row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
+                row.height = Pt(260)  # slightly larger than 220pt shape
+
             # Row 1: Lagna
-            p1 = kt.rows[0].cells[0].add_paragraph()
+            cell1 = kt.rows[0].cells[0]
+            cell1.add_paragraph()  # spacer
+            p1 = cell1.add_paragraph()
             p1._p.addnext(kundali_w_p_with_centroid_labels(size_pt=220, label_top="1"))
+            cell1.add_paragraph()  # spacer
+
             # Row 2: Navamsa
-            p2 = kt.rows[1].cells[0].add_paragraph()
+            cell2 = kt.rows[1].cells[0]
+            cell2.add_paragraph()  # spacer
+            p2 = cell2.add_paragraph()
             p2._p.addnext(kundali_w_p_with_centroid_labels(size_pt=220, label_top="1"))
+            cell2.add_paragraph()  # spacer
 
             out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
 
+            # Web preview (unchanged)
             lc, rc = st.columns([1.2, 0.8])
             with lc:
                 st.subheader("Planetary Positions")
@@ -407,9 +430,9 @@ def main():
                 st.dataframe(df_ap.reset_index(drop=True), use_container_width=True, hide_index=True)
             with rc:
                 st.subheader("Lagna Kundali (Preview)")
-                st.image(img_lagna, use_container_width=True)
+                st.image(render_north_diamond(size_px=900, stroke=3), use_container_width=True)
                 st.subheader("Navamsa Kundali (Preview)")
-                st.image(img_nav, use_container_width=True)
+                st.image(render_north_diamond(size_px=900, stroke=3), use_container_width=True)
 
         except Exception as e:
             st.error(str(e))
