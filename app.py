@@ -1,3 +1,4 @@
+
 import os, io, datetime, json, urllib.parse, urllib.request
 import streamlit as st
 import pandas as pd
@@ -167,135 +168,19 @@ def next_ant_praty_in_days(now_local, md_segments, days_window):
     rows.sort(key=lambda r:r["end"])
     return rows
 
-# -------------------- NEW: Chart population helpers --------------------
-def house_coords_north():
-    # approximate centers for 12 houses in North-Indian diamond
-    return {
-        1:(0.50,0.15), 2:(0.65,0.23), 3:(0.77,0.35), 4:(0.85,0.50),
-        5:(0.77,0.65), 6:(0.65,0.77), 7:(0.50,0.85), 8:(0.35,0.77),
-        9:(0.23,0.65), 10:(0.15,0.50), 11:(0.23,0.35), 12:(0.35,0.23)
-    }
-
-def planets_by_sign(sidelons):
-    bins={i:[] for i in range(1,13)}
-    for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
-        sign=int(sidelons[code]//30)+1
-        bins[sign].append(HN[code])
-    return bins
-
-def navamsa_from_lon(lon):
-    # Compute Navamsa sign from longitude (sidereal)
-    sign = int(lon // 30) + 1            # 1..12
-    deg_in_sign = lon % 30.0
-    pada = int(deg_in_sign // (30.0/9.0))  # 0..8 (3°20' each)
-    # Sequence start depending on sign quality
-    if sign in (1,4,7,10):         # Movable (Chara): start from same sign
-        start = sign
-    elif sign in (2,5,8,11):       # Fixed (Sthira): start from 9th
-        start = ((sign + 8 - 1) % 12) + 1
-    else:                          # Dual (Dwiswabhava): start from 5th
-        start = ((sign + 4 - 1) % 12) + 1
-    nav_sign = ((start - 1 + pada) % 12) + 1
-    return nav_sign
-
-def planets_by_sign_navamsa(sidelons):
-    bins={i:[] for i in range(1,13)}
-    for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
-        lon = sidelons[code]
-        sign = navamsa_from_lon(lon)
-        bins[sign].append(HN[code])
-    return bins
-
-
-def ascendant_sidereal(jd, lat, lon, ay):
-    # Swiss Ephemeris houses_ex returns tropical; subtract ayanamsa for sidereal
-    ascmc, cusps = swe.houses_ex(jd, lat, lon, b'P')  # Placidus; asc at index 0
-    asc_tropical = ascmc[0] % 360.0
-    asc_sid = (asc_tropical - ay) % 360.0
-    return asc_sid
-
-def rotate_bins_by_lagna(sign_bins, asc_sign):
-    # Map zodiac signs (1..12) to houses with house-1 = asc_sign, anti-clockwise
-    house_bins = {i: [] for i in range(1,13)}
-    for sign in range(1,13):
-        house = ((sign - asc_sign) % 12) + 1  # where this sign falls as a house
-        house_bins[house].extend(sign_bins.get(sign, []))
-    return house_bins
-
-def render_north_chart_with_bins(bins, size_px=900, stroke=3, show_house_numbers=True):
-    fig = plt.figure(figsize=(size_px/100, size_px/100), dpi=100)
-    ax = fig.add_axes([0,0,1,1]); ax.axis('off')
-    # frame
-    ax.plot([0.02,0.98,0.98,0.02,0.02],[0.02,0.02,0.98,0.98,0.02], linewidth=stroke, color="black")
-    L,R,B,T = 0.02,0.98,0.02,0.98
-    cx, cy = 0.5, 0.5
-    ax.plot([L,R],[T,B], linewidth=stroke, color="black")
-    ax.plot([L,R],[B,T], linewidth=stroke, color="black")
-    midL=(L,cy); midR=(R,cy); midT=(cx,T); midB=(cx,B)
-    ax.plot([midL[0], midT[0]],[midL[1], midT[1]], linewidth=stroke, color="black")
-    ax.plot([midT[0], midR[0]],[midT[1], midR[1]], linewidth=stroke, color="black")
-    ax.plot([midR[0], midB[0]],[midR[1], midB[1]], linewidth=stroke, color="black")
-    ax.plot([midB[0], midL[0]],[midB[1], midL[1]], linewidth=stroke, color="black")
-
-    pos = house_coords_north()
-    # optional small house numbers
-    if show_house_numbers:
-        nums = {1:(0.50,0.08), 2:(0.70,0.18), 3:(0.86,0.34), 4:(0.92,0.50),
-                5:(0.86,0.66), 6:(0.70,0.82), 7:(0.50,0.92), 8:(0.30,0.82),
-                9:(0.14,0.66), 10:(0.08,0.50), 11:(0.14,0.34), 12:(0.30,0.18)}
-        for h,(x,y) in nums.items():
-            ax.text(x,y,str(h), fontsize=10, ha='center', va='center')
-
-    for h in range(1,13):
-        labels = bins.get(h, [])
-        if not labels: continue
-        x,y = pos[h]
-        txt = "\\n".join(labels)
-        ax.text(x, y, txt, ha='center', va='center', fontsize=14)
-
-    buf = BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', pad_inches=0.02)
-    plt.close(fig); buf.seek(0); return buf
-
-def render_north_chart_with_bins(bins, size_px=900, stroke=3):
-    fig = plt.figure(figsize=(size_px/100, size_px/100), dpi=100)
-    ax = fig.add_axes([0,0,1,1]); ax.axis('off')
-    # frame (force black lines so it doesn't look multicolored)
-    ax.plot([0.02,0.98,0.98,0.02,0.02],[0.02,0.02,0.98,0.98,0.02], linewidth=stroke, color="black")
-    L,R,B,T = 0.02,0.98,0.02,0.98
-    cx, cy = 0.5, 0.5
-    ax.plot([L,R],[T,B], linewidth=stroke, color="black")
-    ax.plot([L,R],[B,T], linewidth=stroke, color="black")
-    midL=(L,cy); midR=(R,cy); midT=(cx,T); midB=(cx,B)
-    ax.plot([midL[0], midT[0]],[midL[1], midT[1]], linewidth=stroke, color="black")
-    ax.plot([midT[0], midR[0]],[midT[1], midR[1]], linewidth=stroke, color="black")
-    ax.plot([midR[0], midB[0]],[midR[1], midB[1]], linewidth=stroke, color="black")
-    ax.plot([midB[0], midL[0]],[midB[1], midL[1]], linewidth=stroke, color="black")
-
-    pos = house_coords_north()
-    for h in range(1,13):
-        labels = bins.get(h, [])
-        if not labels: continue
-        x,y = pos[h]
-        txt = "\n".join(labels)  # stack vertically for clarity
-        ax.text(x, y, txt, ha='center', va='center', fontsize=14)
-
-    buf = BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', pad_inches=0.02)
-    plt.close(fig); buf.seek(0); return buf
-# -------------------- END NEW --------------------
-
 def render_north_diamond(size_px=900, stroke=3):
     fig = plt.figure(figsize=(size_px/100, size_px/100), dpi=100)
     ax = fig.add_axes([0,0,1,1]); ax.axis('off')
-    ax.plot([0.02,0.98,0.98,0.02,0.02],[0.02,0.02,0.98,0.98,0.02], linewidth=3)
+    ax.plot([0.02,0.98,0.98,0.02,0.02],[0.02,0.02,0.98,0.98,0.02], linewidth=3, color='black')
     L,R,B,T = 0.02,0.98,0.02,0.98
     cx, cy = 0.5, 0.5
-    ax.plot([L,R],[T,B], linewidth=3)
-    ax.plot([L,R],[B,T], linewidth=3)
+    ax.plot([L,R],[T,B], linewidth=3, color='black')
+    ax.plot([L,R],[B,T], linewidth=3, color='black')
     midL=(L,cy); midR=(R,cy); midT=(cx,T); midB=(cx,B)
-    ax.plot([midL[0], midT[0]],[midL[1], midT[1]], linewidth=3)
-    ax.plot([midT[0], midR[0]],[midT[1], midR[1]], linewidth=3)
-    ax.plot([midR[0], midB[0]],[midR[1], midB[1]], linewidth=3)
-    ax.plot([midB[0], midL[0]],[midB[1], midL[1]], linewidth=3)
+    ax.plot([midL[0], midT[0]],[midL[1], midT[1]], linewidth=3, color='black')
+    ax.plot([midT[0], midR[0]],[midT[1], midR[1]], linewidth=3, color='black')
+    ax.plot([midR[0], midB[0]],[midR[1], midB[1]], linewidth=3, color='black')
+    ax.plot([midB[0], midL[0]],[midB[1], midL[1]], linewidth=3, color='black')
     buf = BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', pad_inches=0.02)
     plt.close(fig); buf.seek(0); return buf
 
@@ -376,19 +261,8 @@ def main():
                 for r in rows_ap
             ])
 
-            # --------- NEW: build populated Lagna & Navamsa charts ----------
-            # Ascendant rotation so House-1 corresponds to sidereal Lagna
-            jd, ay, _junk = sidereal_positions(dt_utc)
-            asc_sid = ascendant_sidereal(jd, lat, lon, ay)
-            asc_sign = int(asc_sid // 30) + 1
-
-            sign_bins_lagna = planets_by_sign(sidelons)
-            sign_bins_nav   = planets_by_sign_navamsa(sidelons)
-            bins_lagna = rotate_bins_by_lagna(sign_bins_lagna, asc_sign)
-            bins_nav   = rotate_bins_by_lagna(sign_bins_nav, asc_sign)
-            img_lagna = render_north_chart_with_bins(bins_lagna, size_px=900, stroke=3, show_house_numbers=True)
-            img_nav   = render_north_chart_with_bins(bins_nav, size_px=900, stroke=3, show_house_numbers=True)
-            # ----------------------------------------------------------------
+            img_lagna = render_north_diamond(size_px=900, stroke=3)
+            img_nav   = render_north_diamond(size_px=900, stroke=3)
 
             # ----- DOCX build with GRID BORDERS -----
             doc = Document()
