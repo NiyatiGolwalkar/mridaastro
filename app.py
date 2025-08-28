@@ -1,40 +1,43 @@
 
-# v6.8.3 — LOCKED defaults (AstroSage-aligned): Lahiri ayanamsha, Mean Node, Tropical year (365.2422)
-# - High-precision Swiss Ephemeris (SWIEPH + SIDEREAL + SPEED)
-# - Dasha timelines computed on UTC axis (leap years & DST safe), displayed in local time
-# - Editable North-Indian kundali with centered house numbers
-# - Hindi captions at top of each chart
+# app_docx_borders_85pt_editable_v6_8_5_locked.py
+# v6.8.5 — Locked defaults (Lahiri, Mean Node, Tropical year)
+# - Removed UI info line
+# - Mahadasha: Start DATE only (dd-mm-yyyy) + Age (at end)
+# - Antar/Pratyantar: End DATE only (dd-mm-yyyy)
+# - UTC-based dasha math (leap/DST safe)
+# - High-precision SWIEPH sidereal positions
+# - Editable North-Indian kundali with Hindi captions at the top
 
-import os, io, datetime, json, urllib.parse, urllib.request
-import streamlit as st
+import datetime, json, urllib.parse, urllib.request
+from io import BytesIO
+
+import matplotlib.pyplot as plt
 import pandas as pd
+import pytz
+import streamlit as st
 import swisseph as swe
 from timezonefinder import TimezoneFinder
+
 from docx import Document
-from docx.shared import Inches, Pt, Mm
+from docx.enum.table import WD_ROW_HEIGHT_RULE
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.enum.table import WD_ROW_HEIGHT_RULE
-from io import BytesIO
-import pytz
-import matplotlib.pyplot as plt
+from docx.shared import Inches, Mm, Pt
 
-APP_TITLE = "DevoAstroBhav Kundali — Locked AstroSage Defaults (v6.8.3)"
+APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.5)"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 
 # -------- Locked Defaults --------
-AYANAMSHA_KEY = "Lahiri (default)"
-AYANAMSHA_VAL = swe.SIDM_LAHIRI
-NODE_CHOICE   = "mean"          # mean node
-YEAR_DAYS     = 365.2422        # Tropical year
+AYANAMSHA_VAL = swe.SIDM_LAHIRI          # Lahiri
+YEAR_DAYS     = 365.2422                 # Tropical year
+HN = {'Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Me':'बुध','Ju':'गुरु','Ve':'शुक्र','Sa':'शनि','Ra':'राहु','Ke':'केतु'}
 
 BASE_FONT_PT = 8.5
 LATIN_FONT = "Georgia"
 HINDI_FONT = "Mangal"
 
-HN = {'Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Me':'बुध','Ju':'गुरु','Ve':'शुक्र','Sa':'शनि','Ra':'राहु','Ke':'केतु'}
-
+# --------- Helpers ---------
 def _apply_hindi_caption_style(paragraph, size_pt=11, underline=True, bold=True):
     if not paragraph.runs:
         paragraph.add_run("")
@@ -42,13 +45,11 @@ def _apply_hindi_caption_style(paragraph, size_pt=11, underline=True, bold=True)
     r.bold = bold
     r.underline = underline
     r.font.size = Pt(size_pt)
-    rpr = r._element.rPr
-    if rpr is None:
-        rpr = OxmlElement('w:rPr')
+    rpr = r._element.rPr or OxmlElement('w:rPr')
+    if r._element.rPr is None:
         r._element.append(rpr)
-    rfonts = rpr.find(qn('w:rFonts'))
-    if rfonts is None:
-        rfonts = OxmlElement('w:rFonts')
+    rfonts = rpr.find(qn('w:rFonts')) or OxmlElement('w:rFonts')
+    if rpr.find(qn('w:rFonts')) is None:
         rpr.append(rfonts)
     rfonts.set(qn('w:eastAsia'), HINDI_FONT)
 
@@ -71,7 +72,7 @@ def fmt_deg_sign(lon_sid):
         s_rounded = 0; m += 1
     if m == 60:
         m = 0; d += 1
-        if d == 30: d = 0  # keep within sign
+        if d == 30: d = 0
     return sign, f"{d:02d}°{m:02d}'{s_rounded:02d}\""
 
 def kp_sublord(lon_sid):
@@ -123,15 +124,13 @@ def sidereal_positions(dt_utc):
                     ('Sa',swe.SATURN)]:
         xx,_ = swe.calc_ut(jd, p, flags)
         out[code] = xx[0] % 360.0
-    # Nodes (locked: Mean)
-    xx,_ = swe.calc_ut(jd, swe.MEAN_NODE, flags)
+    xx,_ = swe.calc_ut(jd, swe.MEAN_NODE, flags)  # locked: Mean node
     out['Ra'] = xx[0] % 360.0
     out['Ke'] = (out['Ra'] + 180.0) % 360.0
     ay = swe.get_ayanamsa_ut(jd)
     return jd, ay, out
 
 def ascendant_sign(jd, lat, lon, ay):
-    # houses_ex -> tropical ASC; convert to sidereal by subtracting ayanamsa
     cusps, ascmc = swe.houses_ex(jd, lat, lon, b'P')
     asc_trop = ascmc[0]
     asc_sid = (asc_trop - ay) % 360.0
@@ -141,12 +140,9 @@ def navamsa_sign_from_lon_sid(lon_sid):
     sign = int(lon_sid // 30) + 1
     deg_in_sign = lon_sid % 30.0
     pada = int(deg_in_sign // (30.0/9.0))
-    if sign in (1,4,7,10):         # movable
-        start = sign
-    elif sign in (2,5,8,11):       # fixed -> 9th
-        start = ((sign + 8 - 1) % 12) + 1
-    else:                          # dual -> 5th
-        start = ((sign + 4 - 1) % 12) + 1
+    if sign in (1,4,7,10): start = sign
+    elif sign in (2,5,8,11): start = ((sign + 8 - 1) % 12) + 1
+    else: start = ((sign + 4 - 1) % 12) + 1
     nav = ((start - 1 + pada) % 12) + 1
     return nav
 
@@ -160,7 +156,7 @@ def positions_table_no_symbol(sidelons):
     cols = ["Planet","Sign","Degree","Nakshatra","Sub‑Nakshatra"]
     return pd.DataFrame(rows, columns=cols)
 
-# --- Vimshottari (UTC-based; leap/DST safe) ---
+# --- Vimshottari (UTC-based) ---
 ORDER = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
 YEARS = {'Ke':7,'Ve':20,'Su':6,'Mo':10,'Ma':7,'Ra':18,'Ju':16,'Sa':19,'Me':17}
 
@@ -366,7 +362,7 @@ def main():
         place = st.text_input("Place of Birth (City, State, Country)")
         tz_override = st.text_input("UTC offset override (optional, e.g., 5.5)", "")
     with col1:
-        st.info("Locked settings: Ayanamsha = Lahiri, Node = Mean, Year basis = Tropical 365.2422")
+        pass  # removed info line
 
     api_key = st.secrets.get("GEOAPIFY_API_KEY","")
 
@@ -389,25 +385,33 @@ def main():
             # Vimshottari in UTC
             md_segments_utc = build_mahadashas_days_utc(dt_utc, sidelons['Mo'])
 
+            # ---- Mahadasha table: Start DATE only + Age(at end) ----
+            def age_years(birth_dt_local, end_utc):
+                local_end = _utc_to_local(end_utc, tzname, tz_hours, used_manual)
+                days = (local_end.date() - birth_dt_local.date()).days
+                return int(days // YEAR_DAYS)
+
             df_md = pd.DataFrame([
                 {"Planet": HN[s["planet"]],
-                 "Start": _utc_to_local(s["start"], tzname, tz_hours, used_manual).strftime("%d-%m-%Y %H:%M"),
-                 "End": _utc_to_local(s["end"], tzname, tz_hours, used_manual).strftime("%d-%m-%Y %H:%M")}
+                 "Start Date": _utc_to_local(s["start"], tzname, tz_hours, used_manual).strftime("%d-%m-%Y"),
+                 "Age (years)": age_years(dt_local, s["end"])}
                 for s in md_segments_utc
             ])
 
+            # ---- Antar/Pratyantar next 2 years: include DATE only (end date) ----
             now_utc = datetime.datetime.utcnow()
             rows_ap = next_ant_praty_in_days_utc(now_utc, md_segments_utc, days_window=2*365)
             df_ap = pd.DataFrame([
                 {"Major Dasha": HN[r["major"]], "Antar Dasha": HN[r["antar"]],
                  "Pratyantar Dasha": HN[r["pratyantar"]],
-                 "End Date-Time": _utc_to_local(r["end"], tzname, tz_hours, used_manual).strftime("%d-%m-%Y %H:%M")}
+                 "Date": _utc_to_local(r["end"], tzname, tz_hours, used_manual).strftime("%d-%m-%Y")}
                 for r in rows_ap
             ])
 
             img_lagna = render_north_diamond(size_px=900, stroke=3)
             img_nav   = render_north_diamond(size_px=900, stroke=3)
 
+            # ---------------- DOCX ----------------
             doc = Document()
             sec = doc.sections[0]
             sec.page_width = Mm(210); sec.page_height = Mm(297)
@@ -427,7 +431,11 @@ def main():
             right_width_in = 3.3
             outer.columns[0].width = Inches(3.3)
             outer.columns[1].width = Inches(right_width_in)
-            add_table_borders(outer, size=6)
+            # add borders
+            tbl = outer._tbl; tblPr = tbl.tblPr; tblBorders = OxmlElement('w:tblBorders')
+            for edge in ('top','left','bottom','right','insideH','insideV'):
+                el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'single'); el.set(qn('w:sz'),'6'); tblBorders.append(el)
+            tblPr.append(tblBorders)
 
             left = outer.rows[0].cells[0]
             p = left.add_paragraph("Personal Details"); p.runs[0].bold=True
@@ -443,17 +451,26 @@ def main():
             for _,row in df_positions.iterrows():
                 r=t1.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
-            center_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT); add_table_borders(t1, size=6)
+            center_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT)
+            # borders
+            tbl = t1._tbl; tblPr = tbl.tblPr; tblBorders = OxmlElement('w:tblBorders')
+            for edge in ('top','left','bottom','right','insideH','insideV'):
+                el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'single'); el.set(qn('w:sz'),'6'); tblBorders.append(el)
+            tblPr.append(tblBorders)
             set_col_widths(t1, [0.8,0.6,0.9,0.9,0.9])
 
-            left.add_paragraph("Vimshottari Mahadasha (exact start/end)").runs[0].bold=True
+            left.add_paragraph("Vimshottari Mahadasha (start date + age in years)").runs[0].bold=True
             t2 = left.add_table(rows=1, cols=len(df_md.columns)); t2.autofit=False
             for i,c in enumerate(df_md.columns): t2.rows[0].cells[i].text=c
             for _,row in df_md.iterrows():
                 r=t2.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
-            center_header_row(t2); set_table_font(t2, pt=BASE_FONT_PT); add_table_borders(t2, size=6)
-            set_col_widths(t2, [1.2,1.1,1.1])
+            center_header_row(t2); set_table_font(t2, pt=BASE_FONT_PT)
+            tbl = t2._tbl; tblPr = tbl.tblPr; tblBorders = OxmlElement('w:tblBorders')
+            for edge in ('top','left','bottom','right','insideH','insideV'):
+                el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'single'); el.set(qn('w:sz'),'6'); tblBorders.append(el)
+            tblPr.append(tblBorders)
+            set_col_widths(t2, [1.0,1.0,1.0])
 
             left.add_paragraph("Antar / Pratyantar (Next 2 years)").runs[0].bold=True
             t3 = left.add_table(rows=1, cols=len(df_ap.columns)); t3.autofit=False
@@ -461,8 +478,12 @@ def main():
             for _,row in df_ap.iterrows():
                 r=t3.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
-            center_header_row(t3); set_table_font(t3, pt=BASE_FONT_PT); add_table_borders(t3, size=6)
-            set_col_widths(t3, [1.0,1.0,1.2,1.2])
+            center_header_row(t3); set_table_font(t3, pt=BASE_FONT_PT)
+            tbl = t3._tbl; tblPr = tbl.tblPr; tblBorders = OxmlElement('w:tblBorders')
+            for edge in ('top','left','bottom','right','insideH','insideV'):
+                el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'single'); el.set(qn('w:sz'),'6'); tblBorders.append(el)
+            tblPr.append(tblBorders)
+            set_col_widths(t3, [0.9,0.95,1.1,0.9])  # tightened to avoid clipping
 
             right = outer.rows[0].cells[1]
             kt = right.add_table(rows=2, cols=1); kt.autofit=False
@@ -488,13 +509,13 @@ def main():
             p2._p.addnext(kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=nav_lagna_sign))
 
             out = BytesIO(); doc.save(out); out.seek(0)
-            st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope_v6_8_3_locked.docx")
+            st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope_v6_8_5_locked.docx")
 
             lc, rc = st.columns([1.2, 0.8])
             with lc:
                 st.subheader("Planetary Positions")
                 st.dataframe(df_positions.reset_index(drop=True), use_container_width=True, hide_index=True)
-                st.subheader("Vimshottari Mahadasha")
+                st.subheader("Vimshottari Mahadasha (start date + age in years)")
                 st.dataframe(df_md.reset_index(drop=True), use_container_width=True, hide_index=True)
                 st.subheader("Antar / Pratyantar (Next 2 years)")
                 st.dataframe(df_ap.reset_index(drop=True), use_container_width=True, hide_index=True)
