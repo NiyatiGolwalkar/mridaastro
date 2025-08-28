@@ -35,6 +35,33 @@ HINDI_FONT = "Mangal"
 
 HN = {'Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Me':'बुध','Ju':'गुरु','Ve':'शुक्र','Sa':'शनि','Ra':'राहु','Ke':'केतु'}
 
+# --- Planet abbreviations for compact boxes (Hindi) ---
+HN_ABBR = {
+    'Su': 'सू',  # Surya
+    'Mo': 'चं',  # Chandra
+    'Ma': 'मं',  # Mangal
+    'Me': 'बु',  # Budh
+    'Ju': 'गु',  # Guru
+    'Ve': 'शु',  # Shukra
+    'Sa': 'श',   # Shani
+    'Ra': 'रा',  # Rahu
+    'Ke': 'के',  # Ketu
+}
+
+def planet_navamsa_house(lon_sid, nav_lagna_sign):
+    \"\"\"Return 1..12 house index in Navamsa chart for a planet given sidereal longitude and Navamsa Lagna sign.\"\"\"
+    nav_sign = navamsa_sign_from_lon_sid(lon_sid)  # 1..12
+    # house = 1 when nav_sign == nav_lagna_sign; else rotate
+    return ((nav_sign - nav_lagna_sign) % 12) + 1
+
+def build_navamsa_house_planets(sidelons, nav_lagna_sign):
+    \"\"\"Map house -> list of planet abbreviations in Navamsa.\"\"\"
+    house_map = {i: [] for i in range(1, 13)}
+    for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
+        h = planet_navamsa_house(sidelons[code], nav_lagna_sign)
+        house_map[h].append(HN_ABBR.get(code, code))
+    return house_map
+
 def _apply_hindi_caption_style(paragraph, size_pt=11, underline=True, bold=True):
     if not paragraph.runs:
         paragraph.add_run("")
@@ -184,6 +211,101 @@ def render_north_diamond(size_px=800, stroke=3):
 def rotated_house_labels(lagna_sign):
     order = [str(((lagna_sign - 1 + i) % 12) + 1) for i in range(12)]
     return {"1":order[0],"2":order[1],"3":order[2],"4":order[3],"5":order[4],"6":order[5],"7":order[6],"8":order[7],"9":order[8],"10":order[9],"11":order[10],"12":order[11]}
+
+
+def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
+    \"\"\"Like kundali_w_p_with_centroid_labels but also adds small side-by-side planet boxes below the number.\"\"\"
+    if house_planets is None:
+        house_planets = {i: [] for i in range(1, 13)}
+    S=size_pt; L,T,R,B=0,0,S,S
+    TM=(S/2,0); RM=(S,S/2); BM=(S/2,S); LM=(0,S/2)
+    P_lt=(S/4,S/4); P_rt=(3*S/4,S/4); P_rb=(3*S/4,3*S/4); P_lb=(S/4,3*S/4); O=(S/2,S/2)
+    labels = rotated_house_labels(lagna_sign)
+    houses = {
+        "1":  [TM, P_rt, O, P_lt],
+        "2":  [(0,0), TM, P_lt],
+        "3":  [(0,0), LM, P_lt],
+        "4":  [LM, O, P_lt, P_lb],
+        "5":  [LM, (0,S), P_lb],
+        "6":  [(0,S), BM, P_lb],
+        "7":  [BM, P_rb, O, P_lb],
+        "8":  [BM, (S,S), P_rb],
+        "9":  [RM, (S,S), P_rb],
+        "10": [RM, O, P_rt, P_rb],
+        "11": [(S,0), RM, P_rt],
+        "12": [TM, (S,0), P_rt],
+    }
+    def centroid(poly):
+        A=Cx=Cy=0.0; n=len(poly)
+        for i in range(n):
+            x1,y1=poly[i]; x2,y2=poly[(i+1)%n]
+            cross=x1*y2 - x2*y1
+            A += cross; Cx += (x1+x2)*cross; Cy += (y1+y2)*cross
+        A*=0.5
+        if abs(A)<1e-9:
+            xs,ys=zip(*poly); return (sum(xs)/n, sum(ys)/n)
+        return (Cx/(6*A), Cy/(6*A))
+    num_boxes=[]
+    planet_boxes=[]
+    num_w=num_h=20
+    p_w, p_h = 16, 14  # planet small box size
+    gap_x = 4         # horizontal space between planet boxes
+    offset_y = 12     # vertical offset below the number box
+
+    for k,poly in houses.items():
+        # Number box
+        x,y = centroid(poly); left = x - num_w/2; top = y - num_h/2
+        txt = labels[k]
+        num_boxes.append(f'''
+        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:5" strokecolor="none">
+          <v:textbox inset="0,0,0,0">
+            <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+              <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
+            </w:txbxContent>
+          </v:textbox>
+        </v:rect>
+        ''')
+        # Planet boxes for this house
+        planets = house_planets.get(int(k), [])
+        if planets:
+            n = len(planets)
+            total_w = n * p_w + (n - 1) * gap_x
+            # Start x so that row centered under x
+            start_left = x - total_w/2
+            top_planet = y - p_h/2 + offset_y  # below the number
+            for idx, pl in enumerate(planets):
+                left_pl = start_left + idx * (p_w + gap_x)
+                planet_boxes.append(f'''
+                <v:rect style="position:absolute;left:{left_pl}pt;top:{top_planet}pt;width:{p_w}pt;height:{p_h}pt;z-index:6" strokecolor="none">
+                  <v:textbox inset="0,0,0,0">
+                    <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                      <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{pl}</w:t></w:r></w:p>
+                    </w:txbxContent>
+                  </v:textbox>
+                </v:rect>
+                ''')
+
+    boxes_xml = "\\n".join(num_boxes + planet_boxes)
+    xml = f'''
+    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+      <w:r>
+        <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
+          <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
+            <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
+            <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.5pt"/>
+            <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
+            <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
+            <v:line style="position:absolute;z-index:2" from="{R},{S/2}" to="{S/2},{B}" strokecolor="black" strokeweight="1.5pt"/>
+            <v:line style="position:absolute;z-index:2" from="{S/2},{B}" to="{L},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
+            <v:line style="position:absolute;z-index:2" from="{L},{S/2}" to="{S/2},{T}" strokecolor="black" strokeweight="1.5pt"/>
+            {boxes_xml}
+          </v:group>
+        </w:pict>
+      </w:r>
+    </w:p>
+    '''
+    return parse_xml(xml)
+
 
 def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
     S=size_pt; TM=(S/2,0); RM=(S,S/2); BM=(S/2,S); LM=(0,S/2); P_lt=(S/4,S/4); P_rt=(3*S/4,S/4); P_rb=(3*S/4,3*S/4); P_lb=(S/4,3*S/4); O=(S/2,S/2)
@@ -427,7 +549,10 @@ def main():
 
             cell2 = kt.rows[1].cells[0]; cell2.add_paragraph(); cap2 = cell2.add_paragraph("नवांश कुंडली")
             cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap2, size_pt=11, underline=True, bold=True)
-            p2 = cell2.add_paragraph(); p2._p.addnext(kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=nav_lagna_sign))
+            p2 = cell2.add_paragraph();
+            # Build Navamsa planet placements and render with planets
+            nav_house_planets = build_navamsa_house_planets(sidelons, nav_lagna_sign)
+            p2._p.addnext(kundali_with_planets(size_pt=220, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
 
             out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
