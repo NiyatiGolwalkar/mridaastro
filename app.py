@@ -49,13 +49,15 @@ HN_ABBR = {
 }
 
 def planet_navamsa_house(lon_sid, nav_lagna_sign):
-    """Return 1..12 house index in Navamsa chart for a planet given sidereal longitude and Navamsa Lagna sign."""Return 1..12 house index in Navamsa chart for a planet given sidereal longitude and Navamsa Lagna sign."""
+    # docstring removed
+Return 1..12 house index in Navamsa chart for a planet given sidereal longitude and Navamsa Lagna sign."""
     nav_sign = navamsa_sign_from_lon_sid(lon_sid)  # 1..12
     # house = 1 when nav_sign == nav_lagna_sign; else rotate
     return ((nav_sign - nav_lagna_sign) % 12) + 1
 
 def build_navamsa_house_planets(sidelons, nav_lagna_sign):
-    """Map house -> list of planet abbreviations in Navamsa."""Map house -> list of planet abbreviations in Navamsa."""
+    # docstring removed
+Map house -> list of planet abbreviations in Navamsa."""
     house_map = {i: [] for i in range(1, 13)}
     for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
         h = planet_navamsa_house(sidelons[code], nav_lagna_sign)
@@ -214,7 +216,8 @@ def rotated_house_labels(lagna_sign):
 
 
 def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
-    """Like kundali_w_p_with_centroid_labels but also adds small side-by-side planet boxes below the number."""Like kundali_w_p_with_centroid_labels but also adds small side-by-side planet boxes below the number."""
+    # docstring removed
+Like kundali_w_p_with_centroid_labels but also adds small side-by-side planet boxes below the number."""
     if house_planets is None:
         house_planets = {i: [] for i in range(1, 13)}
     S=size_pt; L,T,R,B=0,0,S,S
