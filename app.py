@@ -168,8 +168,9 @@ def next_ant_praty_in_days(now_local, md_segments, days_window):
     rows.sort(key=lambda r:r["end"])
     return rows
 
-# ----- Preview image (unchanged) -----
 def render_north_diamond(size_px=900, stroke=3):
+    import matplotlib.pyplot as plt
+    from io import BytesIO
     fig = plt.figure(figsize=(size_px/100, size_px/100), dpi=100)
     ax = fig.add_axes([0,0,1,1]); ax.axis('off')
     ax.plot([0.02,0.98,0.98,0.02,0.02],[0.02,0.02,0.98,0.98,0.02], linewidth=3, color='black')
@@ -185,22 +186,14 @@ def render_north_diamond(size_px=900, stroke=3):
     buf = BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', pad_inches=0.02)
     plt.close(fig); buf.seek(0); return buf
 
-# ----- VML Kundali for DOCX (editable) -----
 def kundali_w_p_with_centroid_labels(size_pt=300, label_top="1"):
     S=size_pt; L,T,R,B=0,0,S,S
     cx, cy = S/2, S/2
-
     TL=(0,0); TR=(S,0); BR=(S,S); BL=(0,S)
     TM=(S/2,0); RM=(S,S/2); BM=(S/2,S); LM=(0,S/2)
-    P_lt=(S/4,S/4); P_rt=(3*S/4,S/4); P_rb=(3*S/4,3*S/4); P_lb=(S/4,3*S/4)
-    O=(S/2,S/2)
+    P_lt=(S/4,S/4); P_rt=(3*S/4,S/4); P_rb=(3*S/4,3*S/4); P_lb=(S/4,3*S/4); O=(S/2,S/2)
 
-    # label sequence: top diamond then CCW 2..12
-    labels = {
-        "1":  label_top,
-        "2":  "2","3":"3","4":"4","5":"5","6":"6",
-        "7":"7","8":"8","9":"9","10":"10","11":"11","12":"12"
-    }
+    labels = {"1":label_top,"2":"2","3":"3","4":"4","5":"5","6":"6","7":"7","8":"8","9":"9","10":"10","11":"11","12":"12"}
 
     houses = {
         "1":  [TM, P_rt, O, P_lt],
@@ -220,16 +213,15 @@ def kundali_w_p_with_centroid_labels(size_pt=300, label_top="1"):
     def centroid(poly):
         A=Cx=Cy=0.0; n=len(poly)
         for i in range(n):
-            x1,y1 = poly[i]; x2,y2 = poly[(i+1)%n]
-            cross = x1*y2 - x2*y1
+            x1,y1=poly[i]; x2,y2=poly[(i+1)%n]
+            cross=x1*y2 - x2*y1
             A += cross; Cx += (x1+x2)*cross; Cy += (y1+y2)*cross
-        A *= 0.5
-        if abs(A) < 1e-9:
-            xs,ys = zip(*poly); return (sum(xs)/n, sum(ys)/n)
+        A*=0.5
+        if abs(A)<1e-9:
+            xs,ys=zip(*poly); return (sum(xs)/n, sum(ys)/n)
         return (Cx/(6*A), Cy/(6*A))
 
-    w,h = 22,22
-    boxes=[]
+    w=h=22; boxes=[]
     for k,poly in houses.items():
         x,y = centroid(poly); left = x - w/2; top = y - h/2
         txt = labels[k]
@@ -254,7 +246,7 @@ def kundali_w_p_with_centroid_labels(size_pt=300, label_top="1"):
             <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
             <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
             <v:line style="position:absolute;z-index:2" from="{R},{S/2}" to="{S/2},{B}" strokecolor="black" strokeweight="1.5pt"/>
-            <v:line style="position:absolute;z-index:2" from="{S/2},{B}" to="{L},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
+            <v:line style="position:absolute;z-index:2" from="{S/2},{B}" to "{L},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
             <v:line style="position:absolute;z-index:2" from="{L},{S/2}" to="{S/2},{T}" strokecolor="black" strokeweight="1.5pt"/>
             {boxes_xml}
           </v:group>
@@ -264,7 +256,6 @@ def kundali_w_p_with_centroid_labels(size_pt=300, label_top="1"):
     '''
     return parse_xml(xml)
 
-# ---- DOCX helpers ----
 def add_table_borders(table, size=6):
     tbl = table._tbl
     tblPr = tbl.tblPr
@@ -340,11 +331,9 @@ def main():
                 for r in rows_ap
             ])
 
-            # Web preview images
             img_lagna = render_north_diamond(size_px=900, stroke=3)
             img_nav   = render_north_diamond(size_px=900, stroke=3)
 
-            # ----- DOCX build with EDITABLE KUNDALIS -----
             doc = Document()
             sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
             margin = Mm(12)
@@ -393,21 +382,25 @@ def main():
             set_col_widths(t3, [0.9,0.9,0.9,0.6])
 
             right = outer.rows[0].cells[1]
-            p1 = right.paragraphs[0]; p1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            # Instead of images, append editable VML kundalis
-            # Lagna (1 at top). Change 'label_top' to 'Lagna' or 'AS' if desired.
-            right._tc.get_or_add_tcPr()  # ensure exists
-            # Insert a paragraph container and append VML
-            p_container1 = right.add_paragraph()
-            p_container1._p.addnext(kundali_w_p_with_centroid_labels(size_pt=300, label_top="1"))
-            right.add_paragraph("")
-            p_container2 = right.add_paragraph()
-            p_container2._p.addnext(kundali_w_p_with_centroid_labels(size_pt=300, label_top="1"))
+
+            # NEW: stack kundalis using a 2-row single-column table to avoid overlap
+            kt = right.add_table(rows=2, cols=1)
+            kt.autofit = False
+            kt.columns[0].width = Inches(3.3)
+
+            # Row 1: Lagna
+            p1 = kt.rows[0].cells[0].add_paragraph()
+            p1._p.addnext(kundali_w_p_with_centroid_labels(size_pt=300, label_top="1"))
+            kt.rows[0].cells[0].add_paragraph("Lagna (Editable)").alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+            # Row 2: Navamsa
+            p2 = kt.rows[1].cells[0].add_paragraph()
+            p2._p.addnext(kundali_w_p_with_centroid_labels(size_pt=300, label_top="1"))
+            kt.rows[1].cells[0].add_paragraph("Navamsa (Editable)").alignment = WD_ALIGN_PARAGRAPH.CENTER
 
             out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
 
-            # ----- Web preview -----
             lc, rc = st.columns([1.2, 0.8])
             with lc:
                 st.subheader("Planetary Positions")
