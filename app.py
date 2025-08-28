@@ -397,7 +397,7 @@ def main():
                 r=t1.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT); add_table_borders(t1, size=6)
-            set_col_widths(t1, [0.75,0.5,0.9,0.85,0.85])
+            set_col_widths(t1, [0.7,0.5,0.9,0.8,1.05])
 
             h2 = left.add_paragraph("विंशोत्तरी महादशा"); _apply_hindi_caption_style(h2, size_pt=11, underline=True, bold=True)
             t2 = left.add_table(rows=1, cols=len(df_md.columns)); t2.autofit=False
@@ -443,9 +443,9 @@ def main():
                 st.dataframe(df_ap.reset_index(drop=True), use_container_width=True, hide_index=True)
             with rc:
                 st.subheader("Lagna Kundali (Preview)")
-                st.image(img_lagna, use_column_width=True)
+                st.image(img_lagna, use_container_width=True)
                 st.subheader("Navamsa Kundali (Preview)")
-                st.image(img_nav, use_column_width=True)
+                st.image(img_nav, use_container_width=True)
 
         except Exception as e:
             st.error(str(e))
