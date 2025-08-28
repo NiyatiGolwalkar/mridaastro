@@ -12,9 +12,10 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.table import WD_ROW_HEIGHT_RULE
 from io import BytesIO
 import pytz
+import math
 import matplotlib.pyplot as plt
 
-APP_TITLE = "DevoAstroBhav Kundali (Editable Kundali in DOCX)"
+APP_TITLE = "DevoAstroBhav Kundali (Editable Kundali in DOCX) — v6.8.1"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 
 BASE_FONT_PT = 8.5
@@ -22,6 +23,24 @@ LATIN_FONT = "Georgia"
 HINDI_FONT = "Mangal"
 
 HN = {'Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Me':'बुध','Ju':'गुरु','Ve':'शुक्र','Sa':'शनि','Ra':'राहु','Ke':'केतु'}
+
+AYANAMSHA_OPTIONS = {
+    "Lahiri (default)": swe.SIDM_LAHIRI,
+    "Krishnamurti": swe.SIDM_KRISHNAMURTI,
+    "Raman": swe.SIDM_RAMAN,
+    "Fagan/Bradley": swe.SIDM_FAGAN_BRADLEY,
+}
+
+NODE_OPTIONS = {
+    "Mean Node (traditional)": "mean",
+    "True Node": "true",
+}
+
+YEAR_BASIS = {
+    "Tropical year 365.2422 (common)": 365.2422,
+    "Sidereal year 365.25636 (astronomical)": 365.25636,
+    "Julian 365.25": 365.25,
+}
 
 def _apply_hindi_caption_style(paragraph, size_pt=11, underline=True, bold=True):
     if not paragraph.runs:
@@ -40,20 +59,27 @@ def _apply_hindi_caption_style(paragraph, size_pt=11, underline=True, bold=True)
         rpr.append(rfonts)
     rfonts.set(qn('w:eastAsia'), HINDI_FONT)
 
-def set_sidereal():
-    swe.set_sid_mode(swe.SIDM_LAHIRI, 0, 0)
+def set_sidereal_mode(ayanamsha_key: str):
+    swe.set_sid_mode(AYANAMSHA_OPTIONS[ayanamsha_key], 0, 0)
 
-def dms(deg):
-    d=int(deg); m=int((deg-d)*60); s=int(round((deg-d-m/60)*3600))
-    if s==60: s=0; m+=1
-    if m==60: m=0; d+=1
-    return d,m,s
+def dms_exact(deg):
+    d = int(deg)
+    m_float = (deg - d) * 60.0
+    m = int(m_float)
+    s = (m_float - m) * 60.0
+    return d, m, s
 
 def fmt_deg_sign(lon_sid):
     sign=int(lon_sid//30) + 1
     deg_in_sign = lon_sid % 30.0
-    d,m,s=dms(deg_in_sign)
-    return sign, f"{d:02d}°{m:02d}'{s:02d}\""
+    d,m,s=dms_exact(deg_in_sign)
+    s_rounded = int(round(s))
+    if s_rounded == 60:
+        s_rounded = 0; m += 1
+    if m == 60:
+        m = 0; d += 1
+        if d == 30: d = 0  # prevent overflow within sign
+    return sign, f"{d:02d}°{m:02d}'{s_rounded:02d}\""
 
 def kp_sublord(lon_sid):
     NAK=360.0/27.0
@@ -93,19 +119,25 @@ def tz_from_latlon(lat, lon, dt_local):
     offset_hours = tz.utcoffset(dt_local_aware).total_seconds()/3600.0
     return tzname, offset_hours, dt_utc_naive
 
-def sidereal_positions(dt_utc):
+def sidereal_positions(dt_utc, ayanamsha_key, node_choice):
     jd = swe.julday(dt_utc.year, dt_utc.month, dt_utc.day,
                     dt_utc.hour + dt_utc.minute/60 + dt_utc.second/3600)
-    set_sidereal()
-    ay = swe.get_ayanamsa_ut(jd)
-    flags=swe.FLG_MOSEPH
+    set_sidereal_mode(ayanamsha_key)
+    flags = swe.FLG_SWIEPH | swe.FLG_SPEED | swe.FLG_SIDEREAL
     out = {}
     for code, p in [('Su',swe.SUN),('Mo',swe.MOON),('Ma',swe.MARS),
                     ('Me',swe.MERCURY),('Ju',swe.JUPITER),('Ve',swe.VENUS),
-                    ('Sa',swe.SATURN),('Ra',swe.MEAN_NODE)]:
+                    ('Sa',swe.SATURN)]:
         xx,_ = swe.calc_ut(jd, p, flags)
-        out[code] = (xx[0] - ay) % 360.0
+        out[code] = xx[0] % 360.0
+    if node_choice == "true":
+        xx,_ = swe.calc_ut(jd, swe.TRUE_NODE, flags)
+        out['Ra'] = xx[0] % 360.0
+    else:
+        xx,_ = swe.calc_ut(jd, swe.MEAN_NODE, flags)
+        out['Ra'] = xx[0] % 360.0
     out['Ke'] = (out['Ra'] + 180.0) % 360.0
+    ay = swe.get_ayanamsa_ut(jd)
     return jd, ay, out
 
 def ascendant_sign(jd, lat, lon, ay):
@@ -115,7 +147,6 @@ def ascendant_sign(jd, lat, lon, ay):
     return int(asc_sid // 30) + 1, asc_sid
 
 def navamsa_sign_from_lon_sid(lon_sid):
-    # Compute Navamsa (D9) using modality: movable->same, fixed->9th, dual->5th; then advance by pada
     sign = int(lon_sid // 30) + 1
     deg_in_sign = lon_sid % 30.0
     pada = int(deg_in_sign // (30.0/9.0))
@@ -138,74 +169,70 @@ def positions_table_no_symbol(sidelons):
     cols = ["Planet","Sign","Degree","Nakshatra","Sub‑Nakshatra"]
     return pd.DataFrame(rows, columns=cols)
 
-def moon_balance(moon_sid):
+# --- Vimshottari timing (UTC-based timeline; leap years & DST safe) ---
+
+ORDER = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
+YEARS = {'Ke':7,'Ve':20,'Su':6,'Mo':10,'Ma':7,'Ra':18,'Ju':16,'Sa':19,'Me':17}
+
+def moon_balance_days(moon_sid, year_days):
     NAK=360.0/27.0
-    ORDER = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
-    YEARS = {'Ke':7,'Ve':20,'Su':6,'Mo':10,'Ma':7,'Ra':18,'Ju':16,'Sa':19,'Me':17}
     part = moon_sid % 360.0
     ni = int(part // NAK)
     pos = part - ni*NAK
     md_lord = ORDER[ni % 9]
     frac = pos/NAK
-    remaining_years = YEARS[md_lord]*(1 - frac)
-    return md_lord, remaining_years
+    remaining_days = YEARS[md_lord]*(1 - frac)*year_days
+    return md_lord, remaining_days
 
-def add_years(dt, y): return dt + datetime.timedelta(days=y*365.2425)
-
-def build_mahadashas_from_birth(birth_local_dt, moon_sid):
-    ORDER = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
-    YEARS = {'Ke':7,'Ve':20,'Su':6,'Mo':10,'Ma':7,'Ra':18,'Ju':16,'Sa':19,'Me':17}
-    md_lord, rem = moon_balance(moon_sid)
-    end_limit = add_years(birth_local_dt, 100.0)
+def build_mahadashas_days_utc(birth_utc_dt, moon_sid, year_days):
+    md_lord, rem_days = moon_balance_days(moon_sid, year_days)
+    end_limit = birth_utc_dt + datetime.timedelta(days=100*year_days)
     segments = []
-    birth_md_start = birth_local_dt
-    birth_md_end = min(add_years(birth_md_start, rem), end_limit)
-    segments.append({"planet": md_lord, "start": birth_md_start, "end": birth_md_end, "years_used": (birth_md_end - birth_md_start).days / 365.2425})
+    birth_md_start = birth_utc_dt
+    birth_md_end = min(birth_md_start + datetime.timedelta(days=rem_days), end_limit)
+    segments.append({"planet": md_lord, "start": birth_md_start, "end": birth_md_end, "days": rem_days})
     idx = (ORDER.index(md_lord) + 1) % 9
     t = birth_md_end
     while t < end_limit:
-        L = ORDER[idx]; end = add_years(t, YEARS[L])
-        if end > end_limit: end = end_limit
-        segments.append({"planet": L, "start": t, "end": end, "years_used": (end - t).days / 365.2425})
+        L = ORDER[idx]
+        dur_days = YEARS[L]*year_days
+        end = min(t + datetime.timedelta(days=dur_days), end_limit)
+        segments.append({"planet": L, "start": t, "end": end, "days": dur_days})
         t = end; idx = (idx + 1) % 9
-    return segments, md_lord, rem
+    return segments
 
-def antars_in_md(md_lord, md_start, md_years):
-    ORDER = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
-    YEARS = {'Ke':7,'Ve':20,'Su':6,'Mo':10,'Ma':7,'Ra':18,'Ju':16,'Sa':19,'Me':17}
-    res=[]; t=md_start; start_idx=ORDER.index(md_lord)
+def antar_segments_in_md_utc(md_lord, md_start_utc, md_days, year_days):
+    res=[]; t=md_start_utc; start_idx=ORDER.index(md_lord)
     for i in range(9):
         L=ORDER[(start_idx+i)%9]
-        yrs = YEARS[L]*(md_years/120.0)
-        days = yrs*365.2425
-        start = t; end = t + datetime.timedelta(days=days)
-        res.append((L, start, end, yrs)); t = end
+        dur = YEARS[L]*(md_days/(120.0))
+        start = t; end = t + datetime.timedelta(days=dur)
+        res.append((L, start, end, dur)); t = end
     return res
 
-def pratyantars_in_antar(antar_lord, antar_start, antar_years):
-    ORDER = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
-    YEARS = {'Ke':7,'Ve':20,'Su':6,'Mo':10,'Ma':7,'Ra':18,'Ju':16,'Sa':19,'Me':17}
-    res=[]; t=antar_start; start_idx=ORDER.index(antar_lord)
+def pratyantars_in_antar_utc(antar_lord, antar_start_utc, antar_days):
+    res=[]; t=antar_start_utc; start_idx=ORDER.index(antar_lord)
     for i in range(9):
         L=ORDER[(start_idx+i)%9]
-        yrs = YEARS[L]*(antar_years/120.0)
-        days = yrs*365.2425
-        start = t; end = t + datetime.timedelta(days=days)
+        dur = YEARS[L]*(antar_days/(120.0))
+        start = t; end = t + datetime.timedelta(days=dur)
         res.append((L, start, end)); t = end
     return res
 
-def next_ant_praty_in_days(now_local, md_segments, days_window):
-    rows=[]; horizon=now_local + datetime.timedelta(days=days_window)
+def next_ant_praty_in_days_utc(now_utc, md_segments, days_window, year_days):
+    rows=[]; horizon=now_utc + datetime.timedelta(days=days_window)
     for seg in md_segments:
         MD = seg["planet"]; ms = seg["start"]; me = seg["end"]
-        md_years_effective = seg["years_used"]
-        for AL, as_, ae, ay in antars_in_md(MD, ms, md_years_effective):
-            if ae < now_local or as_ > horizon: continue
-            for PL, ps, pe in pratyantars_in_antar(AL, as_, ay):
-                if pe < now_local or ps > horizon: continue
+        md_days = seg["days"]
+        for AL, as_, ae, adays in antar_segments_in_md_utc(MD, ms, md_days, year_days):
+            if ae < now_utc or as_ > horizon: continue
+            for PL, ps, pe in pratyantars_in_antar_utc(AL, as_, adays):
+                if pe < now_utc or ps > horizon: continue
                 rows.append({"major":MD,"antar":AL,"pratyantar":PL,"end":pe})
     rows.sort(key=lambda r:r["end"])
     return rows
+
+# --- Drawing & DOCX helpers (same as 6.8) ---
 
 def render_north_diamond(size_px=900, stroke=3):
     fig = plt.figure(figsize=(size_px/100, size_px/100), dpi=100)
@@ -274,7 +301,7 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
           </v:textbox>
         </v:rect>
         ''')
-    boxes_xml = "\n".join(boxes)
+    boxes_xml = "\\n".join(boxes)
     xml = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
       <w:r>
@@ -330,47 +357,68 @@ def sanitize_filename(name: str) -> str:
     cleaned = cleaned.strip().replace(" ", "_")
     return cleaned or "Horoscope"
 
+def _utc_to_local(dt_utc, tzname, tz_hours, used_manual):
+    if used_manual:
+        return dt_utc + datetime.timedelta(hours=tz_hours)
+    try:
+        tz = pytz.timezone(tzname)
+        return tz.fromutc(dt_utc.replace(tzinfo=pytz.utc))
+    except Exception:
+        return dt_utc + datetime.timedelta(hours=tz_hours)
+
 def main():
     st.title(APP_TITLE)
 
-    col1, col2 = st.columns(2)
-    with col1:
+    col0, col1, col2 = st.columns([1.2, 1, 1])
+    with col0:
         name = st.text_input("Name")
         dob = st.date_input("Date of Birth", min_value=datetime.date(1800,1,1), max_value=datetime.date(2100,12,31))
         tob = st.time_input("Time of Birth", step=datetime.timedelta(minutes=1))
-    with col2:
         place = st.text_input("Place of Birth (City, State, Country)")
         tz_override = st.text_input("UTC offset override (optional, e.g., 5.5)", "")
+    with col1:
+        ayan_choice = st.selectbox("Ayanamsha", list(AYANAMSHA_OPTIONS.keys()), index=0)
+        node_choice = st.selectbox("Rahu/Ketu node type", list(NODE_OPTIONS.keys()), index=0)
+        year_choice = st.selectbox("Vimshottari year basis", list(YEAR_BASIS.keys()), index=1)
+    with col2:
+        show_debug = st.checkbox("Show debug details (asc, ayanamsa, nakshatra math)", value=True)
+
     api_key = st.secrets.get("GEOAPIFY_API_KEY","")
 
     if st.button("Generate DOCX"):
         try:
             lat, lon, disp = geocode(place, api_key)
             dt_local = datetime.datetime.combine(dob, tob)
+            used_manual = False
             if tz_override.strip():
-                tz_hours = float(tz_override); dt_utc = dt_local - datetime.timedelta(hours=tz_hours); tzname=f"UTC{tz_hours:+.2f} (manual)"
+                tz_hours = float(tz_override); dt_utc = dt_local - datetime.timedelta(hours=tz_hours); tzname=f"UTC{tz_hours:+.2f} (manual)"; used_manual=True
             else:
                 tzname, tz_hours, dt_utc = tz_from_latlon(lat, lon, dt_local)
 
-            jd, ay, sidelons = sidereal_positions(dt_utc)
-
+            jd, ay, sidelons = sidereal_positions(dt_utc, ayan_choice, NODE_OPTIONS[node_choice])
             lagna_sign, asc_sid = ascendant_sign(jd, lat, lon, ay)
             nav_lagna_sign = navamsa_sign_from_lon_sid(asc_sid)
 
             df_positions = positions_table_no_symbol(sidelons)
 
-            md_segments, _, _ = build_mahadashas_from_birth(dt_local, sidelons['Mo'])
+            year_days = YEAR_BASIS[year_choice]
+            # Build MD/Antar on UTC timeline
+            md_segments_utc = build_mahadashas_days_utc(dt_utc, sidelons['Mo'], year_days)
+
+            # Convert to local time for display
             df_md = pd.DataFrame([
-                {"Planet": HN[s["planet"]], "End Date": s["end"].strftime("%d-%m-%Y"),
-                 "Age (at end)": int(((s["end"] - dt_local).days / 365.2425))}
-                for s in md_segments
+                {"Planet": HN[s["planet"]],
+                 "Start": _utc_to_local(s["start"], tzname, tz_hours, used_manual).strftime("%d-%m-%Y %H:%M"),
+                 "End": _utc_to_local(s["end"], tzname, tz_hours, used_manual).strftime("%d-%m-%Y %H:%M")}
+                for s in md_segments_utc
             ])
 
-            now_local = datetime.datetime.now()
-            rows_ap = next_ant_praty_in_days(now_local, md_segments, days_window=2*365)
+            now_utc = datetime.datetime.utcnow()
+            rows_ap = next_ant_praty_in_days_utc(now_utc, md_segments_utc, days_window=2*365, year_days=year_days)
             df_ap = pd.DataFrame([
                 {"Major Dasha": HN[r["major"]], "Antar Dasha": HN[r["antar"]],
-                 "Pratyantar Dasha": HN[r["pratyantar"]], "End Date": r["end"].strftime("%d-%m-%Y")}
+                 "Pratyantar Dasha": HN[r["pratyantar"]],
+                 "End Date-Time": _utc_to_local(r["end"], tzname, tz_hours, used_manual).strftime("%d-%m-%Y %H:%M")}
                 for r in rows_ap
             ])
 
@@ -404,24 +452,26 @@ def main():
             left.add_paragraph(f"DOB: {dob}  |  TOB: {tob}")
             left.add_paragraph(f"Place: {disp}")
             left.add_paragraph(f"Time Zone: {tzname} (UTC{tz_hours:+.2f})")
+            left.add_paragraph(f"Ayanamsha: {ayan_choice} | Node: {node_choice}")
+            left.add_paragraph(f"Year basis (Vimshottari): {year_choice}")
 
-            left.add_paragraph("Planetary Positions").runs[0].bold=True
+            left.add_paragraph("Planetary Positions (sidereal, Swiss SWIEPH)").runs[0].bold=True
             t1 = left.add_table(rows=1, cols=len(df_positions.columns)); t1.autofit=False
             for i,c in enumerate(df_positions.columns): t1.rows[0].cells[i].text=c
             for _,row in df_positions.iterrows():
                 r=t1.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT); add_table_borders(t1, size=6)
-            set_col_widths(t1, [0.8,0.4,0.7,0.7,0.7])
+            set_col_widths(t1, [0.8,0.6,0.9,0.9,0.9])
 
-            left.add_paragraph("Vimshottari Mahadasha").runs[0].bold=True
+            left.add_paragraph("Vimshottari Mahadasha (exact start/end)").runs[0].bold=True
             t2 = left.add_table(rows=1, cols=len(df_md.columns)); t2.autofit=False
             for i,c in enumerate(df_md.columns): t2.rows[0].cells[i].text=c
             for _,row in df_md.iterrows():
                 r=t2.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t2); set_table_font(t2, pt=BASE_FONT_PT); add_table_borders(t2, size=6)
-            set_col_widths(t2, [1.1,1.0,1.0])
+            set_col_widths(t2, [1.2,1.1,1.1])
 
             left.add_paragraph("Antar / Pratyantar (Next 2 years)").runs[0].bold=True
             t3 = left.add_table(rows=1, cols=len(df_ap.columns)); t3.autofit=False
@@ -430,7 +480,7 @@ def main():
                 r=t3.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t3); set_table_font(t3, pt=BASE_FONT_PT); add_table_borders(t3, size=6)
-            set_col_widths(t3, [0.9,0.9,0.9,0.6])
+            set_col_widths(t3, [1.0,1.0,1.2,1.2])
 
             right = outer.rows[0].cells[1]
             kt = right.add_table(rows=2, cols=1); kt.autofit=False
@@ -449,14 +499,14 @@ def main():
 
             cell2 = kt.rows[1].cells[0]
             cell2.add_paragraph()
-            cap2 = cell2.add_paragraph("נवांश कुंडली".replace("נ","न"))  # ensure correct Devanagari
+            cap2 = cell2.add_paragraph("नवांश कुंडली")
             cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER
             _apply_hindi_caption_style(cap2, size_pt=11, underline=True, bold=True)
             p2 = cell2.add_paragraph()
             p2._p.addnext(kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=nav_lagna_sign))
 
             out = BytesIO(); doc.save(out); out.seek(0)
-            st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
+            st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope_v6_8_1.docx")
 
             lc, rc = st.columns([1.2, 0.8])
             with lc:
