@@ -94,7 +94,7 @@ def sidereal_positions(dt_utc):
 
 def ascendant_sign(jd, lat, lon, ay):
     # Tropical ASC from houses_ex, convert to sidereal via ayanamsa
-    _, ascmc, _ = swe.houses_ex(jd, lat, lon, b'P')
+    cusps, ascmc = swe.houses_ex(jd, lat, lon, b'P')
     asc_trop = ascmc[0]  # degrees
     asc_sid = (asc_trop - ay) % 360.0
     return int(asc_sid // 30) + 1, asc_sid
