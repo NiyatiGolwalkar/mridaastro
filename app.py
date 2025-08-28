@@ -23,7 +23,7 @@ from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
 from docx.shared import Inches, Mm, Pt
 
-APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
+APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.9.10)"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 
 AYANAMSHA_VAL = swe.SIDM_LAHIRI
@@ -37,6 +37,60 @@ HN = {'Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Me':'�
 
 # Compact Hindi abbreviations for planet boxes
 HN_ABBR = {'Su':'सू','Mo':'चं','Ma':'मं','Me':'बु','Ju':'गु','Ve':'शु','Sa':'श','Ra':'रा','Ke':'के'}
+
+# --------- Dignity rules ----------
+RULERSHIP = {
+    1:['Ma'], 2:['Ve'], 3:['Me'], 4:['Mo'], 5:['Su'], 6:['Me'],
+    7:['Ve'], 8:['Ma'], 9:['Ju'], 10:['Sa'], 11:['Sa'], 12:['Ju']
+}
+EXALT = { 'Su':1, 'Mo':2, 'Ma':10, 'Me':6, 'Ju':4, 'Ve':12, 'Sa':7, 'Ra':2, 'Ke':8 }
+DEBIL = { 'Su':7, 'Mo':8, 'Ma':4,  'Me':12,'Ju':10,'Ve':6,  'Sa':1, 'Ra':8, 'Ke':2 }
+COMBUST_ORB = { 'Me':12.0, 'Ve':10.0, 'Ma':17.0, 'Ju':11.0, 'Sa':15.0, 'Mo':12.0 }
+
+def _sign_from_lon(lon_sid):  # returns 1..12
+    return int(lon_sid // 30) + 1
+
+def _ang_dist(a,b):
+    d = abs(a-b) % 360.0
+    return d if d <= 180.0 else 360.0 - d
+
+def dignity_flags_for_planet(code, lon_sid, sun_lon_sid, d1_sign, d9_sign):
+    flags = {'own': False, 'exalt': False, 'debil': False, 'comb': False, 'varg': False}
+    # Own sign (skip nodes)
+    if code not in ['Ra','Ke']:
+        if code == 'Su': flags['own'] = (d1_sign == 5)
+        elif code == 'Mo': flags['own'] = (d1_sign == 4)
+        else: flags['own'] = (code in RULERSHIP.get(d1_sign, []))
+    # Exalt / Debil
+    if EXALT.get(code) == d1_sign: flags['exalt'] = True
+    if DEBIL.get(code)  == d1_sign: flags['debil'] = True
+    # Combust (skip Sun/Nodes)
+    if code not in ['Su','Ra','Ke']:
+        orb = COMBUST_ORB.get(code, 0.0)
+        if orb and _ang_dist(lon_sid, sun_lon_sid) <= orb:
+            flags['comb'] = True
+    # Vargottama (same sign in D1 and D9)
+    if d1_sign == d9_sign: flags['varg'] = True
+    return flags
+
+def build_house_planets_with_flags(sidelons, lagna_sign, use_navamsa=False, nav_lagna_sign=None):
+    # Returns {house: [{'txt': 'चं', 'flags': {...}}, ...]}
+    house_map = {i: [] for i in range(1, 13)}
+    sun_lon = sidelons['Su']
+    for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
+        lon = sidelons[code]
+        d1 = _sign_from_lon(lon)
+        d9 = navamsa_sign_from_lon_sid(lon)
+        flags = dignity_flags_for_planet(code, lon, sun_lon, d1, d9)
+        abbr = HN_ABBR.get(code, code)
+        if use_navamsa:
+            nav_sign = d9
+            h = ((nav_sign - nav_lagna_sign) % 12) + 1
+        else:
+            h = ((d1 - lagna_sign) % 12) + 1
+        house_map[h].append({'txt': abbr, 'flags': flags})
+    return house_map
+
 
 def planet_navamsa_house(lon_sid, nav_lagna_sign):
     # Return 1..12 house index in Navamsa for a planet
@@ -607,13 +661,13 @@ def main():
             cap1.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap1, size_pt=11, underline=True, bold=True)
             p1 = cell1.add_paragraph();
             # Lagna chart with planets in single box per house
-            rasi_house_planets = build_rasi_house_planets(sidelons, lagna_sign)
+            rasi_house_planets = build_house_planets_with_flags(sidelons, lagna_sign, use_navamsa=False)
             p1._p.addnext(kundali_single_box(size_pt=220, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
 
             cell2 = kt.rows[1].cells[0]; cell2.add_paragraph(); cap2 = cell2.add_paragraph("नवांश कुंडली")
             cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap2, size_pt=11, underline=True, bold=True)
             p2 = cell2.add_paragraph();
-            nav_house_planets = build_navamsa_house_planets(sidelons, nav_lagna_sign)
+            nav_house_planets = build_house_planets_with_flags(sidelons, lagna_sign=None, use_navamsa=True, nav_lagna_sign=nav_lagna_sign)
             p2._p.addnext(kundali_single_box(size_pt=220, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
 
             out = BytesIO(); doc.save(out); out.seek(0)
