@@ -246,7 +246,7 @@ def kundali_w_p_with_centroid_labels(size_pt=300, label_top="1"):
             <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
             <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
             <v:line style="position:absolute;z-index:2" from="{R},{S/2}" to="{S/2},{B}" strokecolor="black" strokeweight="1.5pt"/>
-            <v:line style="position:absolute;z-index:2" from="{S/2},{B}" to "{L},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
+            <v:line style="position:absolute;z-index:2" from="{S/2},{B}" to="{L},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
             <v:line style="position:absolute;z-index:2" from="{L},{S/2}" to="{S/2},{T}" strokecolor="black" strokeweight="1.5pt"/>
             {boxes_xml}
           </v:group>
