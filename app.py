@@ -186,10 +186,9 @@ def render_north_diamond(size_px=900, stroke=3):
     buf = BytesIO(); fig.savefig(buf, format='png', bbox_inches='tight', pad_inches=0.02)
     plt.close(fig); buf.seek(0); return buf
 
-def kundali_w_p_with_centroid_labels(size_pt=300, label_top="1"):
+def kundali_w_p_with_centroid_labels(size_pt=220, label_top="1"):
+    # size_pt reduced to 220pt (< 3.3in cell width) to avoid clipping
     S=size_pt; L,T,R,B=0,0,S,S
-    cx, cy = S/2, S/2
-    TL=(0,0); TR=(S,0); BR=(S,S); BL=(0,S)
     TM=(S/2,0); RM=(S,S/2); BM=(S/2,S); LM=(0,S/2)
     P_lt=(S/4,S/4); P_rt=(3*S/4,S/4); P_rb=(3*S/4,3*S/4); P_lb=(S/4,3*S/4); O=(S/2,S/2)
 
@@ -197,17 +196,17 @@ def kundali_w_p_with_centroid_labels(size_pt=300, label_top="1"):
 
     houses = {
         "1":  [TM, P_rt, O, P_lt],
-        "2":  [TL, TM, P_lt],
-        "3":  [TL, LM, P_lt],
+        "2":  [(0,0), TM, P_lt],
+        "3":  [(0,0), LM, P_lt],
         "4":  [LM, O, P_lt, P_lb],
-        "5":  [LM, BL, P_lb],
-        "6":  [BL, BM, P_lb],
+        "5":  [LM, (0,S), P_lb],
+        "6":  [(0,S), BM, P_lb],
         "7":  [BM, P_rb, O, P_lb],
-        "8":  [BM, BR, P_rb],
-        "9":  [RM, BR, P_rb],
+        "8":  [BM, (S,S), P_rb],
+        "9":  [RM, (S,S), P_rb],
         "10": [RM, O, P_rt, P_rb],
-        "11": [TR, RM, P_rt],
-        "12": [TM, TR, P_rt],
+        "11": [(S,0), RM, P_rt],
+        "12": [TM, (S,0), P_rt],
     }
 
     def centroid(poly):
@@ -221,7 +220,7 @@ def kundali_w_p_with_centroid_labels(size_pt=300, label_top="1"):
             xs,ys=zip(*poly); return (sum(xs)/n, sum(ys)/n)
         return (Cx/(6*A), Cy/(6*A))
 
-    w=h=22; boxes=[]
+    w=h=20; boxes=[]
     for k,poly in houses.items():
         x,y = centroid(poly); left = x - w/2; top = y - h/2
         txt = labels[k]
@@ -344,7 +343,8 @@ def main():
             title = doc.add_paragraph(f"{name or '—'} — Horoscope"); title.runs[0].font.size = Pt(BASE_FONT_PT+3); title.runs[0].bold = True
 
             outer = doc.add_table(rows=1, cols=2); outer.autofit=False
-            outer.columns[0].width = Inches(3.3); outer.columns[1].width = Inches(3.3)
+            right_width_in = 3.3
+            outer.columns[0].width = Inches(3.3); outer.columns[1].width = Inches(right_width_in)
             add_table_borders(outer, size=6)
 
             left = outer.rows[0].cells[0]
@@ -383,20 +383,16 @@ def main():
 
             right = outer.rows[0].cells[1]
 
-            # NEW: stack kundalis using a 2-row single-column table to avoid overlap
-            kt = right.add_table(rows=2, cols=1)
-            kt.autofit = False
-            kt.columns[0].width = Inches(3.3)
+            # Stack kundalis in a 2-row table
+            kt = right.add_table(rows=2, cols=1); kt.autofit=False
+            kt.columns[0].width = Inches(right_width_in)
 
             # Row 1: Lagna
             p1 = kt.rows[0].cells[0].add_paragraph()
-            p1._p.addnext(kundali_w_p_with_centroid_labels(size_pt=300, label_top="1"))
-            kt.rows[0].cells[0].add_paragraph("Lagna (Editable)").alignment = WD_ALIGN_PARAGRAPH.CENTER
-
+            p1._p.addnext(kundali_w_p_with_centroid_labels(size_pt=220, label_top="1"))
             # Row 2: Navamsa
             p2 = kt.rows[1].cells[0].add_paragraph()
-            p2._p.addnext(kundali_w_p_with_centroid_labels(size_pt=300, label_top="1"))
-            kt.rows[1].cells[0].add_paragraph("Navamsa (Editable)").alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p2._p.addnext(kundali_w_p_with_centroid_labels(size_pt=220, label_top="1"))
 
             out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
