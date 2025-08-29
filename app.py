@@ -42,7 +42,7 @@ HN_ABBR = {'Su':'सू','Mo':'चं','Ma':'मं','Me':'बु','Ju':'गु'
 SIGN_LORD = {1:'Ma',2:'Ve',3:'Me',4:'Mo',5:'Su',6:'Me',7:'Ve',8:'Ma',9:'Ju',10:'Sa',11:'Sa',12:'Ju'}
 EXALT_SIGN = {'Su':1,'Mo':2,'Ma':10,'Me':6,'Ju':4,'Ve':12,'Sa':7,'Ra':2,'Ke':8}
 DEBIL_SIGN = {'Su':7,'Mo':8,'Ma':4,'Me':12,'Ju':10,'Ve':6,'Sa':1,'Ra':8,'Ke':2}
-COMBUST_ORB = {'Mo':12.0,'Ma':17.0,'Me':14.0,'Ju':11.0,'Ve':10.0,'Sa':15.0}
+COMBUST_ORB = {'Mo':12.0,'Ma':17.0,'Me':12.0,'Ju':11.0,'Ve':10.0,'Sa':15.0}
 
 def _min_circ_angle(a, b):
     d = abs((a - b) % 360.0)
@@ -356,6 +356,13 @@ def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
         if planets:
             n=len(planets); total_w = n*p_w + (n-1)*gap_x
             start_left = x - total_w/2; top_planet = y - p_h/2 + offset_y
+            # keep inside chart bounds with margin and edge shrink
+            M = 5  # pt safety margin
+            start_left = max(M, min(start_left, S - total_w - M))
+            top_planet = max(M, min(top_planet, S - p_h - M))
+            edge_touch = (start_left <= M+0.05) or (start_left >= S - total_w - M - 0.05) or (top_planet <= M+0.05) or (top_planet >= S - p_h - M - 0.05)
+            pw = p_w - (1 if edge_touch else 0)
+            ph = p_h - (1 if edge_touch else 0)
             for idx,pl in enumerate(planets):
                 # accept str or dict
                 if isinstance(pl, dict):
@@ -366,7 +373,7 @@ def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
                     fl = {}
                 left_pl = start_left + idx*(p_w+gap_x)
                 box_xml = (
-                    f"<v:rect style=\"position:absolute;left:{left_pl}pt;top:{top_planet}pt;width:{p_w}pt;height:{p_h}pt;z-index:6\" strokecolor=\"none\">"
+                    f"<v:rect style=\"position:absolute;left:{left_pl}pt;top:{top_planet}pt;width:{pw}pt;height:{ph}pt;z-index:6\" strokecolor=\"none\">"
                     + "<v:textbox inset=\"0,0,0,0\">"
                     + "<w:txbxContent xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
                     + f"<w:p><w:pPr><w:jc w:val=\"center\"/></w:pPr><w:r><w:t>{_xml_text(label)}</w:t></w:r></w:p>"
@@ -384,15 +391,15 @@ def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
                 if selfr:
                     circle_left = left_pl + 2
                     circle_top  = top_planet + 1
-                    circle_w    = p_w - 4
-                    circle_h    = p_h - 2
+                    circle_w    = pw - 4
+                    circle_h    = ph - 2
                     oval_xml = (
                         f"<v:oval style=\"position:absolute;left:{circle_left}pt;top:{circle_top}pt;width:{circle_w}pt;height:{circle_h}pt;z-index:7\" fillcolor=\"none\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
                     )
                     planet_boxes.append(oval_xml)
                 if varg:
                     badge_w = 5; badge_h = 5
-                    badge_left = left_pl + p_w - badge_w + 0.5
+                    badge_left = left_pl + pw - badge_w + 0.5
                     badge_top  = top_planet - 2
                     badge_xml = (
                         f"<v:rect style=\"position:absolute;left:{badge_left}pt;top:{badge_top}pt;width:{badge_w}pt;height:{badge_h}pt;z-index:8\" fillcolor=\"#ffffff\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
