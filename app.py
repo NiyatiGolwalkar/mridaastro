@@ -368,26 +368,38 @@ def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
         # planet row below number
         planets = house_planets.get(int(k), [])
         if planets:
-            n=len(planets); total_w = n*p_w + (n-1)*gap_x
-            start_left = x - total_w/2; top_planet = y - p_h/2 + offset_y
-            # keep inside chart bounds with margin and edge shrink
-            M = 5  # pt safety margin
-            start_left = max(M, min(start_left, S - total_w - M))
-            top_planet = max(M, min(top_planet, S - p_h - M))
-            edge_touch = (start_left <= M+0.05) or (start_left >= S - total_w - M - 0.05) or (top_planet <= M+0.05) or (top_planet >= S - p_h - M - 0.05)
-            pw = p_w - (1 if edge_touch else 0)
-            ph = p_h - (1 if edge_touch else 0)
-            for idx,pl in enumerate(planets):
-                # accept str or dict
+            n = len(planets)
+            max_cols = 2  # wrap after this many per row
+            rows = (n + max_cols - 1) // max_cols
+            gap_y = 2
+            # compute total grid height and top start
+            total_h = rows * p_h + (rows - 1) * gap_y
+            grid_top = y - total_h / 2 + offset_y
+            for idx, pl in enumerate(planets):
+                # normalize input item
                 if isinstance(pl, dict):
                     label = str(pl.get('txt', '')).strip() or '?'
                     fl = pl.get('flags', {}) or {}
                 else:
                     label = str(pl).strip() or '?'
                     fl = {}
-                left_pl = start_left + idx*(p_w+gap_x)
+                r = idx // max_cols
+                c = idx % max_cols
+                # columns in this row (last row can be shorter)
+                cols_this = max_cols if r < rows - 1 else (n - max_cols * (rows - 1)) or max_cols
+                row_w = cols_this * p_w + (cols_this - 1) * gap_x
+                row_left = x - row_w / 2
+                top_box = grid_top + r * (p_h + gap_y) - p_h / 2
+                # keep within chart square bounds with margin and tiny shrink on edges
+                M = 5
+                row_left = max(M, min(row_left, S - row_w - M))
+                top_box  = max(M, min(top_box,  S - p_h - M))
+                edge_touch = (row_left <= M + 0.05) or (row_left >= S - row_w - M - 0.05) or (top_box <= M + 0.05) or (top_box >= S - p_h - M - 0.05)
+                pw = p_w - (1 if edge_touch else 0)
+                ph = p_h - (1 if edge_touch else 0)
+                left_pl = row_left + c * (pw + gap_x)
                 box_xml = (
-                    f"<v:rect style=\"position:absolute;left:{left_pl}pt;top:{top_planet}pt;width:{pw}pt;height:{ph}pt;z-index:6\" strokecolor=\"none\">"
+                    f"<v:rect style=\"position:absolute;left:{left_pl}pt;top:{top_box}pt;width:{pw}pt;height:{ph}pt;z-index:6\" strokecolor=\"none\">"
                     + "<v:textbox inset=\"0,0,0,0\">"
                     + "<w:txbxContent xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
                     + f"<w:p><w:pPr><w:jc w:val=\"center\"/></w:pPr><w:r><w:t>{_xml_text(label)}</w:t></w:r></w:p>"
@@ -404,7 +416,7 @@ def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
                     selfr = varg = False
                 if selfr:
                     circle_left = left_pl + 2
-                    circle_top  = top_planet + 1
+                    circle_top  = top_box + 1
                     circle_w    = pw - 4
                     circle_h    = ph - 2
                     oval_xml = (
@@ -414,12 +426,12 @@ def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
                 if varg:
                     badge_w = 5; badge_h = 5
                     badge_left = left_pl + pw - badge_w + 0.5
-                    badge_top  = top_planet - 2
+                    badge_top  = top_box - 2
                     badge_xml = (
                         f"<v:rect style=\"position:absolute;left:{badge_left}pt;top:{badge_top}pt;width:{badge_w}pt;height:{badge_h}pt;z-index:8\" fillcolor=\"#ffffff\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
                     )
                     planet_boxes.append(badge_xml)
-    boxes_xml = "\\n".join(num_boxes + planet_boxes)
+            boxes_xml = "\\n".join(num_boxes + planet_boxes)
     xml = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
