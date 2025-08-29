@@ -38,7 +38,7 @@ HN = {'Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Me':'�
 # Compact Hindi abbreviations for planet boxes
 HN_ABBR = {'Su':'सू','Mo':'चं','Ma':'मं','Me':'बु','Ju':'गु','Ve':'शु','Sa':'श','Ra':'रा','Ke':'के'}
 
-# ==== Status helpers (no API) ====
+# ==== Status helpers (Rāśi vs Navāṁśa aware) ====
 SIGN_LORD = {1:'Ma',2:'Ve',3:'Me',4:'Mo',5:'Su',6:'Me',7:'Ve',8:'Ma',9:'Ju',10:'Sa',11:'Sa',12:'Ju'}
 EXALT_SIGN = {'Su':1,'Mo':2,'Ma':10,'Me':6,'Ju':4,'Ve':12,'Sa':7,'Ra':2,'Ke':8}
 DEBIL_SIGN = {'Su':7,'Mo':8,'Ma':4,'Me':12,'Ju':10,'Ve':6,'Sa':1,'Ra':8,'Ke':2}
@@ -52,31 +52,58 @@ def _xml_text(s):
     return (str(s).replace("&","&amp;").replace("<","&lt;").replace(">","&gt;"))
 
 def planet_rasi_sign(lon_sid):
-    return int(lon_sid // 30) + 1
+    return int(lon_sid // 30) + 1  # 1..12
 
-def compute_statuses(sidelons):
-    flags = {}
+def compute_statuses_all(sidelons):
+    """Return per-planet dict containing both rasi-based and nav-based flags."""
+    out = {}
     lon_su = sidelons.get('Su', 0.0)
     for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
         lon = sidelons[code]
         rasi = planet_rasi_sign(lon)
         nav  = navamsa_sign_from_lon_sid(lon)
-        exalted = (EXALT_SIGN.get(code) == rasi)
-        debilitated = (DEBIL_SIGN.get(code) == rasi)
-        selfruled = (SIGN_LORD.get(rasi) == code)
-        vargottama = (rasi == nav)
+        varg = (rasi == nav)
         combust = False
         if code in COMBUST_ORB and code != 'Su':
             combust = (_min_circ_angle(lon, lon_su) <= COMBUST_ORB[code])
-        flags[code] = {"rasi": rasi, "nav": nav, "exalted": exalted, "debilitated": debilitated,
-                       "self": selfruled, "vargottama": vargottama, "combust": combust}
-    return flags
+        out[code] = {
+            'rasi': rasi,
+            'nav': nav,
+            'vargottama': varg,
+            'combust': combust,
+            'self_rasi': (SIGN_LORD.get(rasi) == code),
+            'self_nav':  (SIGN_LORD.get(nav)  == code),
+            'exalt_rasi': (EXALT_SIGN.get(code) == rasi),
+            'exalt_nav':  (EXALT_SIGN.get(code) == nav),
+            'debil_rasi': (DEBIL_SIGN.get(code) == rasi),
+            'debil_nav':  (DEBIL_SIGN.get(code) == nav),
+        }
+    return out
 
-def fmt_planet_label(code, fl):
+def _make_flags(view, st):
+    """Reduce the big dict to the fields used by the renderer for a given chart view."""
+    if view == 'nav':
+        return {
+            'self': st['self_nav'],
+            'exalted': st['exalt_nav'],
+            'debilitated': st['debil_nav'],
+            'vargottama': st['vargottama'],
+            'combust': st['combust'],
+        }
+    # default: rasi
+    return {
+        'self': st['self_rasi'],
+        'exalted': st['exalt_rasi'],
+        'debilitated': st['debil_rasi'],
+        'vargottama': st['vargottama'],
+        'combust': st['combust'],
+    }
+
+def fmt_planet_label(code, flags):
     base = HN_ABBR.get(code, code)
-    if fl.get("exalted"): base += "↑"
-    if fl.get("debilitated"): base += "↓"
-    if fl.get("combust"): base += "^"
+    if flags.get('exalted'): base += '↑'
+    if flags.get('debilitated'): base += '↓'
+    if flags.get('combust'): base += '^'
     return base
 
 
@@ -97,22 +124,24 @@ def build_navamsa_house_planets(sidelons, nav_lagna_sign):
 
 def build_rasi_house_planets_marked(sidelons, lagna_sign):
     house_map = {i: [] for i in range(1, 13)}
-    flags = compute_statuses(sidelons)
+    stats = compute_statuses_all(sidelons)
     for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
         sign = planet_rasi_sign(sidelons[code])
         h = ((sign - lagna_sign) % 12) + 1
-        label = fmt_planet_label(code, flags[code])
-        house_map[h].append({"txt": label, "flags": flags[code]})
+        fl = _make_flags('rasi', stats[code])
+        label = fmt_planet_label(code, fl)
+        house_map[h].append({'txt': label, 'flags': fl})
     return house_map
 
 def build_navamsa_house_planets_marked(sidelons, nav_lagna_sign):
     house_map = {i: [] for i in range(1, 13)}
-    flags = compute_statuses(sidelons)
+    stats = compute_statuses_all(sidelons)
     for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
         nav_sign = navamsa_sign_from_lon_sid(sidelons[code])
         h = ((nav_sign - nav_lagna_sign) % 12) + 1
-        label = fmt_planet_label(code, flags[code])
-        house_map[h].append({"txt": label, "flags": flags[code]})
+        fl = _make_flags('nav', stats[code])   # nav-based self/exalt/debil
+        label = fmt_planet_label(code, fl)
+        house_map[h].append({'txt': label, 'flags': fl})
     return house_map
 
 
