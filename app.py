@@ -686,7 +686,7 @@ def main():
 
             df_md = pd.DataFrame([
                 {"ग्रह": HN[s["planet"]],
-                 "प्रारंभ तिथि": _utc_to_local(s["start"], tzname, tz_hours, used_manual).strftime("%d-%m-%Y"),
+                 "समाप्ति तिथि": _utc_to_local(s["end"], tzname, tz_hours, used_manual).strftime("%d-%m-%Y"),
                  "आयु (वर्ष)": age_years(dt_local, s["end"])}
                 for s in md_segments_utc
             ])
@@ -721,16 +721,30 @@ def main():
             tblPr.append(tblBorders)
 
             left = outer.rows[0].cells[0]
-            p = left.add_paragraph("Personal Details"); p.runs[0].bold=True
-            left.add_paragraph(f"Name: {name}")
-            left.add_paragraph(f"DOB: {dob}  |  TOB: {tob}")
-            left.add_paragraph(f"Place: {disp}")
+            # Personal Details styled: bold section, underlined labels, larger font
+            p = left.add_paragraph('Personal Details'); p.runs[0].bold = True; p.runs[0].font.size = Pt(BASE_FONT_PT+4)
+            # Name
+            pname = left.add_paragraph();
+            r1 = pname.add_run('Name: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r2 = pname.add_run(str(name)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
+            # DOB | TOB
+            pdob = left.add_paragraph();
+            r1 = pdob.add_run('DOB: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r2 = pdob.add_run(str(dob)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
+            r3 = pdob.add_run('  |  TOB: '); r3.bold = True; r3.font.size = Pt(BASE_FONT_PT+3)
+            r4 = pdob.add_run(str(tob)); r4.bold = True; r4.font.size = Pt(BASE_FONT_PT+3)
+            # Place
+            pplace = left.add_paragraph();
+            r1 = pplace.add_run('Place: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r2 = pplace.add_run(str(disp)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
+            # Time Zone
+            ptz = left.add_paragraph();
+            r1 = ptz.add_run('Time Zone: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             if used_manual:
-                left.add_paragraph(f"Time Zone: {tzname}")
+                r2 = ptz.add_run(str(tzname)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
             else:
-                left.add_paragraph(f"Time Zone: {tzname} (UTC{tz_hours:+.2f})")
-
-            # ---- Hindi headings ----
+                r2 = ptz.add_run(f'{tzname} (UTC{tz_hours:+.2f})'); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
+                        # ---- Hindi headings ----
             h1 = left.add_paragraph("ग्रह स्थिति"); _apply_hindi_caption_style(h1, size_pt=11, underline=True, bold=True)
             t1 = left.add_table(rows=1, cols=len(df_positions.columns)); t1.autofit=False
             for i,c in enumerate(df_positions.columns): t1.rows[0].cells[i].text=c
@@ -739,6 +753,10 @@ def main():
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT); add_table_borders(t1, size=6)
             set_col_widths(t1, [0.7,0.5,0.9,0.8,1.05])
+            # Left align ONLY the header cell of the last column (उप‑नक्षत्र / Sublord)
+            for p in t1.rows[0].cells[-1].paragraphs:
+                p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+
 
             h2 = left.add_paragraph("विंशोत्तरी महादशा"); _apply_hindi_caption_style(h2, size_pt=11, underline=True, bold=True)
             t2 = left.add_table(rows=1, cols=len(df_md.columns)); t2.autofit=False
