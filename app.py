@@ -62,7 +62,7 @@ def _planet_text(p):
     if combust and not txt.endswith("^"): txt += "^"
     return txt
 
-def _planet_self_and_varg(p):
+def _self_and_varg_flags(p):
     if isinstance(p, dict):
         flags = p.get("flags", {}) or {}
         if not flags:
@@ -363,16 +363,14 @@ def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
           </v:textbox>
         </v:rect>
         ''')
-        
-# planet row below number
-
+        # planet row below number
         planets = house_planets.get(int(k), [])
         if planets:
             n=len(planets); total_w = n*p_w + (n-1)*gap_x
             start_left = x - total_w/2; top_planet = y - p_h/2 + offset_y
             for idx,pl in enumerate(planets):
                 label = _planet_text(pl)
-                selfr, vargot = _planet_self_and_varg(pl)
+                selfr, vargot = _self_and_varg_flags(pl)
                 left_pl = start_left + idx*(p_w+gap_x)
                 planet_boxes.append(f'''
                 <v:rect style="position:absolute;left:{left_pl}pt;top:{top_planet}pt;width:{p_w}pt;height:{p_h}pt;z-index:6" strokecolor="none">
@@ -398,6 +396,7 @@ def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
                     planet_boxes.append(f'''
                     <v:rect style="position:absolute;left:{badge_left}pt;top:{badge_top}pt;width:{badge_w}pt;height:{badge_h}pt;z-index:8" fillcolor="#ffffff" strokecolor="black" strokeweight="0.75pt"/>
                     ''')
+
     boxes_xml = "\\n".join(num_boxes + planet_boxes)
     xml = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
@@ -459,7 +458,7 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
         num = labels[k]
         pls = house_planets.get(int(k), [])
         if pls:
-            planets_text = " ".join(pls)
+            planets_text = " ".join(_planet_text(x) for x in pls)
             content = f'<w:r><w:t>{num}</w:t></w:r><w:r/><w:br/><w:r><w:t>{planets_text}</w:t></w:r>'
         else:
             content = f'<w:r><w:t>{num}</w:t></w:r>'
