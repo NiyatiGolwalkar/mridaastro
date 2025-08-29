@@ -712,46 +712,56 @@ def main():
             style._element.rPr.rFonts.set(qn('w:eastAsia'), HINDI_FONT); style._element.rPr.rFonts.set(qn('w:cs'), HINDI_FONT)
 
             
-            # ===== Report Header Block =====
-            # Brand line
-            hdr1 = doc.add_paragraph()
-            hdr1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            r = hdr1.add_run("MRIDAASTRO")
-            r.font.bold = True
-            r.font.small_caps = True
-            r.font.size = Pt(20)  # 18–22 pt
+            
+            # ===== Report Header Block (safe) =====
+            try:
+                # local imports used by this header
+                from docx.enum.text import WD_ALIGN_PARAGRAPH
+                from docx.shared import Pt
+                from docx.oxml import OxmlElement
+                from docx.oxml.ns import qn
 
-            # Tagline with optional thin divider below
-            hdr2 = doc.add_paragraph()
-            hdr2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            r2 = hdr2.add_run("In the light of the divine, let your soul journey shine.")
-            r2.italic = True
-            r2.font.size = Pt(11.5)  # 11–12 pt
+                # Brand line
+                hdr1 = doc.add_paragraph()
+                hdr1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r = hdr1.add_run("MRIDAASTRO")
+                r.font.bold = True
+                r.font.small_caps = True
+                r.font.size = Pt(20)  # 18–22 pt
 
-            # add a thin top border divider under tagline (classy)
-            from docx.oxml import OxmlElement
-            from docx.oxml.ns import qn
-            pPr = hdr2._p.get_or_add_pPr()
-            pBdr = OxmlElement('w:pBdr')
-            top = OxmlElement('w:top')
-            top.set(qn('w:val'), 'single'); top.set(qn('w:sz'), '6'); top.set(qn('w:space'), '4'); top.set(qn('w:color'), 'auto')
-            pBdr.append(top); pPr.append(pBdr)
+                # Tagline
+                hdr2 = doc.add_paragraph()
+                hdr2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r2 = hdr2.add_run("In the light of the divine, let your soul journey shine.")
+                r2.italic = True
+                r2.font.size = Pt(11.5)  # 11–12 pt
 
-            # Title line
-            hdr3 = doc.add_paragraph()
-            hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI)")
-            r3.font.bold = True
-            r3.font.size = Pt(15)  # 14–16 pt
+                # thin divider under tagline
+                pPr = hdr2._p.get_or_add_pPr()
+                pBdr = OxmlElement('w:pBdr')
+                top = OxmlElement('w:top')
+                top.set(qn('w:val'), 'single'); top.set(qn('w:sz'), '6'); top.set(qn('w:space'), '4'); top.set(qn('w:color'), 'auto')
+                pBdr.append(top); pPr.append(pBdr)
 
-            # Prepared by line with spacing
-            hdr4 = doc.add_paragraph()
-            hdr4.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            r4 = hdr4.add_run("Prepared by: Niyati Golwalkar — Astrologer • Sound & Mantra Healer  Phone: 9302413816  |  Electronic City Phase 1, Bangalore, India")
-            r4.font.size = Pt(11.5)  # 11–12 pt
-            pf = hdr4.paragraph_format
-            pf.space_before = Pt(6); pf.space_after = Pt(6)
-            # ===== End Header Block =====
+                # Title
+                hdr3 = doc.add_paragraph()
+                hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI)")
+                r3.font.bold = True
+                r3.font.size = Pt(15)  # 14–16 pt
+
+                # Prepared by
+                hdr4 = doc.add_paragraph()
+                hdr4.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r4 = hdr4.add_run("Prepared by: Niyati Golwalkar — Astrologer • Sound & Mantra Healer  Phone: 9302413816  |  Electronic City Phase 1, Bangalore, India")
+                r4.font.size = Pt(11.5)  # 11–12 pt
+                pf = hdr4.paragraph_format
+                pf.space_before = Pt(6); pf.space_after = Pt(6)
+            except Exception as _e:
+                # Non-fatal: continue even if header styling fails
+                pass
+            # ===== End Header Block (safe) =====
+
 
 outer = doc.add_table(rows=1, cols=2); outer.autofit=False
             right_width_in = 3.3; outer.columns[0].width = Inches(3.3); outer.columns[1].width = Inches(right_width_in)
