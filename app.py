@@ -763,7 +763,7 @@ def main():
             # ===== End Header Block (safe) =====
 
 
-outer = doc.add_table(rows=1, cols=2); outer.autofit=False
+            outer = doc.add_table(rows=1, cols=2); outer.autofit=False
             right_width_in = 3.3; outer.columns[0].width = Inches(3.3); outer.columns[1].width = Inches(right_width_in)
             tbl = outer._tbl; tblPr = tbl.tblPr; tblBorders = OxmlElement('w:tblBorders')
             for edge in ('top','left','bottom','right','insideH','insideV'):
