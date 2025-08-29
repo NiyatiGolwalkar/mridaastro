@@ -399,7 +399,9 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
     for k,poly in houses.items():
         bbox = _bbox_of_poly(poly)
         # house number box
-        x,y = centroid(poly); left = x - num_w/2; top = y - num_h/2; txt = labels[k]
+        x,y = centroid(poly); 
+        if k in ("11","12"): x -= 2.5
+        left = x - num_w/2; top = y - num_h/2; txt = labels[k]
         left, top = _clamp_in_bbox(left, top, num_w, num_h, bbox, pad=2)
 
         nl, nt = _nudge_number_box(left, top, num_w, num_h, S, occupied_rects)
