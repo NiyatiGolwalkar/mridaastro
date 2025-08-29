@@ -363,8 +363,9 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
     for k,poly in houses.items():
         # house number box
         x,y = centroid(poly); left = x - num_w/2; top = y - num_h/2; txt = labels[k]
+
         num_boxes.append(f'''
-        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:30" fillcolor="#ffffff" strokecolor="none">
+        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:40" fillcolor="#ffffff" strokecolor="black" strokeweight="0.5pt">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
@@ -372,6 +373,7 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
           </v:textbox>
         </v:rect>
         ''')
+)
         # planet row below number
         planets = house_planets.get(int(k), [])
         if planets:
@@ -822,10 +824,12 @@ def main():
             set_col_widths(t3, [0.85,0.9,1.05,0.7])
 
             right = outer.rows[0].cells[1]
-                        kt = right.add_table(rows=2, cols=1)
+            kt = right.add_table(rows=2, cols=1)
             right.vertical_alignment = WD_ALIGN_VERTICAL.TOP
-; kt.autofit=False; kt.columns[0].width = Inches(right_width_in)
-            for row in kt.rows: row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY; row.height = Pt(295)
+            kt.autofit = False
+            kt.columns[0].width = Inches(right_width_in)
+            for row in kt.rows: row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY; row.height = Pt(288)
+            
 
             cell1 = kt.rows[0].cells[0]; cap1 = cell1.add_paragraph("लग्न कुंडली")
             cap1.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap1, size_pt=11, underline=True, bold=True); cap1.paragraph_format.space_before = Pt(0); cap1.paragraph_format.space_after = Pt(1)
