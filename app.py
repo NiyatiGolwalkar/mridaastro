@@ -24,25 +24,58 @@ from docx.oxml.ns import qn
 from docx.shared import Inches, Mm, Pt
 
 
-def _has_flag(flags, *names):
-    if not flags:
-        return False
-    for n in names:
-        if n in flags and bool(flags.get(n)):
-            return True
-    status = flags.get("status") if isinstance(flags, dict) else None
-    if isinstance(status, str):
-        s = status.lower()
-        for n in names:
-            if n in s:
-                return True
-    if isinstance(status, (list, tuple, set)):
-        lower = {str(x).lower() for x in status}
-        for n in names:
-            if n in lower:
-                return True
+
+def _truthy_flag(val):
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, (int, float)):
+        return val != 0
+    if isinstance(val, str):
+        v = val.strip().lower()
+        return v in {"1", "true", "yes", "y", "t"}
     return False
 
+def _has_flag(flags, *names):
+    """
+    Strictly check boolean-like flags.
+    DO NOT treat presence of e.g. "uccha": "Taurus" as exalted.
+    """
+    if not isinstance(flags, dict) or not flags:
+        return False
+
+    # 1) Explicit boolean-ish keys
+    for n in names:
+        if n in flags and _truthy_flag(flags.get(n)):
+            return True
+        prefixed = f"is_{n}"
+        if prefixed in flags and _truthy_flag(flags.get(prefixed)):
+            return True
+
+    # 2) Packed 'status' (string or list). We only search for tokens, not substrings of unrelated words.
+    status = flags.get("status")
+    if isinstance(status, str):
+        tokens = {tok.strip().lower() for tok in re.split(r"[,\s/|]+", status) if tok.strip()}
+        norm = set()
+        for tok in tokens:
+            if tok in {"uccha", "uchcha", "uchh", "uch", "exalted", "exalt"}:
+                norm.add("exalted")
+            elif tok in {"neecha", "neech", "debilitated", "debil"}:
+                norm.add("debilitated")
+            elif tok in {"svagrahi", "svagrihi", "sva", "swa", "own", "self", "own_sign", "ownhouse"}:
+                norm.add("self")
+            elif tok in {"vargottama", "varg", "vg"}:
+                norm.add("vargottama")
+            elif tok in {"combust", "moudhya", "astha", "ast", "cb"}:
+                norm.add("combust")
+            else:
+                norm.add(tok)
+        return any(n in norm for n in names)
+
+    if isinstance(status, (list, tuple, set)):
+        lowered = {str(x).strip().lower() for x in status}
+        return any(n in lowered for n in names)
+
+    return False
 def _planet_text(p):
     if isinstance(p, str):
         base = p; flags = {}
