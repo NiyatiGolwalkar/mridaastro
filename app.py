@@ -589,9 +589,10 @@ def set_col_widths(table, widths_inch):
             row.cells[i].width = Inches(w)
 
 def sanitize_filename(name: str) -> str:
-    cleaned = "".join(ch for ch in (name or "Horoscope") if ch.isalnum() or ch in "_- ")
-    cleaned = cleaned.strip().replace(" ", "_")
-    return cleaned or "Horoscope"
+    # Keep spaces; strip leading/trailing; allow letters/digits/space/_/- only
+    raw = (name or 'Horoscope').strip()
+    cleaned = ''.join(ch for ch in raw if ch.isalnum() or ch in ' _-')
+    return cleaned or 'Horoscope'
 
 def _utc_to_local(dt_utc, tzname, tz_hours, used_manual):
     if used_manual: return dt_utc + datetime.timedelta(hours=tz_hours)
@@ -722,7 +723,7 @@ def main():
                 r = hdr1.add_run("MRIDAASTRO")
                 r.font.bold = True
                 r.font.small_caps = True
-                r.font.size = Pt(18)  # 18–22 pt
+                r.font.size = Pt(16)  # 18–22 pt
 
                 # Tagline
                 hdr2 = doc.add_paragraph()
