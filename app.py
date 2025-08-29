@@ -373,7 +373,6 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
           </v:textbox>
         </v:rect>
         ''')
-)
         # planet row below number
         planets = house_planets.get(int(k), [])
         if planets:
