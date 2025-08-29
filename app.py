@@ -24,38 +24,54 @@ from docx.oxml.ns import qn
 from docx.shared import Inches, Mm, Pt
 
 
-def _planet_label(p):
-    """
-    Normalize a planet entry to a short text with status marks.
+def _has_flag(flags, *names):
+    if not flags:
+        return False
+    for n in names:
+        if n in flags and bool(flags.get(n)):
+            return True
+    status = flags.get("status") if isinstance(flags, dict) else None
+    if isinstance(status, str):
+        s = status.lower()
+        for n in names:
+            if n in s:
+                return True
+    if isinstance(status, (list, tuple, set)):
+        lower = {str(x).lower() for x in status}
+        for n in names:
+            if n in lower:
+                return True
+    return False
 
-    Supported flags in p.get("flags", {}):
-      - combust (अस्त)       -> caret ^ appended
-      - exalted              -> ↑
-      - debilitated          -> ↓
-      - self (self-ruling)   -> wrap in circles: ◯txt◯
-      - vargottama           -> wrap in squares: ▢txt▢
-    """
+def _planet_text(p):
     if isinstance(p, str):
-        return p
-
-    if isinstance(p, dict):
-        txt = p.get("txt", "")
+        base = p; flags = {}
+    elif isinstance(p, dict):
+        base = p.get("txt", "")
         flags = p.get("flags", {}) or {}
+        if not flags:
+            flags = {k:v for k,v in p.items() if k != "txt"}
+    else:
+        base = str(p); flags = {}
+    exalted = _has_flag(flags, "exalted", "uccha", "exalt")
+    debilitated = _has_flag(flags, "debilitated", "neecha", "debil")
+    combust = _has_flag(flags, "combust", "cb", "astha", "ast", "moudhya")
+    txt = base
+    if exalted and not txt.endswith("↑"): txt += "↑"
+    if debilitated and not txt.endswith("↓"): txt += "↓"
+    if combust and not txt.endswith("^"): txt += "^"
+    return txt
 
-        if flags.get("exalted") and not txt.endswith("↑"):
-            txt += "↑"
-        if flags.get("debilitated") and not txt.endswith("↓"):
-            txt += "↓"
-        if flags.get("combust") and not txt.endswith("^"):
-            txt += "^"
-
-        if flags.get("self") and not (txt.startswith("◯") and txt.endswith("◯")):
-            txt = f"◯{txt}◯"
-        if flags.get("vargottama") and not (txt.startswith("▢") and txt.endswith("▢")):
-            txt = f"▢{txt}▢"
-        return txt
-
-    return str(p)
+def _planet_self_and_varg(p):
+    if isinstance(p, dict):
+        flags = p.get("flags", {}) or {}
+        if not flags:
+            flags = {k:v for k,v in p.items() if k != "txt"}
+    else:
+        flags = {}
+    selfr = _has_flag(flags, "self", "own", "svagrahi", "self_ruling", "sr", "sva", "own_sign")
+    vargot = _has_flag(flags, "vargottama", "vg", "varg")
+    return selfr, vargot
 
 
 
@@ -296,15 +312,10 @@ def render_north_diamond(size_px=800, stroke=3):
     fig.savefig(buf, format='png', bbox_inches='tight', pad_inches=0)  # zero padding
     plt.close(fig); buf.seek(0); return buf
 
-
 def rotated_house_labels(lagna_sign):
-    # Returns labels 1..12 rotated so that '1' appears at lagna_sign
     order = [str(((lagna_sign - 1 + i) % 12) + 1) for i in range(12)]
-    return {
-        "1": order[0], "2": order[1], "3": order[2], "4": order[3],
-        "5": order[4], "6": order[5], "7": order[6], "8": order[7],
-        "9": order[8], "10": order[9], "11": order[10], "12": order[11]
-    }
+    return {"1":order[0],"2":order[1],"3":order[2],"4":order[3],"5":order[4],"6":order[5],"7":order[6],"8":order[7],"9":order[8],"10":order[9],"11":order[10],"12":order[11]}
+
 
 def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
     # Like kundali_w_p_with_centroid_labels but adds small side-by-side planet boxes below the number
@@ -352,23 +363,41 @@ def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
           </v:textbox>
         </v:rect>
         ''')
-        # planet row below number
+        
+# planet row below number
+
         planets = house_planets.get(int(k), [])
         if planets:
             n=len(planets); total_w = n*p_w + (n-1)*gap_x
             start_left = x - total_w/2; top_planet = y - p_h/2 + offset_y
-            for idx, pl in enumerate(planets):
-                label = _planet_label(pl)
+            for idx,pl in enumerate(planets):
+                label = _planet_text(pl)
+                selfr, vargot = _planet_self_and_varg(pl)
                 left_pl = start_left + idx*(p_w+gap_x)
                 planet_boxes.append(f'''
                 <v:rect style="position:absolute;left:{left_pl}pt;top:{top_planet}pt;width:{p_w}pt;height:{p_h}pt;z-index:6" strokecolor="none">
                   <v:textbox inset="0,0,0,0">
                     <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-                      <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{pl}</w:t></w:r></w:p>
+                      <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{label}</w:t></w:r></w:p>
                     </w:txbxContent>
                   </v:textbox>
                 </v:rect>
                 ''')
+                if selfr:
+                    circle_left = left_pl + 2
+                    circle_top = top_planet + 1
+                    circle_w = p_w - 4
+                    circle_h = p_h - 2
+                    planet_boxes.append(f'''
+                    <v:oval style="position:absolute;left:{circle_left}pt;top:{circle_top}pt;width:{circle_w}pt;height:{circle_h}pt;z-index:7" fillcolor="none" strokecolor="black" strokeweight="0.75pt"/>
+                    ''')
+                if vargot:
+                    badge_w = 5; badge_h = 5
+                    badge_left = left_pl + p_w - badge_w + 0.5
+                    badge_top = top_planet - 2
+                    planet_boxes.append(f'''
+                    <v:rect style="position:absolute;left:{badge_left}pt;top:{badge_top}pt;width:{badge_w}pt;height:{badge_h}pt;z-index:8" fillcolor="#ffffff" strokecolor="black" strokeweight="0.75pt"/>
+                    ''')
     boxes_xml = "\\n".join(num_boxes + planet_boxes)
     xml = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
@@ -430,7 +459,7 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
         num = labels[k]
         pls = house_planets.get(int(k), [])
         if pls:
-            planets_text = " ".join(_planet_label(x) for x in pls)
+            planets_text = " ".join(pls)
             content = f'<w:r><w:t>{num}</w:t></w:r><w:r/><w:br/><w:r><w:t>{planets_text}</w:t></w:r>'
         else:
             content = f'<w:r><w:t>{num}</w:t></w:r>'
