@@ -96,7 +96,7 @@ def _make_flags(view, st):
             'exalted': st['exalt_nav'],
             'debilitated': st['debil_nav'],
             'vargottama': st['vargottama'],
-            'combust': st['combust'],
+            'combust': False,
         }
     # default: rasi
     return {
@@ -144,10 +144,16 @@ def build_rasi_house_planets_marked(sidelons, lagna_sign):
 def build_navamsa_house_planets_marked(sidelons, nav_lagna_sign):
     house_map = {i: [] for i in range(1, 13)}
     stats = compute_statuses_all(sidelons)
+    sun_nav = stats['Su']['nav']  # Sun's Navāṁśa sign
     for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
         nav_sign = navamsa_sign_from_lon_sid(sidelons[code])
         h = ((nav_sign - nav_lagna_sign) % 12) + 1
         fl = _make_flags('nav', stats[code])   # nav-based self/exalt/debil
+        # Navāṁśa combust rule: planet combust iff shares Nav sign with Sun
+        if code not in ('Su','Ra','Ke'):
+            fl['combust'] = (nav_sign == sun_nav)
+        else:
+            fl['combust'] = False
         label = fmt_planet_label(code, fl)
         house_map[h].append({'txt': label, 'flags': fl})
     return house_map
