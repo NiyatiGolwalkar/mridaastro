@@ -41,6 +41,17 @@ import streamlit as st
 import swisseph as swe
 from timezonefinder import TimezoneFinder
 
+
+def _bbox_of_poly(poly):
+    xs, ys = zip(*poly)
+    return {'left': min(xs), 'top': min(ys), 'right': max(xs), 'bottom': max(ys)}
+
+def _clamp_in_bbox(left, top, w, h, bbox, pad):
+    lmin = bbox['left'] + pad
+    tmin = bbox['top'] + pad
+    lmax = bbox['right'] - w - pad
+    tmax = bbox['bottom'] - h - pad
+    return max(lmin, min(left, lmax)), max(tmin, min(top, tmax))
 from docx import Document
 from docx.enum.table import WD_ROW_HEIGHT_RULE, WD_ALIGN_VERTICAL
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -384,15 +395,17 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
             xs,ys=zip(*poly); return (sum(xs)/n, sum(ys)/n)
         return (Cx/(6*A), Cy/(6*A))
     num_boxes=[]; planet_boxes=[]; occupied_rects=[]
-    num_w=num_h=14; p_w,p_h=16,14; gap_x=4; offset_y=12
+    num_w=num_h=12; p_w,p_h=16,14; gap_x=4; offset_y=12
     for k,poly in houses.items():
+        bbox = _bbox_of_poly(poly)
         # house number box
         x,y = centroid(poly); left = x - num_w/2; top = y - num_h/2; txt = labels[k]
+        left, top = _clamp_in_bbox(left, top, num_w, num_h, bbox, pad=2)
 
         nl, nt = _nudge_number_box(left, top, num_w, num_h, S, occupied_rects)
         left, top = nl, nt
         num_boxes.append(f'''
-        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:60" fillcolor="#ffffff" strokecolor="none" strokeweight="0pt">
+        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:80" fillcolor="#ffffff" strokecolor="none" strokeweight="0pt">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
