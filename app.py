@@ -24,58 +24,48 @@ from docx.oxml.ns import qn
 from docx.shared import Inches, Mm, Pt
 
 
-
-def _truthy_flag(val):
-    if isinstance(val, bool):
-        return val
-    if isinstance(val, (int, float)):
-        return val != 0
-    if isinstance(val, str):
-        v = val.strip().lower()
-        return v in {"1", "true", "yes", "y", "t"}
+def _bool_like(x):
+    if isinstance(x, bool): return x
+    if isinstance(x, (int, float)): return x != 0
+    if isinstance(x, str):
+        v = x.strip().lower()
+        return v in {"1","true","yes","y","t"}
     return False
 
-def _has_flag(flags, *names):
-    """
-    Strictly check boolean-like flags.
-    DO NOT treat presence of e.g. "uccha": "Taurus" as exalted.
-    """
-    if not isinstance(flags, dict) or not flags:
+def _flag_true(flags, key_aliases, tokens_en=(), tokens_hi=()):
+    if not isinstance(flags, dict): 
         return False
-
-    # 1) Explicit boolean-ish keys
-    for n in names:
-        if n in flags and _truthy_flag(flags.get(n)):
-            return True
-        prefixed = f"is_{n}"
-        if prefixed in flags and _truthy_flag(flags.get(prefixed)):
-            return True
-
-    # 2) Packed 'status' (string or list). We only search for tokens, not substrings of unrelated words.
-    status = flags.get("status")
-    if isinstance(status, str):
-        tokens = {tok.strip().lower() for tok in re.split(r"[,\s/|]+", status) if tok.strip()}
-        norm = set()
-        for tok in tokens:
-            if tok in {"uccha", "uchcha", "uchh", "uch", "exalted", "exalt"}:
-                norm.add("exalted")
-            elif tok in {"neecha", "neech", "debilitated", "debil"}:
-                norm.add("debilitated")
-            elif tok in {"svagrahi", "svagrihi", "sva", "swa", "own", "self", "own_sign", "ownhouse"}:
-                norm.add("self")
-            elif tok in {"vargottama", "varg", "vg"}:
-                norm.add("vargottama")
-            elif tok in {"combust", "moudhya", "astha", "ast", "cb"}:
-                norm.add("combust")
-            else:
-                norm.add(tok)
-        return any(n in norm for n in names)
-
-    if isinstance(status, (list, tuple, set)):
-        lowered = {str(x).strip().lower() for x in status}
-        return any(n in lowered for n in names)
-
+    for k in key_aliases:
+        if k in flags and _bool_like(flags[k]): return True
+        kk = f"is_{k}"
+        if kk in flags and _bool_like(flags[kk]): return True
+    status_fields = []
+    for fname in ("status","state","tag","tags"):
+        val = flags.get(fname)
+        if not val: 
+            continue
+        if isinstance(val, (list, tuple, set)):
+            status_fields.extend(str(x) for x in val)
+        else:
+            status_fields.append(str(val))
+    if status_fields:
+        joined = " ".join(status_fields)
+        lower = joined.lower()
+        if any(tok in lower for tok in tokens_en): return True
+        if any(tok in joined for tok in tokens_hi): return True
     return False
+
+def _has_flag(flags, name):
+    aliases = {
+        "exalted": (("exalted","uccha","uchcha","uchh","exalt"), ("उच्च","ऊच्च","उच")),
+        "debilitated": (("debilitated","debil","neecha","neech"), ("नीच","नीचा","निच")),
+        "combust": (("combust","moudhya","maudhy","astha","ast","cb"), ("अस्त","मौढ्य","मूढ","दग्ध")),
+        "self": (("self","own","own_sign","svagrahi","sva","swa","ownhouse","own sign"), ("स्व","स्वराशी","स्वगृही","स्वगृह","स्वक्षेत्र")),
+        "vargottama": (("vargottama","varg","vg"), ("वर्गोत्तम","वर्गोत्त"))
+    }
+    en, hi = aliases.get(name, ((),()))
+    return _flag_true(flags, en, en, hi)
+
 def _planet_text(p):
     if isinstance(p, str):
         base = p; flags = {}
@@ -86,9 +76,9 @@ def _planet_text(p):
             flags = {k:v for k,v in p.items() if k != "txt"}
     else:
         base = str(p); flags = {}
-    exalted = _has_flag(flags, "exalted", "uccha", "exalt")
-    debilitated = _has_flag(flags, "debilitated", "neecha", "debil")
-    combust = _has_flag(flags, "combust", "cb", "astha", "ast", "moudhya")
+    exalted = _has_flag(flags, "exalted")
+    debilitated = _has_flag(flags, "debilitated")
+    combust = _has_flag(flags, "combust")
     txt = base
     if exalted and not txt.endswith("↑"): txt += "↑"
     if debilitated and not txt.endswith("↓"): txt += "↓"
@@ -102,9 +92,7 @@ def _self_and_varg_flags(p):
             flags = {k:v for k,v in p.items() if k != "txt"}
     else:
         flags = {}
-    selfr = _has_flag(flags, "self", "own", "svagrahi", "self_ruling", "sr", "sva", "own_sign")
-    vargot = _has_flag(flags, "vargottama", "vg", "varg")
-    return selfr, vargot
+    return _has_flag(flags, "self"), _has_flag(flags, "vargottama")
 
 
 
@@ -345,10 +333,14 @@ def render_north_diamond(size_px=800, stroke=3):
     fig.savefig(buf, format='png', bbox_inches='tight', pad_inches=0)  # zero padding
     plt.close(fig); buf.seek(0); return buf
 
+
 def rotated_house_labels(lagna_sign):
     order = [str(((lagna_sign - 1 + i) % 12) + 1) for i in range(12)]
-    return {"1":order[0],"2":order[1],"3":order[2],"4":order[3],"5":order[4],"6":order[5],"7":order[6],"8":order[7],"9":order[8],"10":order[9],"11":order[10],"12":order[11]}
-
+    return {
+        "1": order[0], "2": order[1], "3": order[2], "4": order[3],
+        "5": order[4], "6": order[5], "7": order[6], "8": order[7],
+        "9": order[8], "10": order[9], "11": order[10], "12": order[11]
+    }
 
 def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
     # Like kundali_w_p_with_centroid_labels but adds small side-by-side planet boxes below the number
@@ -429,7 +421,6 @@ def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
                     planet_boxes.append(f'''
                     <v:rect style="position:absolute;left:{badge_left}pt;top:{badge_top}pt;width:{badge_w}pt;height:{badge_h}pt;z-index:8" fillcolor="#ffffff" strokecolor="black" strokeweight="0.75pt"/>
                     ''')
-
     boxes_xml = "\\n".join(num_boxes + planet_boxes)
     xml = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
