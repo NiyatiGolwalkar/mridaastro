@@ -969,10 +969,10 @@ def main():
             try:
                 ks = detect_kala_sarpa(sidelons)
                 gc = detect_guru_chandal(sidelons)
-                pd = detect_pitru_dosh(sidelons, lagna_sign)
+                pitru = detect_pitru_dosh(sidelons, lagna_sign)
                 info.append(f"Kala Sarpa: {'Yes' if ks else 'No'}")
                 info.append(f"Guru–Chāṇḍāl: {'Yes' if gc else 'No'}")
-                info.append(f"Pitru Doṣa: {'Yes' if pd else 'No'}")
+                info.append(f"Pitru Doṣa: {'Yes' if pitru else 'No'}")
             except Exception:
                 info.append("Dosha checks: —")
 
