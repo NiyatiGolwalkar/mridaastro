@@ -23,181 +23,7 @@ from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
 from docx.shared import Inches, Mm, Pt
 
-
-def _strip_marks(txt: str) -> str:
-    if not isinstance(txt, str):
-        return str(txt)
-    # remove inline markers we might inherit from earlier steps
-    for ch in ("↑","↓","^","◯","▢"):
-        txt = txt.replace(ch, "")
-    return txt
-
-def _bool_like(x):
-    if isinstance(x, bool): return x
-    if isinstance(x, (int, float)): return x != 0
-    if isinstance(x, str):
-        return x.strip().lower() in {"1","true","yes","y","t"}
-    return False
-
-def _tokenize(val):
-    if val is None:
-        return set(), set()
-    # returns (en_tokens_lower, hi_tokens_original)
-    if isinstance(val, (list, tuple, set)):
-        parts = [str(x) for x in val]
-    else:
-        parts = [str(val)]
-    joined = " ".join(parts)
-    en = {tok for tok in re.split(r"[,\s/|]+", joined.lower()) if tok}
-    hi = {tok for tok in re.split(r"[,\s/|]+", joined) if tok}
-    return en, hi
-
-
-
-def _guess_label_from_dict(d: dict) -> str:
-    # 1) preferred explicit text-like fields
-    for k in ("txt","short","abbr","label","symbol","hi","name_hi","hn","hindi"):
-        v = d.get(k)
-        if isinstance(v, str) and v.strip():
-            return v.strip()
-    # 2) try general "name" style
-    for k in ("name","title"):
-        v = d.get(k)
-        if isinstance(v, str) and v.strip():
-            return v.strip()
-    # 3) map common English identifiers to Devanagari short forms
-    en = None
-    for k in ("planet","id","key","eng","en","name_en","name"):
-        v = d.get(k)
-        if isinstance(v, str) and v.strip():
-            en = v.strip().lower()
-            break
-    if en:
-        m = {
-            "sun":"सू","surya":"सू",
-            "moon":"चं","chandra":"चं",
-            "mars":"मं","mangal":"मं",
-            "mercury":"बु","budha":"बु","budh":"बु","buddha":"बु",
-            "jupiter":"गु","guru":"गु","brihaspati":"गु",
-            "venus":"शु","shukra":"शु",
-            "saturn":"श","shani":"श","sani":"श",
-            "rahu":"रा","ketu":"के","lagna":"लग्न","asc":"लग्न","ascendant":"लग्न"
-        }.get(en)
-        if m:
-            return m
-    # 4) last resort: first non-empty string value
-    for v in d.values():
-        if isinstance(v, str) and v.strip():
-            return v.strip()
-    return "?"
-def _extract_flags(p):
-    """
-    From planet entry (string or dict), produce:
-      base_text (markers stripped), flags dict, and computed booleans.
-    """
-    # Base text
-    if isinstance(p, str):
-        base = _strip_marks(p); flags = {}
-    elif isinstance(p, dict):
-        base_raw = p.get("txt", "") or _guess_label_from_dict(p)
-        base = _strip_marks(base_raw)
-        flags = p.get("flags", {})
-        if not flags or not isinstance(flags, (dict, list, tuple, set, str)):
-            # consider top-level keys as flags too
-            flags = {k:v for k,v in p.items() if k != "txt"}
-    else:
-        base = _strip_marks(str(p)); flags = {}
-
-    # Collect tokens and bools from flags in multiple shapes
-    en_tokens, hi_tokens = set(), set()
-    boolmap = {}
-
-    def add_bool(key, val):
-        boolmap[key] = boolmap.get(key, False) or _bool_like(val)
-
-    if isinstance(flags, dict):
-        # explicit boolean keys or is_* variants
-        for logical, aliases in {
-            "exalted": ["exalted","uccha","uchcha","uchh","exalt"],
-            "debilitated": ["debilitated","debil","neecha","neech"],
-            "combust": ["combust","moudhya","maudhy","astha","ast","cb"],
-            "self": ["self","own","own_sign","own sign","ownhouse","svagrahi","sva","swa","svagrihi"],
-            "vargottama": ["vargottama","varg","vg"],
-        }.items():
-            for k in aliases + [f"is_{a}" for a in aliases]:
-                if k in flags:
-                    add_bool(logical, flags[k])
-        # packed fields
-        for fname in ("status","state","tag","tags","markers","marker"):
-            if fname in flags:
-                en, hi = _tokenize(flags[fname])
-                en_tokens |= en; hi_tokens |= hi
-    elif isinstance(flags, (list, tuple, set, str)):
-        en, hi = _tokenize(flags)
-        en_tokens |= en; hi_tokens |= hi
-
-    # Also look at top-level values on p itself if dict
-    if isinstance(p, dict):
-        for fname in ("status","state","tag","tags","markers","marker"):
-            if fname in p:
-                en, hi = _tokenize(p[fname])
-                en_tokens |= en; hi_tokens |= hi
-
-    # Token rules (strict; only specific tokens count)
-    exalted_tok_en = {"exalted","exalt","uccha","uchcha","uchh","uch"}
-    debilitated_tok_en = {"debilitated","debil","neecha","neech"}
-    combust_tok_en = {"combust","moudhya","maudhy","astha","ast","cb"}
-    self_tok_en = {"self","own","own_sign","ownhouse","own","svagrahi","sva","swa","svagrihi"}
-    varg_tok_en = {"vargottama","varg","vg"}
-
-    exalted_tok_hi = {"उच्च","ऊच्च","उच"}
-    debilitated_tok_hi = {"नीच","नीचा","निच"}
-    combust_tok_hi = {"अस्त","मौढ्य","मूढ","दग्ध"}
-    self_tok_hi = {"स्व","स्वराशी","स्वगृही","स्वगृह","स्वक्षेत्र"}
-    varg_tok_hi = {"वर्गोत्तम","वर्गोत्त"}
-
-    exalted = boolmap.get("exalted", False) or bool(exalted_tok_en & en_tokens) or bool(exalted_tok_hi & hi_tokens)
-    debilitated = boolmap.get("debilitated", False) or bool(debilitated_tok_en & en_tokens) or bool(debilitated_tok_hi & hi_tokens)
-    combust = boolmap.get("combust", False) or bool(combust_tok_en & en_tokens) or bool(combust_tok_hi & hi_tokens)
-    selfr = boolmap.get("self", False) or bool(self_tok_en & en_tokens) or bool(self_tok_hi & hi_tokens)
-    vargot = boolmap.get("vargottama", False) or bool(varg_tok_en & en_tokens) or bool(varg_tok_hi & hi_tokens)
-
-    return base, (exalted, debilitated, combust, selfr, vargot)
-
-def _planet_text(p):
-    base, (exalted, debilitated, combust, selfr, vargot) = _extract_flags(p)
-    # inline markers only for these three
-    txt = base
-    if exalted: txt += "↑"
-    if debilitated: txt += "↓"
-    if combust: txt += "^"
-    return txt
-
-
-
-def _strize(x):
-    """Convert any item to a safe string for joining; dicts with planet fields go through _planet_text."""
-    if isinstance(x, str):
-        return x
-    if isinstance(x, dict):
-        if any(k in x for k in ("txt","flags","exalted","debilitated","combust","status","self","vargottama","own_sign")):
-            return _planet_text(x)
-    return str(x)
-
-def sjoin(items, sep=" "):
-    try:
-        return sep.join(_strize(i) for i in items)
-    except TypeError:
-        items = list(items)
-        return sep.join(_strize(i) for i in items)
-def _self_and_varg_flags(p):
-    # reuse the same extractor to avoid divergence
-    _, (_, _, _, selfr, vargot) = _extract_flags(p)
-    return selfr, vargot
-
-
-
-APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.9.10)"
+APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 
 AYANAMSHA_VAL = swe.SIDM_LAHIRI
@@ -212,58 +38,47 @@ HN = {'Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Me':'�
 # Compact Hindi abbreviations for planet boxes
 HN_ABBR = {'Su':'सू','Mo':'चं','Ma':'मं','Me':'बु','Ju':'गु','Ve':'शु','Sa':'श','Ra':'रा','Ke':'के'}
 
-# --------- Dignity rules ----------
-RULERSHIP = {
-    1:['Ma'], 2:['Ve'], 3:['Me'], 4:['Mo'], 5:['Su'], 6:['Me'],
-    7:['Ve'], 8:['Ma'], 9:['Ju'], 10:['Sa'], 11:['Sa'], 12:['Ju']
-}
-EXALT = { 'Su':1, 'Mo':2, 'Ma':10, 'Me':6, 'Ju':4, 'Ve':12, 'Sa':7, 'Ra':2, 'Ke':8 }
-DEBIL = { 'Su':7, 'Mo':8, 'Ma':4,  'Me':12,'Ju':10,'Ve':6,  'Sa':1, 'Ra':8, 'Ke':2 }
-COMBUST_ORB = { 'Me':12.0, 'Ve':10.0, 'Ma':17.0, 'Ju':11.0, 'Sa':15.0, 'Mo':12.0 }
+# ==== Status helpers (no API) ====
+SIGN_LORD = {1:'Ma',2:'Ve',3:'Me',4:'Mo',5:'Su',6:'Me',7:'Ve',8:'Ma',9:'Ju',10:'Sa',11:'Sa',12:'Ju'}
+EXALT_SIGN = {'Su':1,'Mo':2,'Ma':10,'Me':6,'Ju':4,'Ve':12,'Sa':7,'Ra':2,'Ke':8}
+DEBIL_SIGN = {'Su':7,'Mo':8,'Ma':4,'Me':12,'Ju':10,'Ve':6,'Sa':1,'Ra':8,'Ke':2}
+COMBUST_ORB = {'Mo':12.0,'Ma':17.0,'Me':14.0,'Ju':11.0,'Ve':10.0,'Sa':15.0}
 
-def _sign_from_lon(lon_sid):  # returns 1..12
-    return int(lon_sid // 30) + 1
-
-def _ang_dist(a,b):
-    d = abs(a-b) % 360.0
+def _min_circ_angle(a, b):
+    d = abs((a - b) % 360.0)
     return d if d <= 180.0 else 360.0 - d
 
-def dignity_flags_for_planet(code, lon_sid, sun_lon_sid, d1_sign, d9_sign):
-    flags = {'own': False, 'exalt': False, 'debil': False, 'comb': False, 'varg': False}
-    # Own sign (skip nodes)
-    if code not in ['Ra','Ke']:
-        if code == 'Su': flags['own'] = (d1_sign == 5)
-        elif code == 'Mo': flags['own'] = (d1_sign == 4)
-        else: flags['own'] = (code in RULERSHIP.get(d1_sign, []))
-    # Exalt / Debil
-    if EXALT.get(code) == d1_sign: flags['exalt'] = True
-    if DEBIL.get(code)  == d1_sign: flags['debil'] = True
-    # Combust (skip Sun/Nodes)
-    if code not in ['Su','Ra','Ke']:
-        orb = COMBUST_ORB.get(code, 0.0)
-        if orb and _ang_dist(lon_sid, sun_lon_sid) <= orb:
-            flags['comb'] = True
-    # Vargottama (same sign in D1 and D9)
-    if d1_sign == d9_sign: flags['varg'] = True
-    return flags
+def _xml_text(s):
+    return (str(s).replace("&","&amp;").replace("<","&lt;").replace(">","&gt;"))
 
-def build_house_planets_with_flags(sidelons, lagna_sign, use_navamsa=False, nav_lagna_sign=None):
-    # Returns {house: [{'txt': 'चं', 'flags': {...}}, ...]}
-    house_map = {i: [] for i in range(1, 13)}
-    sun_lon = sidelons['Su']
+def planet_rasi_sign(lon_sid):
+    return int(lon_sid // 30) + 1
+
+def compute_statuses(sidelons):
+    flags = {}
+    lon_su = sidelons.get('Su', 0.0)
     for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
         lon = sidelons[code]
-        d1 = _sign_from_lon(lon)
-        d9 = navamsa_sign_from_lon_sid(lon)
-        flags = dignity_flags_for_planet(code, lon, sun_lon, d1, d9)
-        abbr = HN_ABBR.get(code, code)
-        if use_navamsa:
-            nav_sign = d9
-            h = ((nav_sign - nav_lagna_sign) % 12) + 1
-        else:
-            h = ((d1 - lagna_sign) % 12) + 1
-        house_map[h].append({'txt': abbr, 'flags': flags})
-    return house_map
+        rasi = planet_rasi_sign(lon)
+        nav  = navamsa_sign_from_lon_sid(lon)
+        exalted = (EXALT_SIGN.get(code) == rasi)
+        debilitated = (DEBIL_SIGN.get(code) == rasi)
+        selfruled = (SIGN_LORD.get(rasi) == code)
+        vargottama = (rasi == nav)
+        combust = False
+        if code in COMBUST_ORB and code != 'Su':
+            combust = (_min_circ_angle(lon, lon_su) <= COMBUST_ORB[code])
+        flags[code] = {"rasi": rasi, "nav": nav, "exalted": exalted, "debilitated": debilitated,
+                       "self": selfruled, "vargottama": vargottama, "combust": combust}
+    return flags
+
+def fmt_planet_label(code, fl):
+    base = HN_ABBR.get(code, code)
+    if fl.get("exalted"): base += "↑"
+    if fl.get("debilitated"): base += "↓"
+    if fl.get("combust"): base += "^"
+    return base
+
 
 
 def planet_navamsa_house(lon_sid, nav_lagna_sign):
@@ -278,6 +93,28 @@ def build_navamsa_house_planets(sidelons, nav_lagna_sign):
         h = planet_navamsa_house(sidelons[code], nav_lagna_sign)
         house_map[h].append(HN_ABBR.get(code, code))
     return house_map
+
+
+def build_rasi_house_planets_marked(sidelons, lagna_sign):
+    house_map = {i: [] for i in range(1, 13)}
+    flags = compute_statuses(sidelons)
+    for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
+        sign = planet_rasi_sign(sidelons[code])
+        h = ((sign - lagna_sign) % 12) + 1
+        label = fmt_planet_label(code, flags[code])
+        house_map[h].append({"txt": label, "flags": flags[code]})
+    return house_map
+
+def build_navamsa_house_planets_marked(sidelons, nav_lagna_sign):
+    house_map = {i: [] for i in range(1, 13)}
+    flags = compute_statuses(sidelons)
+    for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
+        nav_sign = navamsa_sign_from_lon_sid(sidelons[code])
+        h = ((nav_sign - nav_lagna_sign) % 12) + 1
+        label = fmt_planet_label(code, flags[code])
+        house_map[h].append({"txt": label, "flags": flags[code]})
+    return house_map
+
 
 def build_rasi_house_planets(sidelons, lagna_sign):
     # Map: house -> list of planet abbreviations in Rasi (Lagna) chart
@@ -434,14 +271,10 @@ def render_north_diamond(size_px=800, stroke=3):
     fig.savefig(buf, format='png', bbox_inches='tight', pad_inches=0)  # zero padding
     plt.close(fig); buf.seek(0); return buf
 
-
 def rotated_house_labels(lagna_sign):
     order = [str(((lagna_sign - 1 + i) % 12) + 1) for i in range(12)]
-    return {
-        "1": order[0], "2": order[1], "3": order[2], "4": order[3],
-        "5": order[4], "6": order[5], "7": order[6], "8": order[7],
-        "9": order[8], "10": order[9], "11": order[10], "12": order[11]
-    }
+    return {"1":order[0],"2":order[1],"3":order[2],"4":order[3],"5":order[4],"6":order[5],"7":order[6],"8":order[7],"9":order[8],"10":order[9],"11":order[10],"12":order[11]}
+
 
 def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
     # Like kundali_w_p_with_centroid_labels but adds small side-by-side planet boxes below the number
@@ -495,34 +328,48 @@ def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
             n=len(planets); total_w = n*p_w + (n-1)*gap_x
             start_left = x - total_w/2; top_planet = y - p_h/2 + offset_y
             for idx,pl in enumerate(planets):
-                label = _planet_text(pl)
-                selfr, vargot = _self_and_varg_flags(pl)
+                # accept str or dict
+                if isinstance(pl, dict):
+                    label = str(pl.get('txt', '')).strip() or '?'
+                    fl = pl.get('flags', {}) or {}
+                else:
+                    label = str(pl).strip() or '?'
+                    fl = {}
                 left_pl = start_left + idx*(p_w+gap_x)
-                planet_boxes.append(f'''
-                <v:rect style="position:absolute;left:{left_pl}pt;top:{top_planet}pt;width:{p_w}pt;height:{p_h}pt;z-index:6" strokecolor="none">
-                  <v:textbox inset="0,0,0,0">
-                    <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-                      <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{label}</w:t></w:r></w:p>
-                    </w:txbxContent>
-                  </v:textbox>
-                </v:rect>
-                ''')
+                box_xml = (
+                    f"<v:rect style=\"position:absolute;left:{left_pl}pt;top:{top_planet}pt;width:{p_w}pt;height:{p_h}pt;z-index:6\" strokecolor=\"none\">"
+                    + "<v:textbox inset=\"0,0,0,0\">"
+                    + "<w:txbxContent xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
+                    + f"<w:p><w:pPr><w:jc w:val=\"center\"/></w:pPr><w:r><w:t>{_xml_text(label)}</w:t></w:r></w:p>"
+                    + "</w:txbxContent>"
+                    + "</v:textbox>"
+                    + "</v:rect>"
+                )
+                planet_boxes.append(box_xml)
+                # overlays
+                try:
+                    selfr = bool(fl.get('self'))
+                    varg  = bool(fl.get('vargottama'))
+                except Exception:
+                    selfr = varg = False
                 if selfr:
                     circle_left = left_pl + 2
-                    circle_top = top_planet + 1
-                    circle_w = p_w - 4
-                    circle_h = p_h - 2
-                    planet_boxes.append(f'''
-                    <v:oval style="position:absolute;left:{circle_left}pt;top:{circle_top}pt;width:{circle_w}pt;height:{circle_h}pt;z-index:7" fillcolor="none" strokecolor="black" strokeweight="0.75pt"/>
-                    ''')
-                if vargot:
+                    circle_top  = top_planet + 1
+                    circle_w    = p_w - 4
+                    circle_h    = p_h - 2
+                    oval_xml = (
+                        f"<v:oval style=\"position:absolute;left:{circle_left}pt;top:{circle_top}pt;width:{circle_w}pt;height:{circle_h}pt;z-index:7\" fillcolor=\"none\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
+                    )
+                    planet_boxes.append(oval_xml)
+                if varg:
                     badge_w = 5; badge_h = 5
                     badge_left = left_pl + p_w - badge_w + 0.5
-                    badge_top = top_planet - 2
-                    planet_boxes.append(f'''
-                    <v:rect style="position:absolute;left:{badge_left}pt;top:{badge_top}pt;width:{badge_w}pt;height:{badge_h}pt;z-index:8" fillcolor="#ffffff" strokecolor="black" strokeweight="0.75pt"/>
-                    ''')
-    boxes_xml = "\\n".join([_strize(x) for x in num_boxes + planet_boxes])
+                    badge_top  = top_planet - 2
+                    badge_xml = (
+                        f"<v:rect style=\"position:absolute;left:{badge_left}pt;top:{badge_top}pt;width:{badge_w}pt;height:{badge_h}pt;z-index:8\" fillcolor=\"#ffffff\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
+                    )
+                    planet_boxes.append(badge_xml)
+    boxes_xml = "\\n".join(num_boxes + planet_boxes)
     xml = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
@@ -583,7 +430,7 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
         num = labels[k]
         pls = house_planets.get(int(k), [])
         if pls:
-            planets_text = sjoin(_planet_text(x, " ") for x in pls)
+            planets_text = " ".join(pls)
             content = f'<w:r><w:t>{num}</w:t></w:r><w:r/><w:br/><w:r><w:t>{planets_text}</w:t></w:r>'
         else:
             content = f'<w:r><w:t>{num}</w:t></w:r>'
@@ -596,7 +443,7 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
           </v:textbox>
         </v:rect>
         ''')
-    boxes_xml = "\\n".join([_strize(x) for x in text_boxes])
+    boxes_xml = "\\n".join(text_boxes)
     xml = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
@@ -638,7 +485,7 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
             </w:txbxContent>
           </v:textbox>
         </v:rect>''')
-    boxes_xml = "\\n".join([_strize(x) for x in boxes])
+    boxes_xml = "\\n".join(boxes)
     xml = f'''<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
         <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
           <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
@@ -856,14 +703,14 @@ def main():
             cap1.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap1, size_pt=11, underline=True, bold=True)
             p1 = cell1.add_paragraph();
             # Lagna chart with planets in single box per house
-            rasi_house_planets = build_house_planets_with_flags(sidelons, lagna_sign, use_navamsa=False)
-            p1._p.addnext(kundali_single_box(size_pt=220, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
+            rasi_house_planets = build_rasi_house_planets_marked(sidelons, lagna_sign)
+            p1._p.addnext(kundali_with_planets(size_pt=220, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
 
             cell2 = kt.rows[1].cells[0]; cell2.add_paragraph(); cap2 = cell2.add_paragraph("नवांश कुंडली")
             cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap2, size_pt=11, underline=True, bold=True)
             p2 = cell2.add_paragraph();
-            nav_house_planets = build_house_planets_with_flags(sidelons, lagna_sign=None, use_navamsa=True, nav_lagna_sign=nav_lagna_sign)
-            p2._p.addnext(kundali_single_box(size_pt=220, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
+            nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
+            p2._p.addnext(kundali_with_planets(size_pt=220, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
 
             out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
