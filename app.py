@@ -400,14 +400,20 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
         bbox = _bbox_of_poly(poly)
         # house number box
         x,y = centroid(poly); 
-        if k in ("11","12"): x -= 2.5
+        # safe bias for right-edge houses
+        if k in ("11","12"): x -= 2.0
         left = x - num_w/2; top = y - num_h/2; txt = labels[k]
+        # clamp inside house bbox first
         left, top = _clamp_in_bbox(left, top, num_w, num_h, bbox, pad=2)
-
+        # avoid overlaps
         nl, nt = _nudge_number_box(left, top, num_w, num_h, S, occupied_rects)
         left, top = nl, nt
+        # final global clamp to group bounds (prevents edge rounding loss)
+        _PAD=1.0
+        left = max(_PAD, min(S - num_w - _PAD, left))
+        top  = max(_PAD, min(S - num_h - _PAD, top))
         num_boxes.append(f'''
-        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:80" fillcolor="#ffffff" strokecolor="none" strokeweight="0pt">
+        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:90" fillcolor="#ffffff" strokecolor="none" strokeweight="0pt">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
