@@ -29,7 +29,7 @@ st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 AYANAMSHA_VAL = swe.SIDM_LAHIRI
 YEAR_DAYS     = 365.2422
 
-BASE_FONT_PT = 8.0
+BASE_FONT_PT = 7.0
 LATIN_FONT = "Georgia"
 HINDI_FONT = "Mangal"
 
@@ -722,27 +722,27 @@ def main():
                 r = hdr1.add_run("MRIDAASTRO")
                 r.font.bold = True
                 r.font.small_caps = True
-                r.font.size = Pt(20)  # 18–22 pt
+                r.font.size = Pt(18)  # 18–22 pt
 
                 # Tagline
                 hdr2 = doc.add_paragraph()
                 hdr2.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 r2 = hdr2.add_run("In the light of the divine, let your soul journey shine.")
                 r2.italic = True
-                r2.font.size = Pt(11.5)  # 11–12 pt
+                r2.font.size = Pt(10.5)  # 11–12 pt
 
                 # Title
                 hdr3 = doc.add_paragraph()
                 hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI)")
                 r3.font.bold = True
-                r3.font.size = Pt(15)  # 14–16 pt
+                r3.font.size = Pt(14)  # 14–16 pt
 
                 # Prepared by
                 hdr4 = doc.add_paragraph()
                 hdr4.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 r4 = hdr4.add_run("Prepared by: Niyati Golwalkar — Astrologer • Sound & Mantra Healer  Phone: 9302413816  |  Electronic City Phase 1, Bangalore, India")
-                r4.font.size = Pt(11.5)  # 11–12 pt
+                r4.font.size = Pt(10.5)  # 11–12 pt
                 pf = hdr4.paragraph_format
                 pf.space_before = Pt(6); pf.space_after = Pt(6)
             except Exception:
