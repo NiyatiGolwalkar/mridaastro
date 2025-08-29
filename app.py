@@ -20,7 +20,7 @@ def _nudge_number_box(base_left, base_top, w, h, S, occupied):
     vx = (bx - cx); vy = (by - cy)
     n = (vx*vx + vy*vy) ** 0.5 or 1.0
     ux, uy = vx/n, vy/n  # unit vector outward
-    pad = 2.0
+    pad = 4.0
     for step in range(0, 9):  # try nudges up to ~16pt
         dx = ux * (step * 2.0)
         dy = uy * (step * 2.0)
@@ -462,7 +462,7 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
             xs,ys=zip(*poly); return (sum(xs)/n, sum(ys)/n)
         return (Cx/(6*A), Cy/(6*A))
     num_boxes=[]; planet_boxes=[]; occupied_rects=[]
-    num_w=num_h=11; p_w,p_h=16,14; gap_x=4; offset_y=12
+    num_w=num_h=10; p_w,p_h=16,14; gap_x=4; offset_y=12
     for k,poly in houses.items():
         bbox = _bbox_of_poly(poly)
         # house number box
@@ -472,7 +472,7 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
         nl, nt = _nudge_number_box(left, top, num_w, num_h, S, occupied_rects)
         left, top = nl, nt
         num_boxes.append(f'''
-        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:80" fillcolor="#ffffff" strokecolor="none" strokeweight="0pt">
+        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:200" fillcolor="#ffffff" strokecolor="none" strokeweight="0pt">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
@@ -515,7 +515,7 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
                 ph = p_h - (1 if edge_touch else 0)
                 left_pl = row_left + c * (pw + gap_x)
                 box_xml = (
-                    f"<v:rect style=\"position:absolute;left:{left_pl}pt;top:{top_box}pt;width:{pw}pt;height:{ph}pt;z-index:6\" strokecolor=\"none\">"
+                    f"<v:rect style=\"position:absolute;left:{left_pl}pt;top:{top_box}pt;width:{pw}pt;height:{ph}pt;z-index:200\" strokecolor=\"none\">"
                     + "<v:textbox inset=\"0,0,0,0\">"
                     + "<w:txbxContent xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
                     + f"<w:p><w:pPr><w:jc w:val=\"center\"/></w:pPr><w:r><w:t>{_xml_text(label)}</w:t></w:r></w:p>"
@@ -536,7 +536,7 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
                     circle_w    = pw - 4
                     circle_h    = ph - 2
                     oval_xml = (
-                        f"<v:oval style=\"position:absolute;left:{circle_left}pt;top:{circle_top}pt;width:{circle_w}pt;height:{circle_h}pt;z-index:7\" fillcolor=\"none\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
+                        f"<v:oval style=\"position:absolute;left:{circle_left}pt;top:{circle_top}pt;width:{circle_w}pt;height:{circle_h}pt;z-index:200\" fillcolor=\"none\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
                     )
                     planet_boxes.append(oval_xml)
                 if varg:
@@ -544,7 +544,7 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
                     badge_left = left_pl + pw - badge_w + 0.5
                     badge_top  = top_box - 2
                     badge_xml = (
-                        f"<v:rect style=\"position:absolute;left:{badge_left}pt;top:{badge_top}pt;width:{badge_w}pt;height:{badge_h}pt;z-index:8\" fillcolor=\"#ffffff\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
+                        f"<v:rect style=\"position:absolute;left:{badge_left}pt;top:{badge_top}pt;width:{badge_w}pt;height:{badge_h}pt;z-index:200\" fillcolor=\"#ffffff\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
                     )
                     planet_boxes.append(badge_xml)
             boxes_xml = "\\n".join(num_boxes + planet_boxes)
@@ -552,13 +552,13 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
         <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
-          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
-          <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:2" from="{R},{S/2}" to="{S/2},{B}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:2" from="{S/2},{B}" to="{L},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:2" from="{L},{S/2}" to="{S/2},{T}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:200" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
+          <v:line style="position:absolute;z-index:200" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:line style="position:absolute;z-index:200" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:line style="position:absolute;z-index:200" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:line style="position:absolute;z-index:200" from="{R},{S/2}" to="{S/2},{B}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:line style="position:absolute;z-index:200" from="{S/2},{B}" to="{L},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:line style="position:absolute;z-index:200" from="{L},{S/2}" to="{S/2},{T}" strokecolor="black" strokeweight="1.5pt"/>
           {boxes_xml}
         </v:group>
       </w:pict>
@@ -613,7 +613,7 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
         else:
             content = f'<w:r><w:t>{num}</w:t></w:r>'
         text_boxes.append(f'''
-        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{box_w}pt;height:{box_h}pt;z-index:5" strokecolor="none">
+        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{box_w}pt;height:{box_h}pt;z-index:200" strokecolor="none">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:p><w:pPr><w:jc w:val="center"/></w:pPr>{content}</w:p>
@@ -626,13 +626,13 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
         <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
-          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
-          <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:2" from="{R},{S/2}" to="{S/2},{B}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:2" from="{S/2},{B}" to="{L},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:2" from="{L},{S/2}" to="{S/2},{T}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:200" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
+          <v:line style="position:absolute;z-index:200" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:line style="position:absolute;z-index:200" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:line style="position:absolute;z-index:200" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:line style="position:absolute;z-index:200" from="{R},{S/2}" to="{S/2},{B}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:line style="position:absolute;z-index:200" from="{S/2},{B}" to="{L},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:line style="position:absolute;z-index:200" from="{L},{S/2}" to="{S/2},{T}" strokecolor="black" strokeweight="1.5pt"/>
           {boxes_xml}
         </v:group>
       </w:pict>
@@ -656,7 +656,7 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
     for k,poly in houses.items():
         x,y = centroid(poly); left = x - w/2; top = y - h/2; txt = labels[k]
         boxes.append(f'''
-        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{w}pt;height:{h}pt;z-index:5" strokecolor="none">
+        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{w}pt;height:{h}pt;z-index:200" strokecolor="none">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
@@ -667,13 +667,13 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
     xml = f'''<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
         <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
           <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
-            <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
-            <v:line style="position:absolute;z-index:2" from="0,0" to="{S},{S}" strokecolor="black" strokeweight="1.5pt"/>
-            <v:line style="position:absolute;z-index:2" from="{S},0" to="0,{S}" strokecolor="black" strokeweight="1.5pt"/>
-            <v:line style="position:absolute;z-index:2" from="{S/2},0" to="{S},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
-            <v:line style="position:absolute;z-index:2" from="{S},{S/2}" to="{S/2},{S}" strokecolor="black" strokeweight="1.5pt"/>
-            <v:line style="position:absolute;z-index:2" from="{S/2},{S}" to="0,{S/2}" strokecolor="black" strokeweight="1.5pt"/>
-            <v:line style="position:absolute;z-index:2" from="0,{S/2}" to="{S/2},0" strokecolor="black" strokeweight="1.5pt"/>
+            <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:200" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
+            <v:line style="position:absolute;z-index:200" from="0,0" to="{S},{S}" strokecolor="black" strokeweight="1.5pt"/>
+            <v:line style="position:absolute;z-index:200" from="{S},0" to="0,{S}" strokecolor="black" strokeweight="1.5pt"/>
+            <v:line style="position:absolute;z-index:200" from="{S/2},0" to="{S},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
+            <v:line style="position:absolute;z-index:200" from="{S},{S/2}" to="{S/2},{S}" strokecolor="black" strokeweight="1.5pt"/>
+            <v:line style="position:absolute;z-index:200" from="{S/2},{S}" to="0,{S/2}" strokecolor="black" strokeweight="1.5pt"/>
+            <v:line style="position:absolute;z-index:200" from="0,{S/2}" to="{S/2},0" strokecolor="black" strokeweight="1.5pt"/>
             {boxes_xml}
           </v:group>
         </w:pict></w:r></w:p>'''
