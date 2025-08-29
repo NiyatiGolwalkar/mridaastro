@@ -42,6 +42,11 @@ HN_ABBR = {'Su':'सू','Mo':'चं','Ma':'मं','Me':'बु','Ju':'गु'
 SIGN_LORD = {1:'Ma',2:'Ve',3:'Me',4:'Mo',5:'Su',6:'Me',7:'Ve',8:'Ma',9:'Ju',10:'Sa',11:'Sa',12:'Ju'}
 EXALT_SIGN = {'Su':1,'Mo':2,'Ma':10,'Me':6,'Ju':4,'Ve':12,'Sa':7,'Ra':2,'Ke':8}
 DEBIL_SIGN = {'Su':7,'Mo':8,'Ma':4,'Me':12,'Ju':10,'Ve':6,'Sa':1,'Ra':8,'Ke':2}
+# --- Combustion settings ---
+# Only the SUN causes combustion. Rahu/Ketu never combust. Moon CAN be combust (by Sun) if within orb.
+# Set this to True if you want to mark combustion ONLY when the Sun and the planet are in the SAME rāśi sign.
+REQUIRE_SAME_SIGN_FOR_COMBUST = False  # change to True if that matches your tradition
+
 COMBUST_ORB = {'Mo':12.0,'Ma':17.0,'Me':12.0,'Ju':11.0,'Ve':10.0,'Sa':15.0}
 
 def _min_circ_angle(a, b):
@@ -57,15 +62,18 @@ def planet_rasi_sign(lon_sid):
 def compute_statuses_all(sidelons):
     """Return per-planet dict containing both rasi-based and nav-based flags."""
     out = {}
-    lon_su = sidelons.get('Su', 0.0)
+    sun_lon = sidelons.get('Su', 0.0)
     for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
         lon = sidelons[code]
         rasi = planet_rasi_sign(lon)
         nav  = navamsa_sign_from_lon_sid(lon)
         varg = (rasi == nav)
+        # Combustion: Sun only, optional same-sign constraint
         combust = False
         if code in COMBUST_ORB and code != 'Su':
-            combust = (_min_circ_angle(lon, lon_su) <= COMBUST_ORB[code])
+            sep = _min_circ_angle(lon, sun_lon)
+            if not REQUIRE_SAME_SIGN_FOR_COMBUST or (planet_rasi_sign(lon) == planet_rasi_sign(sun_lon)):
+                combust = (sep <= COMBUST_ORB[code])
         out[code] = {
             'rasi': rasi,
             'nav': nav,
