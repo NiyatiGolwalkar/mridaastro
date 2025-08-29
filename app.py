@@ -260,7 +260,15 @@ def render_north_diamond(size_px=800, stroke=3):
     fig.savefig(buf, format='png', bbox_inches='tight', pad_inches=0)  # zero padding
     plt.close(fig); buf.seek(0); return buf
 
+
 def rotated_house_labels(lagna_sign):
+    # Returns labels 1..12 rotated so that '1' appears at lagna_sign
+    order = [str(((lagna_sign - 1 + i) % 12) + 1) for i in range(12)]
+    return {
+        "1": order[0], "2": order[1], "3": order[2], "4": order[3],
+        "5": order[4], "6": order[5], "7": order[6], "8": order[7],
+        "9": order[8], "10": order[9], "11": order[10], "12": order[11]
+    }
 
 def _planet_label(p):
     """
