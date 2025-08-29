@@ -319,7 +319,7 @@ def rotated_house_labels(lagna_sign):
     return {"1":order[0],"2":order[1],"3":order[2],"4":order[3],"5":order[4],"6":order[5],"7":order[6],"8":order[7],"9":order[8],"10":order[9],"11":order[10],"12":order[11]}
 
 
-def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
+def kundali_with_planets(size_pt=200, lagna_sign=1, house_planets=None):
     # Like kundali_w_p_with_centroid_labels but adds small side-by-side planet boxes below the number
     if house_planets is None:
         house_planets = {i: [] for i in range(1, 13)}
@@ -715,41 +715,39 @@ def main():
             
             
             
-            # ===== Report Header Block (simplified & robust) =====
+            
+            # ===== Report Header Block (exact lines) =====
             try:
-                # Brand line
-                hdr1 = doc.add_paragraph()
-                hdr1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r = hdr1.add_run("MRIDAASTRO")
-                r.font.bold = True
-                r.font.small_caps = True
-                r.font.size = Pt(16)  # 18–22 pt
+                # MRIDAASTRO
+                hdr1 = doc.add_paragraph(); hdr1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r = hdr1.add_run("MRIDAASTRO"); r.font.bold = True; r.font.small_caps = True; r.font.size = Pt(16)
 
                 # Tagline
-                hdr2 = doc.add_paragraph()
-                hdr2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r2 = hdr2.add_run("In the light of the divine, let your soul journey shine.")
-                r2.italic = True
-                r2.font.size = Pt(10.5)  # 11–12 pt
+                hdr2 = doc.add_paragraph(); hdr2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r2 = hdr2.add_run("In the light of the divine, let your soul journey shine."); r2.italic = True; r2.font.size = Pt(10)
 
                 # Title
-                hdr3 = doc.add_paragraph()
-                hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI)")
-                r3.font.bold = True
-                r3.font.size = Pt(14)  # 14–16 pt
+                hdr3 = doc.add_paragraph(); hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI)"); r3.bold = True; r3.font.size = Pt(13)
 
-                # Prepared by
-                hdr4 = doc.add_paragraph()
-                hdr4.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r4 = hdr4.add_run("Prepared by: Niyati Golwalkar — Astrologer • Sound & Mantra Healer  Phone: 9302413816  |  Electronic City Phase 1, Bangalore, India")
-                r4.font.size = Pt(10.5)  # 11–12 pt
-                pf = hdr4.paragraph_format
-                pf.space_before = Pt(6); pf.space_after = Pt(6)
+                # Blank separator (small)
+                # hdr3.paragraph_format.space_after = Pt(2)
+
+                # Name
+                hdr4 = doc.add_paragraph(); hdr4.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r4 = hdr4.add_run("Niyati Golwalkar"); r4.font.size = Pt(10); r4.bold = True
+
+                # Role line
+                hdr5 = doc.add_paragraph(); hdr5.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r5 = hdr5.add_run("Astrologer • Sound & Mantra Healer"); r5.font.size = Pt(9.5)
+
+                # Contact line
+                hdr6 = doc.add_paragraph(); hdr6.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r6 = hdr6.add_run("Phone: 9302413816  |  Electronic City Phase 1, Bangalore, India"); r6.font.size = Pt(9.5)
             except Exception:
-                # Non-fatal; skip header if environment lacks fonts/etc.
                 pass
-            # ===== End Header Block (simplified & robust) =====
+            # ===== End Header Block (exact lines) =====
+# ===== End Header Block (simplified & robust) =====
 # ===== End Header Block (safe) =====
 
 
@@ -818,20 +816,20 @@ def main():
 
             right = outer.rows[0].cells[1]
             kt = right.add_table(rows=2, cols=1); kt.autofit=False; kt.columns[0].width = Inches(right_width_in)
-            for row in kt.rows: row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY; row.height = Pt(340)
+            for row in kt.rows: row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY; row.height = Pt(240)
 
             cell1 = kt.rows[0].cells[0]; cell1.add_paragraph(); cap1 = cell1.add_paragraph("लग्न कुंडली")
             cap1.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap1, size_pt=11, underline=True, bold=True)
             p1 = cell1.add_paragraph();
             # Lagna chart with planets in single box per house
             rasi_house_planets = build_rasi_house_planets_marked(sidelons, lagna_sign)
-            p1._p.addnext(kundali_with_planets(size_pt=220, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
+            p1._p.addnext(kundali_with_planets(size_pt=200, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
 
             cell2 = kt.rows[1].cells[0]; cell2.add_paragraph(); cap2 = cell2.add_paragraph("नवांश कुंडली")
             cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap2, size_pt=11, underline=True, bold=True)
             p2 = cell2.add_paragraph();
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
-            p2._p.addnext(kundali_with_planets(size_pt=220, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
+            p2._p.addnext(kundali_with_planets(size_pt=200, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
 
             out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
