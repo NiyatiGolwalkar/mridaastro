@@ -951,14 +951,15 @@ def main():
             p2._p.addnext(kundali_with_planets(size_pt=220, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
 
             # ---- Summary under Navāṁśa ----
-            cell2.add_paragraph('— प्रमुख बिंदु —').runs[0].bold = True
+                        doc.add_page_break()
+            hd = doc.add_paragraph('— प्रमुख बिंदु —'); hd.runs[0].bold = True
             info = []
             try:
                 muntha_sign = compute_muntha_for_current_year(dob, lagna_sign)
                 info.append(f"मुन्था (इस वर्ष): {SIGN_LABEL_EN.get(muntha_sign, str(muntha_sign))}")
             except Exception:
                 info.append("मुन्था (इस वर्ष): —")
-
+            
             try:
                 shani_label, shani_more = saturn_status_now(sidelons, tz_hours)
                 info.append(f"Shani status: {shani_label}")
@@ -966,26 +967,23 @@ def main():
                     info.append(f"  • {shani_more}")
             except Exception:
                 info.append("Shani status: —")
-
+            
             try:
                 ks = detect_kala_sarpa(sidelons)
                 gc = detect_guru_chandal(sidelons)
                 pitru = detect_pitru_dosh(sidelons, lagna_sign)
                 info.append(f"Kala Sarpa: {'Yes' if ks else 'No'}")
-                info.append(f"Guru–Chāṇḍāl: {'Yes' if gc else 'No'}")
-                info.append(f"Pitru Doṣa: {'Yes' if pitru else 'No'}")
+                info.append(f"Guru–Chāṇḍाल: {'Yes' if gc else 'No'}")
+                info.append(f"Pitru Doṣा: {'Yes' if pitru else 'No'}")
             except Exception:
                 info.append("Dosha checks: —")
-
-            # Render the bullet-ish lines
-            det = cell2.add_paragraph()
-            det.paragraph_format.space_before = Pt(4); det.paragraph_format.space_after = Pt(0)
+            
+            det = doc.add_paragraph()
+            det.paragraph_format.space_before = Pt(6); det.paragraph_format.space_after = Pt(0)
             for line in info:
                 run = det.add_run(line + "\n")
-                run.font.size = Pt(BASE_FONT_PT)  # small
-
-
-            out = BytesIO(); doc.save(out); out.seek(0)
+                run.font.size = Pt(BASE_FONT_PT)
+out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
 
             # ---- Previews with compact PNGs ----
