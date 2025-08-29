@@ -52,6 +52,44 @@ def _tokenize(val):
     hi = {tok for tok in re.split(r"[,\s/|]+", joined) if tok}
     return en, hi
 
+
+
+def _guess_label_from_dict(d: dict) -> str:
+    # 1) preferred explicit text-like fields
+    for k in ("txt","short","abbr","label","symbol","hi","name_hi","hn","hindi"):
+        v = d.get(k)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+    # 2) try general "name" style
+    for k in ("name","title"):
+        v = d.get(k)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+    # 3) map common English identifiers to Devanagari short forms
+    en = None
+    for k in ("planet","id","key","eng","en","name_en","name"):
+        v = d.get(k)
+        if isinstance(v, str) and v.strip():
+            en = v.strip().lower()
+            break
+    if en:
+        m = {
+            "sun":"सू","surya":"सू",
+            "moon":"चं","chandra":"चं",
+            "mars":"मं","mangal":"मं",
+            "mercury":"बु","budha":"बु","budh":"बु","buddha":"बु",
+            "jupiter":"गु","guru":"गु","brihaspati":"गु",
+            "venus":"शु","shukra":"शु",
+            "saturn":"श","shani":"श","sani":"श",
+            "rahu":"रा","ketu":"के","lagna":"लग्न","asc":"लग्न","ascendant":"लग्न"
+        }.get(en)
+        if m:
+            return m
+    # 4) last resort: first non-empty string value
+    for v in d.values():
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+    return "?"
 def _extract_flags(p):
     """
     From planet entry (string or dict), produce:
@@ -61,7 +99,8 @@ def _extract_flags(p):
     if isinstance(p, str):
         base = _strip_marks(p); flags = {}
     elif isinstance(p, dict):
-        base = _strip_marks(p.get("txt", ""))
+        base_raw = p.get("txt", "") or _guess_label_from_dict(p)
+        base = _strip_marks(base_raw)
         flags = p.get("flags", {})
         if not flags or not isinstance(flags, (dict, list, tuple, set, str)):
             # consider top-level keys as flags too
