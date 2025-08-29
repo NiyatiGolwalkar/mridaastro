@@ -374,7 +374,8 @@ def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
             gap_y = 2
             # compute total grid height and top start
             total_h = rows * p_h + (rows - 1) * gap_y
-            grid_top = y - total_h / 2 + offset_y
+            # start rows just below the number box
+            grid_top = y + (p_h/2 + 2) + offset_y
             for idx, pl in enumerate(planets):
                 # normalize input item
                 if isinstance(pl, dict):
