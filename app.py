@@ -20,7 +20,7 @@ def _nudge_number_box(base_left, base_top, w, h, S, occupied):
     vx = (bx - cx); vy = (by - cy)
     n = (vx*vx + vy*vy) ** 0.5 or 1.0
     ux, uy = vx/n, vy/n  # unit vector outward
-    pad = 4.0
+    pad = 2.0
     for step in range(0, 9):  # try nudges up to ~16pt
         dx = ux * (step * 2.0)
         dy = uy * (step * 2.0)
@@ -72,79 +72,12 @@ HINDI_FONT = "Mangal"
 HN = {'Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Me':'बुध','Ju':'गुरु','Ve':'शुक्र','Sa':'शनि','Ra':'राहु','Ke':'केतु'}
 
 # Compact Hindi abbreviations for planet boxes
-
-
-SIGN_LABEL_EN = {
-    1:"Aries (Mesha)", 2:"Taurus (Vrishabha)", 3:"Gemini (Mithuna)", 4:"Cancer (Karka)",
-    5:"Leo (Simha)", 6:"Virgo (Kanya)", 7:"Libra (Tula)", 8:"Scorpio (Vrishchika)",
-    9:"Sagittarius (Dhanu)", 10:"Capricorn (Makara)", 11:"Aquarius (Kumbha)", 12:"Pisces (Meena)"
-}
 HN_ABBR = {'Su':'सू','Mo':'चं','Ma':'मं','Me':'बु','Ju':'गु','Ve':'शु','Sa':'श','Ra':'रा','Ke':'के'}
 
 # ==== Status helpers (Rāśi vs Navāṁśa aware) ====
 SIGN_LORD = {1:'Ma',2:'Ve',3:'Me',4:'Mo',5:'Su',6:'Me',7:'Ve',8:'Ma',9:'Ju',10:'Sa',11:'Sa',12:'Ju'}
 EXALT_SIGN = {'Su':1,'Mo':2,'Ma':10,'Me':6,'Ju':4,'Ve':12,'Sa':7,'Ra':2,'Ke':8}
 DEBIL_SIGN = {'Su':7,'Mo':8,'Ma':4,'Me':12,'Ju':10,'Ve':6,'Sa':1,'Ra':8,'Ke':2}
-
-def _between_arc_ccw(a_deg, start_deg, end_deg):
-    """Return True if angle 'a_deg' lies on the CCW arc from 'start_deg' to 'end_deg' (inclusive)."""
-    span = (end_deg - start_deg) % 360.0
-    off  = (a_deg  - start_deg) % 360.0
-    return off <= span + 1e-6
-
-
-def _angle_diff_deg(a, b):
-    """Smallest absolute difference between two angles in degrees (0..360)."""
-    d = (a - b) % 360.0
-    if d > 180.0:
-        d = 360.0 - d
-    return abs(d)
-def detect_kala_sarpa(sidelons):
-    # classical planets (exclude nodes)
-    plist = ['Su','Mo','Ma','Me','Ju','Ve','Sa']
-    ra = sidelons['Ra']; ke = sidelons['Ke']
-    # All planets within Rahu -> Ketu arc, or within Ketu -> Rahu arc
-    in_ra_ke  = all(_between_arc_ccw(sidelons[p], ra, ke) for p in plist)
-    in_ke_ra  = all(_between_arc_ccw(sidelons[p], ke, ra) for p in plist)
-    return in_ra_ke or in_ke_ra
-
-
-def detect_guru_chandal(sidelons):
-    """Guru–Chāṇḍāl: Jupiter with Rahu within <= 4° and in the same sign."""
-    j_lon = sidelons['Ju']; ra_lon = sidelons['Ra']
-    same_sign = planet_rasi_sign(j_lon) == planet_rasi_sign(ra_lon)
-    return same_sign and (_angle_diff_deg(j_lon, ra_lon) <= 4.0)
-
-
-
-def detect_pitru_dosh(sidelons, lagna_sign):
-    """Pitru Doṣa: Sun with Rahu within <= 4° and in the same sign (Rahu-specific)."""
-    su_lon = sidelons['Su']; ra_lon = sidelons['Ra']
-    same_sign = planet_rasi_sign(su_lon) == planet_rasi_sign(ra_lon)
-    return same_sign and (_angle_diff_deg(su_lon, ra_lon) <= 4.0)
-
-
-def compute_muntha_for_current_year(dob: datetime.date, lagna_sign: int) -> int:
-    """Muntha sign number (1..12) for the CURRENT calendar year, based on age completed."""
-    today = datetime.date.today()
-    years = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
-    years = max(0, years)
-    return ((lagna_sign - 1 + years) % 12) + 1
-
-def saturn_status_now(sidelons_natal, tz_hours: float):
-    """Return (label, details) for Shani: 'Sade Sati (Phase X)', 'Dhaiya (4th/8th)', or 'None'."""
-    natal_moon = planet_rasi_sign(sidelons_natal['Mo'])
-    # compute transit Saturn sign now (UTC)
-    now_utc = datetime.datetime.utcnow()
-    _, _, trans = sidereal_positions(now_utc)
-    sat_sign = planet_rasi_sign(trans['Sa'])
-    delta = (sat_sign - natal_moon) % 12  # 0 = same sign (2nd phase)
-    if delta in (11, 0, 1):
-        phase = {11:'1st', 0:'2nd', 1:'3rd'}[delta]
-        return f"Sade Sati ({phase} phase)", f"Saturn in {SIGN_LABEL_EN[sat_sign]} relative to natal Moon sign {natal_moon}"
-    if delta in (3, 7):
-        return "Shani Dhaiya", f"Saturn transiting {('4th' if delta==3 else '8th')} from natal Moon"
-    return "None", "—"
 # --- Combustion settings ---
 # Only the SUN causes combustion. Rahu/Ketu never combust. Moon CAN be combust (by Sun) if within orb.
 # Set this to True if you want to mark combustion ONLY when the Sun and the planet are in the SAME rāśi sign.
@@ -462,7 +395,7 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
             xs,ys=zip(*poly); return (sum(xs)/n, sum(ys)/n)
         return (Cx/(6*A), Cy/(6*A))
     num_boxes=[]; planet_boxes=[]; occupied_rects=[]
-    num_w=num_h=10; p_w,p_h=16,14; gap_x=4; offset_y=12
+    num_w=num_h=12; p_w,p_h=16,14; gap_x=4; offset_y=12
     for k,poly in houses.items():
         bbox = _bbox_of_poly(poly)
         # house number box
@@ -472,7 +405,7 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
         nl, nt = _nudge_number_box(left, top, num_w, num_h, S, occupied_rects)
         left, top = nl, nt
         num_boxes.append(f'''
-        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:200" fillcolor="#ffffff" strokecolor="none" strokeweight="0pt">
+        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:80" fillcolor="#ffffff" strokecolor="none" strokeweight="0pt">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
@@ -515,7 +448,7 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
                 ph = p_h - (1 if edge_touch else 0)
                 left_pl = row_left + c * (pw + gap_x)
                 box_xml = (
-                    f"<v:rect style=\"position:absolute;left:{left_pl}pt;top:{top_box}pt;width:{pw}pt;height:{ph}pt;z-index:200\" strokecolor=\"none\">"
+                    f"<v:rect style=\"position:absolute;left:{left_pl}pt;top:{top_box}pt;width:{pw}pt;height:{ph}pt;z-index:6\" strokecolor=\"none\">"
                     + "<v:textbox inset=\"0,0,0,0\">"
                     + "<w:txbxContent xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
                     + f"<w:p><w:pPr><w:jc w:val=\"center\"/></w:pPr><w:r><w:t>{_xml_text(label)}</w:t></w:r></w:p>"
@@ -536,7 +469,7 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
                     circle_w    = pw - 4
                     circle_h    = ph - 2
                     oval_xml = (
-                        f"<v:oval style=\"position:absolute;left:{circle_left}pt;top:{circle_top}pt;width:{circle_w}pt;height:{circle_h}pt;z-index:200\" fillcolor=\"none\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
+                        f"<v:oval style=\"position:absolute;left:{circle_left}pt;top:{circle_top}pt;width:{circle_w}pt;height:{circle_h}pt;z-index:7\" fillcolor=\"none\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
                     )
                     planet_boxes.append(oval_xml)
                 if varg:
@@ -544,7 +477,7 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
                     badge_left = left_pl + pw - badge_w + 0.5
                     badge_top  = top_box - 2
                     badge_xml = (
-                        f"<v:rect style=\"position:absolute;left:{badge_left}pt;top:{badge_top}pt;width:{badge_w}pt;height:{badge_h}pt;z-index:200\" fillcolor=\"#ffffff\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
+                        f"<v:rect style=\"position:absolute;left:{badge_left}pt;top:{badge_top}pt;width:{badge_w}pt;height:{badge_h}pt;z-index:8\" fillcolor=\"#ffffff\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
                     )
                     planet_boxes.append(badge_xml)
             boxes_xml = "\\n".join(num_boxes + planet_boxes)
@@ -552,13 +485,13 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
         <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
-          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:200" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
-          <v:line style="position:absolute;z-index:200" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:200" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:200" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:200" from="{R},{S/2}" to="{S/2},{B}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:200" from="{S/2},{B}" to="{L},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:200" from="{L},{S/2}" to="{S/2},{T}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
+          <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:line style="position:absolute;z-index:2" from="{R},{S/2}" to="{S/2},{B}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:line style="position:absolute;z-index:2" from="{S/2},{B}" to="{L},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:line style="position:absolute;z-index:2" from="{L},{S/2}" to="{S/2},{T}" strokecolor="black" strokeweight="1.5pt"/>
           {boxes_xml}
         </v:group>
       </w:pict>
@@ -613,7 +546,7 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
         else:
             content = f'<w:r><w:t>{num}</w:t></w:r>'
         text_boxes.append(f'''
-        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{box_w}pt;height:{box_h}pt;z-index:200" strokecolor="none">
+        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{box_w}pt;height:{box_h}pt;z-index:5" strokecolor="none">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:p><w:pPr><w:jc w:val="center"/></w:pPr>{content}</w:p>
@@ -626,13 +559,13 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
         <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
-          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:200" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
-          <v:line style="position:absolute;z-index:200" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:200" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:200" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:200" from="{R},{S/2}" to="{S/2},{B}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:200" from="{S/2},{B}" to="{L},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:200" from="{L},{S/2}" to="{S/2},{T}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
+          <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:line style="position:absolute;z-index:2" from="{R},{S/2}" to="{S/2},{B}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:line style="position:absolute;z-index:2" from="{S/2},{B}" to="{L},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
+          <v:line style="position:absolute;z-index:2" from="{L},{S/2}" to="{S/2},{T}" strokecolor="black" strokeweight="1.5pt"/>
           {boxes_xml}
         </v:group>
       </w:pict>
@@ -656,7 +589,7 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
     for k,poly in houses.items():
         x,y = centroid(poly); left = x - w/2; top = y - h/2; txt = labels[k]
         boxes.append(f'''
-        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{w}pt;height:{h}pt;z-index:200" strokecolor="none">
+        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{w}pt;height:{h}pt;z-index:5" strokecolor="none">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
@@ -667,13 +600,13 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
     xml = f'''<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
         <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
           <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
-            <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:200" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
-            <v:line style="position:absolute;z-index:200" from="0,0" to="{S},{S}" strokecolor="black" strokeweight="1.5pt"/>
-            <v:line style="position:absolute;z-index:200" from="{S},0" to="0,{S}" strokecolor="black" strokeweight="1.5pt"/>
-            <v:line style="position:absolute;z-index:200" from="{S/2},0" to="{S},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
-            <v:line style="position:absolute;z-index:200" from="{S},{S/2}" to="{S/2},{S}" strokecolor="black" strokeweight="1.5pt"/>
-            <v:line style="position:absolute;z-index:200" from="{S/2},{S}" to="0,{S/2}" strokecolor="black" strokeweight="1.5pt"/>
-            <v:line style="position:absolute;z-index:200" from="0,{S/2}" to="{S/2},0" strokecolor="black" strokeweight="1.5pt"/>
+            <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
+            <v:line style="position:absolute;z-index:2" from="0,0" to="{S},{S}" strokecolor="black" strokeweight="1.5pt"/>
+            <v:line style="position:absolute;z-index:2" from="{S},0" to="0,{S}" strokecolor="black" strokeweight="1.5pt"/>
+            <v:line style="position:absolute;z-index:2" from="{S/2},0" to="{S},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
+            <v:line style="position:absolute;z-index:2" from="{S},{S/2}" to="{S/2},{S}" strokecolor="black" strokeweight="1.5pt"/>
+            <v:line style="position:absolute;z-index:2" from="{S/2},{S}" to="0,{S/2}" strokecolor="black" strokeweight="1.5pt"/>
+            <v:line style="position:absolute;z-index:2" from="0,{S/2}" to="{S/2},0" strokecolor="black" strokeweight="1.5pt"/>
             {boxes_xml}
           </v:group>
         </w:pict></w:r></w:p>'''
@@ -875,24 +808,24 @@ def main():
 
             left = outer.rows[0].cells[0]
             # Personal Details styled: bold section, underlined labels, larger font
-            p = left.add_paragraph('व्यक्तिगत विवरण'); p.runs[0].bold = True; p.runs[0].font.size = Pt(BASE_FONT_PT+4); p.runs[0].underline = True
+            p = left.add_paragraph('Personal Details'); p.runs[0].bold = True; p.runs[0].font.size = Pt(BASE_FONT_PT+4)
             # Name
             pname = left.add_paragraph();
-            r1 = pname.add_run('नाम: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r1 = pname.add_run('Name: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             r2 = pname.add_run(str(name)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
             # DOB | TOB
             pdob = left.add_paragraph();
-            r1 = pdob.add_run('जन्म तिथि: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r1 = pdob.add_run('DOB: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             r2 = pdob.add_run(str(dob)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
-            r3 = pdob.add_run('  |  जन्म समय: '); r3.underline = True; r3.bold = True; r3.font.size = Pt(BASE_FONT_PT+3)
+            r3 = pdob.add_run('  |  TOB: '); r3.bold = True; r3.font.size = Pt(BASE_FONT_PT+3)
             r4 = pdob.add_run(str(tob)); r4.bold = True; r4.font.size = Pt(BASE_FONT_PT+3)
             # Place
             pplace = left.add_paragraph();
-            r1 = pplace.add_run('स्थान: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r1 = pplace.add_run('Place: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             r2 = pplace.add_run(str(disp)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
             # Time Zone
             ptz = left.add_paragraph();
-            r1 = ptz.add_run('समय क्षेत्र: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r1 = ptz.add_run('Time Zone: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             if used_manual:
                 r2 = ptz.add_run(str(tzname)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
             else:
@@ -934,7 +867,7 @@ def main():
             right.vertical_alignment = WD_ALIGN_VERTICAL.TOP
             kt.autofit = False
             kt.columns[0].width = Inches(right_width_in)
-            for row in kt.rows: row.height_rule = WD_ROW_HEIGHT_RULE.AT_LEAST; row.height = Pt(288)
+            for row in kt.rows: row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY; row.height = Pt(288)
             
 
             cell1 = kt.rows[0].cells[0]; cap1 = cell1.add_paragraph("लग्न कुंडली")
@@ -948,42 +881,9 @@ def main():
             cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap2, size_pt=11, underline=True, bold=True); cap2.paragraph_format.space_before = Pt(0); cap2.paragraph_format.space_after = Pt(1)
             p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0)
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
-            p2._p.addnext(kundali_with_planets(size_pt=220, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
+            p2._p.addnext(kundali_with_planets(size_pt=230, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
 
-            # ---- Summary under Navāṁśa ----
-                        doc.add_page_break()
-            hd = doc.add_paragraph('— प्रमुख बिंदु —'); hd.runs[0].bold = True
-            info = []
-            try:
-                muntha_sign = compute_muntha_for_current_year(dob, lagna_sign)
-                info.append(f"मुन्था (इस वर्ष): {SIGN_LABEL_EN.get(muntha_sign, str(muntha_sign))}")
-            except Exception:
-                info.append("मुन्था (इस वर्ष): —")
-            
-            try:
-                shani_label, shani_more = saturn_status_now(sidelons, tz_hours)
-                info.append(f"Shani status: {shani_label}")
-                if shani_more and shani_more != "—":
-                    info.append(f"  • {shani_more}")
-            except Exception:
-                info.append("Shani status: —")
-            
-            try:
-                ks = detect_kala_sarpa(sidelons)
-                gc = detect_guru_chandal(sidelons)
-                pitru = detect_pitru_dosh(sidelons, lagna_sign)
-                info.append(f"Kala Sarpa: {'Yes' if ks else 'No'}")
-                info.append(f"Guru–Chāṇḍाल: {'Yes' if gc else 'No'}")
-                info.append(f"Pitru Doṣा: {'Yes' if pitru else 'No'}")
-            except Exception:
-                info.append("Dosha checks: —")
-            
-            det = doc.add_paragraph()
-            det.paragraph_format.space_before = Pt(6); det.paragraph_format.space_after = Pt(0)
-            for line in info:
-                run = det.add_run(line + "\n")
-                run.font.size = Pt(BASE_FONT_PT)
-out = BytesIO(); doc.save(out); out.seek(0)
+            out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
 
             # ---- Previews with compact PNGs ----
