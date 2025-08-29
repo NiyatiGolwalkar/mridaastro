@@ -74,6 +74,7 @@ def compute_statuses_all(sidelons):
             sep = _min_circ_angle(lon, sun_lon)
             if not REQUIRE_SAME_SIGN_FOR_COMBUST or (planet_rasi_sign(lon) == planet_rasi_sign(sun_lon)):
                 combust = (sep <= COMBUST_ORB[code])
+
         out[code] = {
             'rasi': rasi,
             'nav': nav,
@@ -86,6 +87,12 @@ def compute_statuses_all(sidelons):
             'debil_rasi': (DEBIL_SIGN.get(code) == rasi),
             'debil_nav':  (DEBIL_SIGN.get(code) == nav),
         }
+        # Nodes (Rahu/Ketu): do not mark exaltation/debilitation
+        if code in ('Ra','Ke'):
+            out[code]['exalt_rasi'] = False
+            out[code]['exalt_nav'] = False
+            out[code]['debil_rasi'] = False
+            out[code]['debil_nav'] = False
     return out
 
 def _make_flags(view, st):
@@ -815,19 +822,21 @@ def main():
             set_col_widths(t3, [0.85,0.9,1.05,0.7])
 
             right = outer.rows[0].cells[1]
-            kt = right.add_table(rows=2, cols=1); kt.autofit=False; kt.columns[0].width = Inches(right_width_in)
-            for row in kt.rows: row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY; row.height = Pt(300)
+                        kt = right.add_table(rows=2, cols=1)
+            right.vertical_alignment = WD_ALIGN_VERTICAL.TOP
+; kt.autofit=False; kt.columns[0].width = Inches(right_width_in)
+            for row in kt.rows: row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY; row.height = Pt(295)
 
-            cell1 = kt.rows[0].cells[0]; cell1.add_paragraph(); cap1 = cell1.add_paragraph("लग्न कुंडली")
-            cap1.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap1, size_pt=11, underline=True, bold=True)
-            p1 = cell1.add_paragraph();
+            cell1 = kt.rows[0].cells[0]; cap1 = cell1.add_paragraph("लग्न कुंडली")
+            cap1.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap1, size_pt=11, underline=True, bold=True); cap1.paragraph_format.space_before = Pt(0); cap1.paragraph_format.space_after = Pt(1)
+            p1 = cell1.add_paragraph(); p1.paragraph_format.space_before = Pt(0); p1.paragraph_format.space_after = Pt(0)
             # Lagna chart with planets in single box per house
             rasi_house_planets = build_rasi_house_planets_marked(sidelons, lagna_sign)
             p1._p.addnext(kundali_with_planets(size_pt=230, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
 
-            cell2 = kt.rows[1].cells[0]; cell2.add_paragraph(); cap2 = cell2.add_paragraph("नवांश कुंडली")
-            cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap2, size_pt=11, underline=True, bold=True)
-            p2 = cell2.add_paragraph();
+            cell2 = kt.rows[1].cells[0]; cap2 = cell2.add_paragraph("नवांश कुंडली")
+            cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap2, size_pt=11, underline=True, bold=True); cap2.paragraph_format.space_before = Pt(0); cap2.paragraph_format.space_after = Pt(1)
+            p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0)
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
             p2._p.addnext(kundali_with_planets(size_pt=230, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
 
