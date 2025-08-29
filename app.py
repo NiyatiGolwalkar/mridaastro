@@ -462,7 +462,7 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
             xs,ys=zip(*poly); return (sum(xs)/n, sum(ys)/n)
         return (Cx/(6*A), Cy/(6*A))
     num_boxes=[]; planet_boxes=[]; occupied_rects=[]
-    num_w=num_h=12; p_w,p_h=16,14; gap_x=4; offset_y=12
+    num_w=num_h=11; p_w,p_h=16,14; gap_x=4; offset_y=12
     for k,poly in houses.items():
         bbox = _bbox_of_poly(poly)
         # house number box
@@ -875,7 +875,7 @@ def main():
 
             left = outer.rows[0].cells[0]
             # Personal Details styled: bold section, underlined labels, larger font
-            p = left.add_paragraph('व्यक्तिगत विवरण'); p.runs[0].bold = True; p.runs[0].font.size = Pt(BASE_FONT_PT+4)
+            p = left.add_paragraph('व्यक्तिगत विवरण'); p.runs[0].bold = True; p.runs[0].font.size = Pt(BASE_FONT_PT+4); p.runs[0].underline = True
             # Name
             pname = left.add_paragraph();
             r1 = pname.add_run('नाम: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
@@ -884,7 +884,7 @@ def main():
             pdob = left.add_paragraph();
             r1 = pdob.add_run('जन्म तिथि: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             r2 = pdob.add_run(str(dob)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
-            r3 = pdob.add_run('  |  जन्म समय: '); r3.bold = True; r3.font.size = Pt(BASE_FONT_PT+3)
+            r3 = pdob.add_run('  |  जन्म समय: '); r3.underline = True; r3.bold = True; r3.font.size = Pt(BASE_FONT_PT+3)
             r4 = pdob.add_run(str(tob)); r4.bold = True; r4.font.size = Pt(BASE_FONT_PT+3)
             # Place
             pplace = left.add_paragraph();
@@ -934,7 +934,7 @@ def main():
             right.vertical_alignment = WD_ALIGN_VERTICAL.TOP
             kt.autofit = False
             kt.columns[0].width = Inches(right_width_in)
-            for row in kt.rows: row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY; row.height = Pt(288)
+            for row in kt.rows: row.height_rule = WD_ROW_HEIGHT_RULE.AT_LEAST; row.height = Pt(288)
             
 
             cell1 = kt.rows[0].cells[0]; cap1 = cell1.add_paragraph("लग्न कुंडली")
@@ -948,9 +948,10 @@ def main():
             cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap2, size_pt=11, underline=True, bold=True); cap2.paragraph_format.space_before = Pt(0); cap2.paragraph_format.space_after = Pt(1)
             p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0)
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
-            p2._p.addnext(kundali_with_planets(size_pt=230, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
+            p2._p.addnext(kundali_with_planets(size_pt=220, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
 
             # ---- Summary under Navāṁśa ----
+            cell2.add_paragraph('— प्रमुख बिंदु —').runs[0].bold = True
             info = []
             try:
                 muntha_sign = compute_muntha_for_current_year(dob, lagna_sign)
