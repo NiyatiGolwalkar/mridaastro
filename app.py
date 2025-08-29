@@ -6,9 +6,34 @@
 #     * "Vimshottari Mahadasha..." -> "विंशोत्तरी महादशा" (bold + underline)
 # - Fix kundali preview image whitespace: compact square PNG with zero padding
 
+import math
 import datetime, json, urllib.parse, urllib.request
 from io import BytesIO
 
+
+def _rects_overlap(a, b):
+    return not (a['right'] <= b['left'] or a['left'] >= b['right'] or a['bottom'] <= b['top'] or a['top'] >= b['bottom'])
+
+def _nudge_number_box(base_left, base_top, w, h, S, occupied):
+    cx = S/2.0; cy = S/2.0
+    bx = base_left + w/2.0; by = base_top + h/2.0
+    vx = (bx - cx); vy = (by - cy)
+    n = (vx*vx + vy*vy) ** 0.5 or 1.0
+    ux, uy = vx/n, vy/n  # unit vector outward
+    pad = 2.0
+    for step in range(0, 9):  # try nudges up to ~16pt
+        dx = ux * (step * 2.0)
+        dy = uy * (step * 2.0)
+        l = max(pad, min(S - w - pad, base_left + dx))
+        t = max(pad, min(S - h - pad, base_top + dy))
+        r = {'left': l, 'top': t, 'right': l + w, 'bottom': t + h}
+        hit = False
+        for o in occupied:
+            if _rects_overlap(r, o):
+                hit = True; break
+        if not hit:
+            return l, t
+    return base_left, base_top
 import matplotlib.pyplot as plt
 import pandas as pd
 import pytz
@@ -358,14 +383,16 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
         if abs(A)<1e-9:
             xs,ys=zip(*poly); return (sum(xs)/n, sum(ys)/n)
         return (Cx/(6*A), Cy/(6*A))
-    num_boxes=[]; planet_boxes=[]
-    num_w=num_h=18; p_w,p_h=16,14; gap_x=4; offset_y=12
+    num_boxes=[]; planet_boxes=[]; occupied_rects=[]
+    num_w=num_h=14; p_w,p_h=16,14; gap_x=4; offset_y=12
     for k,poly in houses.items():
         # house number box
         x,y = centroid(poly); left = x - num_w/2; top = y - num_h/2; txt = labels[k]
 
+        nl, nt = _nudge_number_box(left, top, num_w, num_h, S, occupied_rects)
+        left, top = nl, nt
         num_boxes.append(f'''
-        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:40" fillcolor="#ffffff" strokecolor="none" strokeweight="0pt">
+        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:60" fillcolor="#ffffff" strokecolor="none" strokeweight="0pt">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
