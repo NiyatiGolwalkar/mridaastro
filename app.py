@@ -24,75 +24,137 @@ from docx.oxml.ns import qn
 from docx.shared import Inches, Mm, Pt
 
 
+def _strip_marks(txt: str) -> str:
+    if not isinstance(txt, str):
+        return str(txt)
+    # remove inline markers we might inherit from earlier steps
+    for ch in ("↑","↓","^","◯","▢"):
+        txt = txt.replace(ch, "")
+    return txt
+
 def _bool_like(x):
     if isinstance(x, bool): return x
     if isinstance(x, (int, float)): return x != 0
     if isinstance(x, str):
-        v = x.strip().lower()
-        return v in {"1","true","yes","y","t"}
+        return x.strip().lower() in {"1","true","yes","y","t"}
     return False
 
-def _flag_true(flags, key_aliases, tokens_en=(), tokens_hi=()):
-    if not isinstance(flags, dict): 
-        return False
-    for k in key_aliases:
-        if k in flags and _bool_like(flags[k]): return True
-        kk = f"is_{k}"
-        if kk in flags and _bool_like(flags[kk]): return True
-    status_fields = []
-    for fname in ("status","state","tag","tags"):
-        val = flags.get(fname)
-        if not val: 
-            continue
-        if isinstance(val, (list, tuple, set)):
-            status_fields.extend(str(x) for x in val)
-        else:
-            status_fields.append(str(val))
-    if status_fields:
-        joined = " ".join(status_fields)
-        lower = joined.lower()
-        if any(tok in lower for tok in tokens_en): return True
-        if any(tok in joined for tok in tokens_hi): return True
-    return False
+def _tokenize(val):
+    if val is None:
+        return set(), set()
+    # returns (en_tokens_lower, hi_tokens_original)
+    if isinstance(val, (list, tuple, set)):
+        parts = [str(x) for x in val]
+    else:
+        parts = [str(val)]
+    joined = " ".join(parts)
+    en = {tok for tok in re.split(r"[,\s/|]+", joined.lower()) if tok}
+    hi = {tok for tok in re.split(r"[,\s/|]+", joined) if tok}
+    return en, hi
 
-def _has_flag(flags, name):
-    aliases = {
-        "exalted": (("exalted","uccha","uchcha","uchh","exalt"), ("उच्च","ऊच्च","उच")),
-        "debilitated": (("debilitated","debil","neecha","neech"), ("नीच","नीचा","निच")),
-        "combust": (("combust","moudhya","maudhy","astha","ast","cb"), ("अस्त","मौढ्य","मूढ","दग्ध")),
-        "self": (("self","own","own_sign","svagrahi","sva","swa","ownhouse","own sign"), ("स्व","स्वराशी","स्वगृही","स्वगृह","स्वक्षेत्र")),
-        "vargottama": (("vargottama","varg","vg"), ("वर्गोत्तम","वर्गोत्त"))
-    }
-    en, hi = aliases.get(name, ((),()))
-    return _flag_true(flags, en, en, hi)
+def _extract_flags(p):
+    """
+    From planet entry (string or dict), produce:
+      base_text (markers stripped), flags dict, and computed booleans.
+    """
+    # Base text
+    if isinstance(p, str):
+        base = _strip_marks(p); flags = {}
+    elif isinstance(p, dict):
+        base = _strip_marks(p.get("txt", ""))
+        flags = p.get("flags", {})
+        if not flags or not isinstance(flags, (dict, list, tuple, set, str)):
+            # consider top-level keys as flags too
+            flags = {k:v for k,v in p.items() if k != "txt"}
+    else:
+        base = _strip_marks(str(p)); flags = {}
+
+    # Collect tokens and bools from flags in multiple shapes
+    en_tokens, hi_tokens = set(), set()
+    boolmap = {}
+
+    def add_bool(key, val):
+        boolmap[key] = boolmap.get(key, False) or _bool_like(val)
+
+    if isinstance(flags, dict):
+        # explicit boolean keys or is_* variants
+        for logical, aliases in {
+            "exalted": ["exalted","uccha","uchcha","uchh","exalt"],
+            "debilitated": ["debilitated","debil","neecha","neech"],
+            "combust": ["combust","moudhya","maudhy","astha","ast","cb"],
+            "self": ["self","own","own_sign","own sign","ownhouse","svagrahi","sva","swa","svagrihi"],
+            "vargottama": ["vargottama","varg","vg"],
+        }.items():
+            for k in aliases + [f"is_{a}" for a in aliases]:
+                if k in flags:
+                    add_bool(logical, flags[k])
+        # packed fields
+        for fname in ("status","state","tag","tags","markers","marker"):
+            if fname in flags:
+                en, hi = _tokenize(flags[fname])
+                en_tokens |= en; hi_tokens |= hi
+    elif isinstance(flags, (list, tuple, set, str)):
+        en, hi = _tokenize(flags)
+        en_tokens |= en; hi_tokens |= hi
+
+    # Also look at top-level values on p itself if dict
+    if isinstance(p, dict):
+        for fname in ("status","state","tag","tags","markers","marker"):
+            if fname in p:
+                en, hi = _tokenize(p[fname])
+                en_tokens |= en; hi_tokens |= hi
+
+    # Token rules (strict; only specific tokens count)
+    exalted_tok_en = {"exalted","exalt","uccha","uchcha","uchh","uch"}
+    debilitated_tok_en = {"debilitated","debil","neecha","neech"}
+    combust_tok_en = {"combust","moudhya","maudhy","astha","ast","cb"}
+    self_tok_en = {"self","own","own_sign","ownhouse","own","svagrahi","sva","swa","svagrihi"}
+    varg_tok_en = {"vargottama","varg","vg"}
+
+    exalted_tok_hi = {"उच्च","ऊच्च","उच"}
+    debilitated_tok_hi = {"नीच","नीचा","निच"}
+    combust_tok_hi = {"अस्त","मौढ्य","मूढ","दग्ध"}
+    self_tok_hi = {"स्व","स्वराशी","स्वगृही","स्वगृह","स्वक्षेत्र"}
+    varg_tok_hi = {"वर्गोत्तम","वर्गोत्त"}
+
+    exalted = boolmap.get("exalted", False) or bool(exalted_tok_en & en_tokens) or bool(exalted_tok_hi & hi_tokens)
+    debilitated = boolmap.get("debilitated", False) or bool(debilitated_tok_en & en_tokens) or bool(debilitated_tok_hi & hi_tokens)
+    combust = boolmap.get("combust", False) or bool(combust_tok_en & en_tokens) or bool(combust_tok_hi & hi_tokens)
+    selfr = boolmap.get("self", False) or bool(self_tok_en & en_tokens) or bool(self_tok_hi & hi_tokens)
+    vargot = boolmap.get("vargottama", False) or bool(varg_tok_en & en_tokens) or bool(varg_tok_hi & hi_tokens)
+
+    return base, (exalted, debilitated, combust, selfr, vargot)
 
 def _planet_text(p):
-    if isinstance(p, str):
-        base = p; flags = {}
-    elif isinstance(p, dict):
-        base = p.get("txt", "")
-        flags = p.get("flags", {}) or {}
-        if not flags:
-            flags = {k:v for k,v in p.items() if k != "txt"}
-    else:
-        base = str(p); flags = {}
-    exalted = _has_flag(flags, "exalted")
-    debilitated = _has_flag(flags, "debilitated")
-    combust = _has_flag(flags, "combust")
+    base, (exalted, debilitated, combust, selfr, vargot) = _extract_flags(p)
+    # inline markers only for these three
     txt = base
-    if exalted and not txt.endswith("↑"): txt += "↑"
-    if debilitated and not txt.endswith("↓"): txt += "↓"
-    if combust and not txt.endswith("^"): txt += "^"
+    if exalted: txt += "↑"
+    if debilitated: txt += "↓"
+    if combust: txt += "^"
     return txt
 
+
+
+def _strize(x):
+    """Convert any item to a safe string for joining; dicts with planet fields go through _planet_text."""
+    if isinstance(x, str):
+        return x
+    if isinstance(x, dict):
+        if any(k in x for k in ("txt","flags","exalted","debilitated","combust","status","self","vargottama","own_sign")):
+            return _planet_text(x)
+    return str(x)
+
+def sjoin(items, sep=" "):
+    try:
+        return sep.join(_strize(i) for i in items)
+    except TypeError:
+        items = list(items)
+        return sep.join(_strize(i) for i in items)
 def _self_and_varg_flags(p):
-    if isinstance(p, dict):
-        flags = p.get("flags", {}) or {}
-        if not flags:
-            flags = {k:v for k,v in p.items() if k != "txt"}
-    else:
-        flags = {}
-    return _has_flag(flags, "self"), _has_flag(flags, "vargottama")
+    # reuse the same extractor to avoid divergence
+    _, (_, _, _, selfr, vargot) = _extract_flags(p)
+    return selfr, vargot
 
 
 
@@ -421,7 +483,7 @@ def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
                     planet_boxes.append(f'''
                     <v:rect style="position:absolute;left:{badge_left}pt;top:{badge_top}pt;width:{badge_w}pt;height:{badge_h}pt;z-index:8" fillcolor="#ffffff" strokecolor="black" strokeweight="0.75pt"/>
                     ''')
-    boxes_xml = "\\n".join(num_boxes + planet_boxes)
+    boxes_xml = "\\n".join([_strize(x) for x in num_boxes + planet_boxes])
     xml = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
@@ -482,7 +544,7 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
         num = labels[k]
         pls = house_planets.get(int(k), [])
         if pls:
-            planets_text = " ".join(_planet_text(x) for x in pls)
+            planets_text = sjoin(_planet_text(x, " ") for x in pls)
             content = f'<w:r><w:t>{num}</w:t></w:r><w:r/><w:br/><w:r><w:t>{planets_text}</w:t></w:r>'
         else:
             content = f'<w:r><w:t>{num}</w:t></w:r>'
@@ -495,7 +557,7 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
           </v:textbox>
         </v:rect>
         ''')
-    boxes_xml = "\\n".join(text_boxes)
+    boxes_xml = "\\n".join([_strize(x) for x in text_boxes])
     xml = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
@@ -537,7 +599,7 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
             </w:txbxContent>
           </v:textbox>
         </v:rect>''')
-    boxes_xml = "\\n".join(boxes)
+    boxes_xml = "\\n".join([_strize(x) for x in boxes])
     xml = f'''<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
         <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
           <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
