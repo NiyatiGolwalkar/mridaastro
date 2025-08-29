@@ -359,13 +359,13 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
             xs,ys=zip(*poly); return (sum(xs)/n, sum(ys)/n)
         return (Cx/(6*A), Cy/(6*A))
     num_boxes=[]; planet_boxes=[]
-    num_w=num_h=22; p_w,p_h=16,14; gap_x=4; offset_y=12
+    num_w=num_h=18; p_w,p_h=16,14; gap_x=4; offset_y=12
     for k,poly in houses.items():
         # house number box
         x,y = centroid(poly); left = x - num_w/2; top = y - num_h/2; txt = labels[k]
 
         num_boxes.append(f'''
-        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:40" fillcolor="#ffffff" strokecolor="black" strokeweight="0.5pt">
+        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:40" fillcolor="#ffffff" strokecolor="none" strokeweight="0pt">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
@@ -751,7 +751,7 @@ def main():
 
                 # Contact line
                 hdr6 = doc.add_paragraph(); hdr6.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r6 = hdr6.add_run("Phone: 9302413816  |  Electronic City Phase 1, Bangalore, India"); r6.font.size = Pt(9.5)
+                r6 = hdr6.add_run("Phone: +91 9302413816  |  Electronic City Phase 1, Bangalore, India"); r6.font.size = Pt(9.5)
             except Exception:
                 pass
             # ===== End Header Block (exact lines) =====
