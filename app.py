@@ -261,6 +261,18 @@ def render_north_diamond(size_px=800, stroke=3):
     plt.close(fig); buf.seek(0); return buf
 
 def rotated_house_labels(lagna_sign):
+
+def _planet_label(p):
+    """
+    House planet entries may be strings (e.g., "सू") or dicts like {"txt": "सू", "flags": {...}}.
+    This normalizes to the intended short text.
+    """
+    if isinstance(p, str):
+        return p
+    if isinstance(p, dict):
+        return p.get("txt", str(p))
+    return str(p)
+
     order = [str(((lagna_sign - 1 + i) % 12) + 1) for i in range(12)]
     return {"1":order[0],"2":order[1],"3":order[2],"4":order[3],"5":order[4],"6":order[5],"7":order[6],"8":order[7],"9":order[8],"10":order[9],"11":order[10],"12":order[11]}
 
@@ -317,12 +329,13 @@ def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
             n=len(planets); total_w = n*p_w + (n-1)*gap_x
             start_left = x - total_w/2; top_planet = y - p_h/2 + offset_y
             for idx,pl in enumerate(planets):
+                label = _planet_label(pl)
                 left_pl = start_left + idx*(p_w+gap_x)
                 planet_boxes.append(f'''
                 <v:rect style="position:absolute;left:{left_pl}pt;top:{top_planet}pt;width:{p_w}pt;height:{p_h}pt;z-index:6" strokecolor="none">
                   <v:textbox inset="0,0,0,0">
                     <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-                      <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{pl}</w:t></w:r></w:p>
+                      <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{label}</w:t></w:r></w:p>
                     </w:txbxContent>
                   </v:textbox>
                 </v:rect>
@@ -388,7 +401,7 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
         num = labels[k]
         pls = house_planets.get(int(k), [])
         if pls:
-            planets_text = " ".join(pls)
+            planets_text = " ".join(_planet_label(x) for x in pls)
             content = f'<w:r><w:t>{num}</w:t></w:r><w:r/><w:br/><w:r><w:t>{planets_text}</w:t></w:r>'
         else:
             content = f'<w:r><w:t>{num}</w:t></w:r>'
