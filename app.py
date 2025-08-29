@@ -72,12 +72,79 @@ HINDI_FONT = "Mangal"
 HN = {'Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Me':'बुध','Ju':'गुरु','Ve':'शुक्र','Sa':'शनि','Ra':'राहु','Ke':'केतु'}
 
 # Compact Hindi abbreviations for planet boxes
+
+
+SIGN_LABEL_EN = {
+    1:"Aries (Mesha)", 2:"Taurus (Vrishabha)", 3:"Gemini (Mithuna)", 4:"Cancer (Karka)",
+    5:"Leo (Simha)", 6:"Virgo (Kanya)", 7:"Libra (Tula)", 8:"Scorpio (Vrishchika)",
+    9:"Sagittarius (Dhanu)", 10:"Capricorn (Makara)", 11:"Aquarius (Kumbha)", 12:"Pisces (Meena)"
+}
 HN_ABBR = {'Su':'सू','Mo':'चं','Ma':'मं','Me':'बु','Ju':'गु','Ve':'शु','Sa':'श','Ra':'रा','Ke':'के'}
 
 # ==== Status helpers (Rāśi vs Navāṁśa aware) ====
 SIGN_LORD = {1:'Ma',2:'Ve',3:'Me',4:'Mo',5:'Su',6:'Me',7:'Ve',8:'Ma',9:'Ju',10:'Sa',11:'Sa',12:'Ju'}
 EXALT_SIGN = {'Su':1,'Mo':2,'Ma':10,'Me':6,'Ju':4,'Ve':12,'Sa':7,'Ra':2,'Ke':8}
 DEBIL_SIGN = {'Su':7,'Mo':8,'Ma':4,'Me':12,'Ju':10,'Ve':6,'Sa':1,'Ra':8,'Ke':2}
+
+def _between_arc_ccw(a_deg, start_deg, end_deg):
+    """Return True if angle 'a_deg' lies on the CCW arc from 'start_deg' to 'end_deg' (inclusive)."""
+    span = (end_deg - start_deg) % 360.0
+    off  = (a_deg  - start_deg) % 360.0
+    return off <= span + 1e-6
+
+
+def _angle_diff_deg(a, b):
+    """Smallest absolute difference between two angles in degrees (0..360)."""
+    d = (a - b) % 360.0
+    if d > 180.0:
+        d = 360.0 - d
+    return abs(d)
+def detect_kala_sarpa(sidelons):
+    # classical planets (exclude nodes)
+    plist = ['Su','Mo','Ma','Me','Ju','Ve','Sa']
+    ra = sidelons['Ra']; ke = sidelons['Ke']
+    # All planets within Rahu -> Ketu arc, or within Ketu -> Rahu arc
+    in_ra_ke  = all(_between_arc_ccw(sidelons[p], ra, ke) for p in plist)
+    in_ke_ra  = all(_between_arc_ccw(sidelons[p], ke, ra) for p in plist)
+    return in_ra_ke or in_ke_ra
+
+
+def detect_guru_chandal(sidelons):
+    """Guru–Chāṇḍāl: Jupiter with Rahu within <= 4° and in the same sign."""
+    j_lon = sidelons['Ju']; ra_lon = sidelons['Ra']
+    same_sign = planet_rasi_sign(j_lon) == planet_rasi_sign(ra_lon)
+    return same_sign and (_angle_diff_deg(j_lon, ra_lon) <= 4.0)
+
+
+
+def detect_pitru_dosh(sidelons, lagna_sign):
+    """Pitru Doṣa: Sun with Rahu within <= 4° and in the same sign (Rahu-specific)."""
+    su_lon = sidelons['Su']; ra_lon = sidelons['Ra']
+    same_sign = planet_rasi_sign(su_lon) == planet_rasi_sign(ra_lon)
+    return same_sign and (_angle_diff_deg(su_lon, ra_lon) <= 4.0)
+
+
+def compute_muntha_for_current_year(dob: datetime.date, lagna_sign: int) -> int:
+    """Muntha sign number (1..12) for the CURRENT calendar year, based on age completed."""
+    today = datetime.date.today()
+    years = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+    years = max(0, years)
+    return ((lagna_sign - 1 + years) % 12) + 1
+
+def saturn_status_now(sidelons_natal, tz_hours: float):
+    """Return (label, details) for Shani: 'Sade Sati (Phase X)', 'Dhaiya (4th/8th)', or 'None'."""
+    natal_moon = planet_rasi_sign(sidelons_natal['Mo'])
+    # compute transit Saturn sign now (UTC)
+    now_utc = datetime.datetime.utcnow()
+    _, _, trans = sidereal_positions(now_utc)
+    sat_sign = planet_rasi_sign(trans['Sa'])
+    delta = (sat_sign - natal_moon) % 12  # 0 = same sign (2nd phase)
+    if delta in (11, 0, 1):
+        phase = {11:'1st', 0:'2nd', 1:'3rd'}[delta]
+        return f"Sade Sati ({phase} phase)", f"Saturn in {SIGN_LABEL_EN[sat_sign]} relative to natal Moon sign {natal_moon}"
+    if delta in (3, 7):
+        return "Shani Dhaiya", f"Saturn transiting {('4th' if delta==3 else '8th')} from natal Moon"
+    return "None", "—"
 # --- Combustion settings ---
 # Only the SUN causes combustion. Rahu/Ketu never combust. Moon CAN be combust (by Sun) if within orb.
 # Set this to True if you want to mark combustion ONLY when the Sun and the planet are in the SAME rāśi sign.
@@ -808,24 +875,24 @@ def main():
 
             left = outer.rows[0].cells[0]
             # Personal Details styled: bold section, underlined labels, larger font
-            p = left.add_paragraph('Personal Details'); p.runs[0].bold = True; p.runs[0].font.size = Pt(BASE_FONT_PT+4)
+            p = left.add_paragraph('व्यक्तिगत विवरण'); p.runs[0].bold = True; p.runs[0].font.size = Pt(BASE_FONT_PT+4)
             # Name
             pname = left.add_paragraph();
-            r1 = pname.add_run('Name: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r1 = pname.add_run('नाम: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             r2 = pname.add_run(str(name)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
             # DOB | TOB
             pdob = left.add_paragraph();
-            r1 = pdob.add_run('DOB: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r1 = pdob.add_run('जन्म तिथि: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             r2 = pdob.add_run(str(dob)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
-            r3 = pdob.add_run('  |  TOB: '); r3.bold = True; r3.font.size = Pt(BASE_FONT_PT+3)
+            r3 = pdob.add_run('  |  जन्म समय: '); r3.bold = True; r3.font.size = Pt(BASE_FONT_PT+3)
             r4 = pdob.add_run(str(tob)); r4.bold = True; r4.font.size = Pt(BASE_FONT_PT+3)
             # Place
             pplace = left.add_paragraph();
-            r1 = pplace.add_run('Place: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r1 = pplace.add_run('स्थान: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             r2 = pplace.add_run(str(disp)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
             # Time Zone
             ptz = left.add_paragraph();
-            r1 = ptz.add_run('Time Zone: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r1 = ptz.add_run('समय क्षेत्र: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             if used_manual:
                 r2 = ptz.add_run(str(tzname)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
             else:
@@ -882,6 +949,40 @@ def main():
             p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0)
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
             p2._p.addnext(kundali_with_planets(size_pt=230, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
+
+            # ---- Summary under Navāṁśa ----
+            info = []
+            try:
+                muntha_sign = compute_muntha_for_current_year(dob, lagna_sign)
+                info.append(f"मुन्था (इस वर्ष): {SIGN_LABEL_EN.get(muntha_sign, str(muntha_sign))}")
+            except Exception:
+                info.append("मुन्था (इस वर्ष): —")
+
+            try:
+                shani_label, shani_more = saturn_status_now(sidelons, tz_hours)
+                info.append(f"Shani status: {shani_label}")
+                if shani_more and shani_more != "—":
+                    info.append(f"  • {shani_more}")
+            except Exception:
+                info.append("Shani status: —")
+
+            try:
+                ks = detect_kala_sarpa(sidelons)
+                gc = detect_guru_chandal(sidelons)
+                pd = detect_pitru_dosh(sidelons, lagna_sign)
+                info.append(f"Kala Sarpa: {'Yes' if ks else 'No'}")
+                info.append(f"Guru–Chāṇḍāl: {'Yes' if gc else 'No'}")
+                info.append(f"Pitru Doṣa: {'Yes' if pd else 'No'}")
+            except Exception:
+                info.append("Dosha checks: —")
+
+            # Render the bullet-ish lines
+            det = cell2.add_paragraph()
+            det.paragraph_format.space_before = Pt(4); det.paragraph_format.space_after = Pt(0)
+            for line in info:
+                run = det.add_run(line + "\n")
+                run.font.size = Pt(BASE_FONT_PT)  # small
+
 
             out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
