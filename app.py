@@ -481,11 +481,10 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
                         f"<v:rect style=\"position:absolute;left:{badge_left}pt;top:{badge_top}pt;width:{badge_w}pt;height:{badge_h}pt;z-index:8\" fillcolor=\"#ffffff\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
                     )
                     planet_boxes.append(badge_xml)
-# Compose shapes after processing all houses
+    # Compose shapes after processing all houses
+    boxes_xml = "\\n".join(num_boxes + planet_boxes)
 
-boxes_xml = "\\n".join(num_boxes + planet_boxes)
-
-xml = f'''
+    xml = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
         <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
