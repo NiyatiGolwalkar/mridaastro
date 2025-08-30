@@ -362,11 +362,11 @@ def rotated_house_labels(lagna_sign):
     return {"1":order[0],"2":order[1],"3":order[2],"4":order[3],"5":order[4],"6":order[5],"7":order[6],"8":order[7],"9":order[8],"10":order[9],"11":order[10],"12":order[11]}
 
 
+
 def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
-    # Like kundali_w_p_with_centroid_labels but adds small side-by-side planet boxes below the number
     if house_planets is None:
         house_planets = {i: [] for i in range(1, 13)}
-    S=size_pt; L,T,R,B=0,0,S,S
+    S = size_pt; L = T = 0; R = B = S
     TM=(S/2,0); RM=(S,S/2); BM=(S/2,S); LM=(0,S/2)
     P_lt=(S/4,S/4); P_rt=(3*S/4,S/4); P_rb=(3*S/4,3*S/4); P_lb=(S/4,3*S/4); O=(S/2,S/2)
     labels = rotated_house_labels(lagna_sign)
@@ -394,102 +394,44 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
         if abs(A)<1e-9:
             xs,ys=zip(*poly); return (sum(xs)/n, sum(ys)/n)
         return (Cx/(6*A), Cy/(6*A))
-    num_boxes=[]; planet_boxes=[]; occupied_rects=[]
-    num_w=num_h=12; p_w,p_h=16,14; gap_x=4; offset_y=12
-    for k,poly in houses.items():
-        bbox = _bbox_of_poly(poly)
-        # house number box
-        x,y = centroid(poly); 
-        # safe bias for right-edge houses
-        if k in ("11","12"): x -= 2.0
-        left = x - num_w/2; top = y - num_h/2; txt = labels[k]
-        # clamp inside house bbox first
-        left, top = _clamp_in_bbox(left, top, num_w, num_h, bbox, pad=2)
-        # avoid overlaps
-        nl, nt = _nudge_number_box(left, top, num_w, num_h, S, occupied_rects)
-        left, top = nl, nt
-        # final global clamp to group bounds (prevents edge rounding loss)
-        _PAD=1.0
-        left = max(_PAD, min(S - num_w - _PAD, left))
-        top  = max(_PAD, min(S - num_h - _PAD, top))
-        num_boxes.append(f'''
-        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:90" fillcolor="#ffffff" strokecolor="none" strokeweight="0pt">
+    bboxes={k:_bbox(poly) for k,poly in houses.items()}
+    num_boxes=[]; planet_boxes=[]
+    num_w=num_h=20; p_w,p_h=16,14; gap_x=4; offset_y=12
+    for k, poly in houses.items():
+        cx,cy=centroid(poly)
+        left=cx-num_w/2; top=cy-num_h/2
+        if k in ("11","12"):
+            left-=2.0
+        left,top=_clamp_in_bbox(left,top,num_w,num_h,bboxes[k],pad=1.5)
+        txt=labels[k]
+        num_boxes.append(f"""
+        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:90" strokecolor="none">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
             </w:txbxContent>
           </v:textbox>
         </v:rect>
-        ''')
-        # planet row below number
-        planets = house_planets.get(int(k), [])
-        if planets:
-            n = len(planets)
-            max_cols = 2  # wrap after this many per row
-            rows = (n + max_cols - 1) // max_cols
-            gap_y = 2
-            # compute total grid height and top start
-            total_h = rows * p_h + (rows - 1) * gap_y
-            # start rows just below the number box
-            grid_top = y + (p_h/2 + 2) + offset_y
-            for idx, pl in enumerate(planets):
-                # normalize input item
-                if isinstance(pl, dict):
-                    label = str(pl.get('txt', '')).strip() or '?'
-                    fl = pl.get('flags', {}) or {}
-                else:
-                    label = str(pl).strip() or '?'
-                    fl = {}
-                r = idx // max_cols
-                c = idx % max_cols
-                # columns in this row (last row can be shorter)
-                cols_this = max_cols if r < rows - 1 else (n - max_cols * (rows - 1)) or max_cols
-                row_w = cols_this * p_w + (cols_this - 1) * gap_x
-                row_left = x - row_w / 2
-                top_box = grid_top + r * (p_h + gap_y) - p_h / 2
-                # keep within chart square bounds with margin and tiny shrink on edges
-                M = 5
-                row_left = max(M, min(row_left, S - row_w - M))
-                top_box  = max(M, min(top_box,  S - p_h - M))
-                edge_touch = (row_left <= M + 0.05) or (row_left >= S - row_w - M - 0.05) or (top_box <= M + 0.05) or (top_box >= S - p_h - M - 0.05)
-                pw = p_w - (1 if edge_touch else 0)
-                ph = p_h - (1 if edge_touch else 0)
-                left_pl = row_left + c * (pw + gap_x)
-                box_xml = (
-                    f"<v:rect style=\"position:absolute;left:{left_pl}pt;top:{top_box}pt;width:{pw}pt;height:{ph}pt;z-index:6\" strokecolor=\"none\">"
-                    + "<v:textbox inset=\"0,0,0,0\">"
-                    + "<w:txbxContent xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
-                    + f"<w:p><w:pPr><w:jc w:val=\"center\"/></w:pPr><w:r><w:t>{_xml_text(label)}</w:t></w:r></w:p>"
-                    + "</w:txbxContent>"
-                    + "</v:textbox>"
-                    + "</v:rect>"
-                )
-                planet_boxes.append(box_xml)
-                # overlays
-                try:
-                    selfr = bool(fl.get('self'))
-                    varg  = bool(fl.get('vargottama'))
-                except Exception:
-                    selfr = varg = False
-                if selfr:
-                    circle_left = left_pl + 2
-                    circle_top  = top_box + 1
-                    circle_w    = pw - 4
-                    circle_h    = ph - 2
-                    oval_xml = (
-                        f"<v:oval style=\"position:absolute;left:{circle_left}pt;top:{circle_top}pt;width:{circle_w}pt;height:{circle_h}pt;z-index:7\" fillcolor=\"none\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
-                    )
-                    planet_boxes.append(oval_xml)
-                if varg:
-                    badge_w = 5; badge_h = 5
-                    badge_left = left_pl + pw - badge_w + 0.5
-                    badge_top  = top_box - 2
-                    badge_xml = (
-                        f"<v:rect style=\"position:absolute;left:{badge_left}pt;top:{badge_top}pt;width:{badge_w}pt;height:{badge_h}pt;z-index:8\" fillcolor=\"#ffffff\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
-                    )
-                    planet_boxes.append(badge_xml)
-            boxes_xml = "\\n".join(num_boxes + planet_boxes)
-    xml = f'''
+        """)
+        plist=house_planets.get(int(k), [])
+        if plist:
+            n=len(plist); total_w=n*p_w+(n-1)*gap_x
+            start_left=cx-total_w/2; top_planet=cy-p_h/2+offset_y
+            start_left,top_planet=_clamp_in_bbox(start_left,top_planet,total_w,p_h,bboxes[k],pad=1.5)
+            for idx,pl in enumerate(plist):
+                left_pl=start_left+idx*(p_w+gap_x)
+                planet_boxes.append(f"""
+                <v:rect style="position:absolute;left:{left_pl}pt;top:{top_planet}pt;width:{p_w}pt;height:{p_h}pt;z-index:80" strokecolor="none">
+                  <v:textbox inset="0,0,0,0">
+                    <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                      <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{pl}</w:t></w:r></w:p>
+                    </w:txbxContent>
+                  </v:textbox>
+                </v:rect>
+                """)
+    boxes_xml="
+".join(num_boxes+planet_boxes)
+    xml=f"""
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
         <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
@@ -504,8 +446,9 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
         </v:group>
       </w:pict>
     </w:r></w:p>
-    '''
+    """
     return parse_xml(xml)
+
 
 
 
