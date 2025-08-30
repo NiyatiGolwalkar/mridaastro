@@ -1044,19 +1044,7 @@ def main():
             p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0)
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
             p2._p.addnext(kundali_with_planets(size_pt=230, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
-            # Add generous spacers to ensure the table stays below both charts
-            cell2.add_paragraph("")
-            cell2.add_paragraph("")
-            cell2.add_paragraph("")
-            cell2.add_paragraph("")
-            cell2.add_paragraph("")
-            cell2.add_paragraph("")
-            cell2.add_paragraph("")
-            cell2.add_paragraph("")
-            try:
-                add_pramukh_bindu_section(cell2, sidelons, lagna_sign, dt_utc)
-            except Exception:
-                pass
+            # (प्रमुख बिंदु moved to next page after outer table)
             # Ensure content goes below chart shape
             cell2.add_paragraph("")
             cell2.add_paragraph("")
