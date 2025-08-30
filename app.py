@@ -1025,6 +1025,13 @@ def main():
             set_col_widths(t3, [0.85,0.9,1.05,0.7])
 
             right = outer.rows[0].cells[1]
+            # Place Pramukh Bindu at the very top of the right column
+            try:
+                add_pramukh_bindu_section(right, sidelons, lagna_sign, dt_utc)
+                # spacer before charts
+                right.add_paragraph("")
+            except Exception:
+                pass
             kt = right.add_table(rows=2, cols=1)
             right.vertical_alignment = WD_ALIGN_VERTICAL.TOP
             kt.autofit = False
