@@ -828,7 +828,7 @@ def main():
 
             # DOCX
             doc = Document()
-        set_doc_background(doc)
+            set_doc_background(doc)
             sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
             margin = Mm(12); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(10); sec.bottom_margin = Mm(10)
 
