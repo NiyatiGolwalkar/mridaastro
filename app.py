@@ -483,7 +483,7 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
                     planet_boxes.append(badge_xml)
 # Compose shapes after processing all houses
 
-boxes_xml = \"\\n\".join(num_boxes + planet_boxes)
+boxes_xml = "\\n".join(num_boxes + planet_boxes)
 
 xml = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
