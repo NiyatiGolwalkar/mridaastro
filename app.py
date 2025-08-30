@@ -38,84 +38,6 @@ HN = {'Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Me':'�
 # Compact Hindi abbreviations for planet boxes
 HN_ABBR = {'Su':'सू','Mo':'चं','Ma':'मं','Me':'बु','Ju':'गु','Ve':'शु','Sa':'श','Ra':'रा','Ke':'के'}
 
-# ==== Status helpers (Rāśi vs Navāṁśa aware) ====
-SIGN_LORD = {1:'Ma',2:'Ve',3:'Me',4:'Mo',5:'Su',6:'Me',7:'Ve',8:'Ma',9:'Ju',10:'Sa',11:'Sa',12:'Ju'}
-EXALT_SIGN = {'Su':1,'Mo':2,'Ma':10,'Me':6,'Ju':4,'Ve':12,'Sa':7,'Ra':2,'Ke':8}
-DEBIL_SIGN = {'Su':7,'Mo':8,'Ma':4,'Me':12,'Ju':10,'Ve':6,'Sa':1,'Ra':8,'Ke':2}
-# --- Combustion settings ---
-# Only the SUN causes combustion. Rahu/Ketu never combust. Moon CAN be combust (by Sun) if within orb.
-# Set this to True if you want to mark combustion ONLY when the Sun and the planet are in the SAME rāśi sign.
-REQUIRE_SAME_SIGN_FOR_COMBUST = False  # change to True if that matches your tradition
-
-COMBUST_ORB = {'Mo':12.0,'Ma':17.0,'Me':12.0,'Ju':11.0,'Ve':10.0,'Sa':15.0}
-
-def _min_circ_angle(a, b):
-    d = abs((a - b) % 360.0)
-    return d if d <= 180.0 else 360.0 - d
-
-def _xml_text(s):
-    return (str(s).replace("&","&amp;").replace("<","&lt;").replace(">","&gt;"))
-
-def planet_rasi_sign(lon_sid):
-    return int(lon_sid // 30) + 1  # 1..12
-
-def compute_statuses_all(sidelons):
-    """Return per-planet dict containing both rasi-based and nav-based flags."""
-    out = {}
-    sun_lon = sidelons.get('Su', 0.0)
-    for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
-        lon = sidelons[code]
-        rasi = planet_rasi_sign(lon)
-        nav  = navamsa_sign_from_lon_sid(lon)
-        varg = (rasi == nav)
-        # Combustion: Sun only, optional same-sign constraint
-        combust = False
-        if code in COMBUST_ORB and code != 'Su':
-            sep = _min_circ_angle(lon, sun_lon)
-            if not REQUIRE_SAME_SIGN_FOR_COMBUST or (planet_rasi_sign(lon) == planet_rasi_sign(sun_lon)):
-                combust = (sep <= COMBUST_ORB[code])
-        out[code] = {
-            'rasi': rasi,
-            'nav': nav,
-            'vargottama': varg,
-            'combust': combust,
-            'self_rasi': (SIGN_LORD.get(rasi) == code),
-            'self_nav':  (SIGN_LORD.get(nav)  == code),
-            'exalt_rasi': (EXALT_SIGN.get(code) == rasi),
-            'exalt_nav':  (EXALT_SIGN.get(code) == nav),
-            'debil_rasi': (DEBIL_SIGN.get(code) == rasi),
-            'debil_nav':  (DEBIL_SIGN.get(code) == nav),
-        }
-    return out
-
-def _make_flags(view, st):
-    """Reduce the big dict to the fields used by the renderer for a given chart view."""
-    if view == 'nav':
-        return {
-            'self': st['self_nav'],
-            'exalted': st['exalt_nav'],
-            'debilitated': st['debil_nav'],
-            'vargottama': st['vargottama'],
-            'combust': False,
-        }
-    # default: rasi
-    return {
-        'self': st['self_rasi'],
-        'exalted': st['exalt_rasi'],
-        'debilitated': st['debil_rasi'],
-        'vargottama': st['vargottama'],
-        'combust': st['combust'],
-    }
-
-def fmt_planet_label(code, flags):
-    base = HN_ABBR.get(code, code)
-    if flags.get('exalted'): base += '↑'
-    if flags.get('debilitated'): base += '↓'
-    if flags.get('combust'): base += '^'
-    return base
-
-
-
 def planet_navamsa_house(lon_sid, nav_lagna_sign):
     # Return 1..12 house index in Navamsa for a planet
     nav_sign = navamsa_sign_from_lon_sid(lon_sid)  # 1..12
@@ -128,36 +50,6 @@ def build_navamsa_house_planets(sidelons, nav_lagna_sign):
         h = planet_navamsa_house(sidelons[code], nav_lagna_sign)
         house_map[h].append(HN_ABBR.get(code, code))
     return house_map
-
-
-def build_rasi_house_planets_marked(sidelons, lagna_sign):
-    house_map = {i: [] for i in range(1, 13)}
-    stats = compute_statuses_all(sidelons)
-    for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
-        sign = planet_rasi_sign(sidelons[code])
-        h = ((sign - lagna_sign) % 12) + 1
-        fl = _make_flags('rasi', stats[code])
-        label = fmt_planet_label(code, fl)
-        house_map[h].append({'txt': label, 'flags': fl})
-    return house_map
-
-def build_navamsa_house_planets_marked(sidelons, nav_lagna_sign):
-    house_map = {i: [] for i in range(1, 13)}
-    stats = compute_statuses_all(sidelons)
-    sun_nav = stats['Su']['nav']  # Sun's Navāṁśa sign
-    for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
-        nav_sign = navamsa_sign_from_lon_sid(sidelons[code])
-        h = ((nav_sign - nav_lagna_sign) % 12) + 1
-        fl = _make_flags('nav', stats[code])   # nav-based self/exalt/debil
-        # Navāṁśa combust rule: planet combust iff shares Nav sign with Sun
-        if code not in ('Su','Ra','Ke'):
-            fl['combust'] = (nav_sign == sun_nav)
-        else:
-            fl['combust'] = False
-        label = fmt_planet_label(code, fl)
-        house_map[h].append({'txt': label, 'flags': fl})
-    return house_map
-
 
 def build_rasi_house_planets(sidelons, lagna_sign):
     # Map: house -> list of planet abbreviations in Rasi (Lagna) chart
@@ -368,71 +260,20 @@ def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
         # planet row below number
         planets = house_planets.get(int(k), [])
         if planets:
-            n = len(planets)
-            max_cols = 2  # wrap after this many per row
-            rows = (n + max_cols - 1) // max_cols
-            gap_y = 2
-            # compute total grid height and top start
-            total_h = rows * p_h + (rows - 1) * gap_y
-            # start rows just below the number box
-            grid_top = y + (p_h/2 + 2) + offset_y
-            for idx, pl in enumerate(planets):
-                # normalize input item
-                if isinstance(pl, dict):
-                    label = str(pl.get('txt', '')).strip() or '?'
-                    fl = pl.get('flags', {}) or {}
-                else:
-                    label = str(pl).strip() or '?'
-                    fl = {}
-                r = idx // max_cols
-                c = idx % max_cols
-                # columns in this row (last row can be shorter)
-                cols_this = max_cols if r < rows - 1 else (n - max_cols * (rows - 1)) or max_cols
-                row_w = cols_this * p_w + (cols_this - 1) * gap_x
-                row_left = x - row_w / 2
-                top_box = grid_top + r * (p_h + gap_y) - p_h / 2
-                # keep within chart square bounds with margin and tiny shrink on edges
-                M = 5
-                row_left = max(M, min(row_left, S - row_w - M))
-                top_box  = max(M, min(top_box,  S - p_h - M))
-                edge_touch = (row_left <= M + 0.05) or (row_left >= S - row_w - M - 0.05) or (top_box <= M + 0.05) or (top_box >= S - p_h - M - 0.05)
-                pw = p_w - (1 if edge_touch else 0)
-                ph = p_h - (1 if edge_touch else 0)
-                left_pl = row_left + c * (pw + gap_x)
-                box_xml = (
-                    f"<v:rect style=\"position:absolute;left:{left_pl}pt;top:{top_box}pt;width:{pw}pt;height:{ph}pt;z-index:6\" strokecolor=\"none\">"
-                    + "<v:textbox inset=\"0,0,0,0\">"
-                    + "<w:txbxContent xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
-                    + f"<w:p><w:pPr><w:jc w:val=\"center\"/></w:pPr><w:r><w:t>{_xml_text(label)}</w:t></w:r></w:p>"
-                    + "</w:txbxContent>"
-                    + "</v:textbox>"
-                    + "</v:rect>"
-                )
-                planet_boxes.append(box_xml)
-                # overlays
-                try:
-                    selfr = bool(fl.get('self'))
-                    varg  = bool(fl.get('vargottama'))
-                except Exception:
-                    selfr = varg = False
-                if selfr:
-                    circle_left = left_pl + 2
-                    circle_top  = top_box + 1
-                    circle_w    = pw - 4
-                    circle_h    = ph - 2
-                    oval_xml = (
-                        f"<v:oval style=\"position:absolute;left:{circle_left}pt;top:{circle_top}pt;width:{circle_w}pt;height:{circle_h}pt;z-index:7\" fillcolor=\"none\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
-                    )
-                    planet_boxes.append(oval_xml)
-                if varg:
-                    badge_w = 5; badge_h = 5
-                    badge_left = left_pl + pw - badge_w + 0.5
-                    badge_top  = top_box - 2
-                    badge_xml = (
-                        f"<v:rect style=\"position:absolute;left:{badge_left}pt;top:{badge_top}pt;width:{badge_w}pt;height:{badge_h}pt;z-index:8\" fillcolor=\"#ffffff\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
-                    )
-                    planet_boxes.append(badge_xml)
-            boxes_xml = "\\n".join(num_boxes + planet_boxes)
+            n=len(planets); total_w = n*p_w + (n-1)*gap_x
+            start_left = x - total_w/2; top_planet = y - p_h/2 + offset_y
+            for idx,pl in enumerate(planets):
+                left_pl = start_left + idx*(p_w+gap_x)
+                planet_boxes.append(f'''
+                <v:rect style="position:absolute;left:{left_pl}pt;top:{top_planet}pt;width:{p_w}pt;height:{p_h}pt;z-index:6" strokecolor="none">
+                  <v:textbox inset="0,0,0,0">
+                    <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                      <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{pl}</w:t></w:r></w:p>
+                    </w:txbxContent>
+                  </v:textbox>
+                </v:rect>
+                ''')
+    boxes_xml = "\\n".join(num_boxes + planet_boxes)
     xml = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
@@ -766,14 +607,14 @@ def main():
             cap1.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap1, size_pt=11, underline=True, bold=True)
             p1 = cell1.add_paragraph();
             # Lagna chart with planets in single box per house
-            rasi_house_planets = build_rasi_house_planets_marked(sidelons, lagna_sign)
-            p1._p.addnext(kundali_with_planets(size_pt=220, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
+            rasi_house_planets = build_rasi_house_planets(sidelons, lagna_sign)
+            p1._p.addnext(kundali_single_box(size_pt=220, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
 
             cell2 = kt.rows[1].cells[0]; cell2.add_paragraph(); cap2 = cell2.add_paragraph("नवांश कुंडली")
             cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap2, size_pt=11, underline=True, bold=True)
             p2 = cell2.add_paragraph();
-            nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
-            p2._p.addnext(kundali_with_planets(size_pt=220, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
+            nav_house_planets = build_navamsa_house_planets(sidelons, nav_lagna_sign)
+            p2._p.addnext(kundali_single_box(size_pt=220, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
 
             out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
