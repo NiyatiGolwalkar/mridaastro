@@ -11,8 +11,6 @@ import datetime, json, urllib.parse, urllib.request
 from io import BytesIO
 
 # --- Appearance configuration ---
-COLOR_PRIMARY = RGBColor(0, 79, 159)  # deep blue for headings
-
 # Sizing (pt) — tuned smaller to reduce white space
 NUM_W_PT = 10       # house number box width (was 12)
 NUM_H_PT = 12       # house number box height (was 14)
@@ -74,7 +72,7 @@ from docx.enum.table import WD_ROW_HEIGHT_RULE, WD_ALIGN_VERTICAL
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
-from docx.shared import Inches, Mm, Pt, RGBColor
+from docx.shared import Inches, Mm, Pt
 
 APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
@@ -838,24 +836,24 @@ def main():
 
             left = outer.rows[0].cells[0]
             # व्यक्तिगत विवरण styled: bold section, underlined labels, larger font
-            p = left.add_paragraph('व्यक्तिगत विवरण'); p.runs[0].bold = True; p.runs[0].underline = True; p.runs[0].font.size = Pt(BASE_FONT_PT+5); p.runs[0].font.color.rgb = COLOR_PRIMARY
+            p = left.add_paragraph('व्यक्तिगत विवरण'); p.runs[0].bold = True; p.runs[0].underline = True; p.runs[0].font.size = Pt(BASE_FONT_PT+5)
             # Name
             pname = left.add_paragraph();
-            r1 = pname.add_run('नाम: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3); r1.font.color.rgb = COLOR_PRIMARY
+            r1 = pname.add_run('नाम: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             r2 = pname.add_run(str(name)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
             # DOB | TOB
             pdob = left.add_paragraph();
-            r1 = pdob.add_run('जन्म तिथि: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3); r1.font.color.rgb = COLOR_PRIMARY
+            r1 = pdob.add_run('जन्म तिथि: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             r2 = pdob.add_run(str(dob)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
-            r3 = pdob.add_run('  |  जन्म समय: '); r3.underline = True; r3.bold = True; r3.font.size = Pt(BASE_FONT_PT+3); r3.font.color.rgb = COLOR_PRIMARY
+            r3 = pdob.add_run('  |  जन्म समय: '); r3.underline = True; r3.bold = True; r3.font.size = Pt(BASE_FONT_PT+3)
             r4 = pdob.add_run(str(tob)); r4.bold = True; r4.font.size = Pt(BASE_FONT_PT+3)
             # Place
             pplace = left.add_paragraph();
-            r1 = pplace.add_run('स्थान: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3); r1.font.color.rgb = COLOR_PRIMARY
+            r1 = pplace.add_run('स्थान: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             r2 = pplace.add_run(str(disp)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
             # Time Zone
             ptz = left.add_paragraph();
-            r1 = ptz.add_run('समय क्षेत्र: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3); r1.font.color.rgb = COLOR_PRIMARY
+            r1 = ptz.add_run('समय क्षेत्र: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             if used_manual:
                 r2 = ptz.add_run(str(tzname)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
             else:
@@ -902,7 +900,6 @@ def main():
 
             cell1 = kt.rows[0].cells[0]; cap1 = cell1.add_paragraph("लग्न कुंडली")
             cap1.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap1, size_pt=11, underline=True, bold=True); cap1.paragraph_format.space_before = Pt(0); cap1.paragraph_format.space_after = Pt(1)
-            if cap1.runs: cap1.runs[0].font.color.rgb = COLOR_PRIMARY
             p1 = cell1.add_paragraph(); p1.paragraph_format.space_before = Pt(0); p1.paragraph_format.space_after = Pt(0)
             # Lagna chart with planets in single box per house
             rasi_house_planets = build_rasi_house_planets_marked(sidelons, lagna_sign)
@@ -910,7 +907,6 @@ def main():
 
             cell2 = kt.rows[1].cells[0]; cap2 = cell2.add_paragraph("नवांश कुंडली")
             cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap2, size_pt=11, underline=True, bold=True); cap2.paragraph_format.space_before = Pt(0); cap2.paragraph_format.space_after = Pt(1)
-            if cap2.runs: cap2.runs[0].font.color.rgb = COLOR_PRIMARY
             p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0)
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
             p2._p.addnext(kundali_with_planets(size_pt=230, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
