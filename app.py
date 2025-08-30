@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Consolidated kundali generator with D1/D9 rules and markers
+# Consolidated kundali generator with D1/D9 rules and markers (library-only; no demo code)
 
 from docx import Document
 from docx.oxml import parse_xml
@@ -122,8 +122,3 @@ def render_kundalis_into_doc(doc,sidelons,lagna_sign,nav_lagna_sign,size_pt=220)
     add_kundali_to_doc(doc,'लग्न कुंडली',rasi_map,size_pt)
     add_kundali_to_doc(doc,'नवांश कुंडली',nav_map,size_pt)
 
-if __name__=='__main__':
-    sidelons={k:15.0+i*30 for i,k in enumerate(HN_ABBR.keys())}
-    lagna_sign,nav_lagna_sign=2,4
-    doc=Document(); render_kundalis_into_doc(doc,sidelons,lagna_sign,nav_lagna_sign,230)
-    out='kundali_demo.docx'; doc.save(out); print('Saved',out)
