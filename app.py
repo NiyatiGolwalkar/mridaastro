@@ -1039,8 +1039,7 @@ def main():
             # Place Pramukh Bindu at the very top of the right column
             try:
                 add_pramukh_bindu_section(right, sidelons, lagna_sign, dt_utc)
-                # spacer before charts
-                            except Exception:
+            except Exception:
                 pass
             kt = right.add_table(rows=2, cols=1)
             right.vertical_alignment = WD_ALIGN_VERTICAL.TOP
