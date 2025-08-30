@@ -10,6 +10,21 @@ import math
 import datetime, json, urllib.parse, urllib.request
 from io import BytesIO
 
+# --- Appearance configuration ---
+# Sizing (pt) — tuned smaller to reduce white space
+NUM_W_PT = 10       # house number box width (was 12)
+NUM_H_PT = 12       # house number box height (was 14)
+PLANET_W_PT = 14    # planet label box width (was 16)
+PLANET_H_PT = 12    # planet label box height (was 14)
+GAP_X_PT = 3        # horizontal gap between planet boxes (was 4)
+OFFSET_Y_PT = 10    # vertical offset below number box (was 12)
+
+# Options: "plain", "bordered", "shaded", "bordered_shaded"
+HOUSE_NUM_STYLE = "bordered_shaded"
+HOUSE_NUM_BORDER_PT = 0.75
+HOUSE_NUM_SHADE = "#fff9d6"  # soft light-yellow
+
+
 
 def _rects_overlap(a, b):
     return not (a['right'] <= b['left'] or a['left'] >= b['right'] or a['bottom'] <= b['top'] or a['top'] >= b['bottom'])
@@ -394,8 +409,18 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
         if abs(A)<1e-9:
             xs,ys=zip(*poly); return (sum(xs)/n, sum(ys)/n)
         return (Cx/(6*A), Cy/(6*A))
+    # Style for house-number boxes
+    style = HOUSE_NUM_STYLE.lower()
+    if style == 'plain':
+        NUM_FILL, NUM_STROKE, NUM_STROKE_W = '#ffffff', 'none', '0pt'
+    elif style == 'bordered':
+        NUM_FILL, NUM_STROKE, NUM_STROKE_W = '#ffffff', 'black', f'{HOUSE_NUM_BORDER_PT}pt'
+    elif style == 'shaded':
+        NUM_FILL, NUM_STROKE, NUM_STROKE_W = HOUSE_NUM_SHADE, 'none', '0pt'
+    else:  # bordered_shaded
+        NUM_FILL, NUM_STROKE, NUM_STROKE_W = HOUSE_NUM_SHADE, 'black', f'{HOUSE_NUM_BORDER_PT}pt'
     num_boxes=[]; planet_boxes=[]; occupied_rects=[]
-    num_w=12; num_h=14; p_w,p_h=16,14; gap_x=4; offset_y=12
+    num_w=NUM_W_PT; num_h=NUM_H_PT; p_w,p_h=PLANET_W_PT,PLANET_H_PT; gap_x=GAP_X_PT; offset_y=OFFSET_Y_PT
     for k,poly in houses.items():
         bbox = _bbox_of_poly(poly)
         # house number box
@@ -406,7 +431,7 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
         left, top = nl, nt
         occupied_rects.append({'left': left, 'top': top, 'right': left + num_w, 'bottom': top + num_h});
         num_boxes.append(f'''
-        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:80" fillcolor="#ffffff" strokecolor="none" strokeweight="0pt">
+        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:80" fillcolor="{NUM_FILL}" strokecolor="{NUM_STROKE}" strokeweight="{NUM_STROKE_W}">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
@@ -810,25 +835,25 @@ def main():
             tblPr.append(tblBorders)
 
             left = outer.rows[0].cells[0]
-            # Personal Details styled: bold section, underlined labels, larger font
-            p = left.add_paragraph('Personal Details'); p.runs[0].bold = True; p.runs[0].font.size = Pt(BASE_FONT_PT+4)
+            # व्यक्तिगत विवरण styled: bold section, underlined labels, larger font
+            p = left.add_paragraph('व्यक्तिगत विवरण'); p.runs[0].bold = True; p.runs[0].font.size = Pt(BASE_FONT_PT+4)
             # Name
             pname = left.add_paragraph();
-            r1 = pname.add_run('Name: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r1 = pname.add_run('नाम: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             r2 = pname.add_run(str(name)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
             # DOB | TOB
             pdob = left.add_paragraph();
-            r1 = pdob.add_run('DOB: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r1 = pdob.add_run('जन्म तिथि: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             r2 = pdob.add_run(str(dob)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
-            r3 = pdob.add_run('  |  TOB: '); r3.bold = True; r3.font.size = Pt(BASE_FONT_PT+3)
+            r3 = pdob.add_run('  |  जन्म समय: '); r3.bold = True; r3.font.size = Pt(BASE_FONT_PT+3)
             r4 = pdob.add_run(str(tob)); r4.bold = True; r4.font.size = Pt(BASE_FONT_PT+3)
             # Place
             pplace = left.add_paragraph();
-            r1 = pplace.add_run('Place: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r1 = pplace.add_run('स्थान: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             r2 = pplace.add_run(str(disp)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
             # Time Zone
             ptz = left.add_paragraph();
-            r1 = ptz.add_run('Time Zone: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r1 = ptz.add_run('समय क्षेत्र: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             if used_manual:
                 r2 = ptz.add_run(str(tzname)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
             else:
