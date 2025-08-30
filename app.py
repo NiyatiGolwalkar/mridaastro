@@ -44,14 +44,37 @@ def planet_navamsa_house(lon_sid, nav_lagna_sign):
     return ((nav_sign - nav_lagna_sign) % 12) + 1
 
 def build_navamsa_house_planets(sidelons, nav_lagna_sign):
-    # (patched to include flags)
-    # Map: house -> list of planet abbreviations in Navamsa
-    return build_house_planets_with_flags(sidelons, lagna_sign=None, use_navamsa=True, nav_lagna_sign=nav_lagna_sign)
+    house_map = {i: [] for i in range(1, 13)}
+    for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
+        lon = sidelons[code]
+        nsign = navamsa_sign_from_lon_sid(lon)
+        h = ((nsign - nav_lagna_sign) % 12) + 1
+        rasi_sign = int(lon // 30) + 1
+        flags = {
+            'self': rasi_sign in SELF_SIGNS.get(code, set()),
+            'exalt': EXALT_SIGN.get(code) == rasi_sign,
+            'debil': DEBIL_SIGN.get(code) == rasi_sign,
+            'comb': _is_combust(code, sidelons),
+            'varg': _is_vargottama(lon),
+        }
+        house_map[h].append({'txt': HN_ABBR.get(code, code), 'flags': flags})
+    return house_map
 
 def build_rasi_house_planets(sidelons, lagna_sign):
-    # (patched to include flags)
-    # Map: house -> list of planet abbreviations in Rasi (Lagna) chart
-    return build_house_planets_with_flags(sidelons, lagna_sign, use_navamsa=False)
+    house_map = {i: [] for i in range(1, 13)}
+    for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
+        lon = sidelons[code]
+        rasi_sign = int(lon // 30) + 1
+        h = ((rasi_sign - lagna_sign) % 12) + 1
+        flags = {
+            'self': rasi_sign in SELF_SIGNS.get(code, set()),
+            'exalt': EXALT_SIGN.get(code) == rasi_sign,
+            'debil': DEBIL_SIGN.get(code) == rasi_sign,
+            'comb': _is_combust(code, sidelons),
+            'varg': _is_vargottama(lon),
+        }
+        house_map[h].append({'txt': HN_ABBR.get(code, code), 'flags': flags})
+    return house_map
 
 def _apply_hindi_caption_style(paragraph, size_pt=11, underline=True, bold=True):
     if not paragraph.runs:
