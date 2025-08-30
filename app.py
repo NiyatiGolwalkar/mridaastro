@@ -6,9 +6,34 @@
 #     * "Vimshottari Mahadasha..." -> "विंशोत्तरी महादशा" (bold + underline)
 # - Fix kundali preview image whitespace: compact square PNG with zero padding
 
+import math
 import datetime, json, urllib.parse, urllib.request
 from io import BytesIO
 
+
+def _rects_overlap(a, b):
+    return not (a['right'] <= b['left'] or a['left'] >= b['right'] or a['bottom'] <= b['top'] or a['top'] >= b['bottom'])
+
+def _nudge_number_box(base_left, base_top, w, h, S, occupied):
+    cx = S/2.0; cy = S/2.0
+    bx = base_left + w/2.0; by = base_top + h/2.0
+    vx = (bx - cx); vy = (by - cy)
+    n = (vx*vx + vy*vy) ** 0.5 or 1.0
+    ux, uy = vx/n, vy/n  # unit vector outward
+    pad = 2.0
+    for step in range(0, 9):  # try nudges up to ~16pt
+        dx = ux * (step * 2.0)
+        dy = uy * (step * 2.0)
+        l = max(pad, min(S - w - pad, base_left + dx))
+        t = max(pad, min(S - h - pad, base_top + dy))
+        r = {'left': l, 'top': t, 'right': l + w, 'bottom': t + h}
+        hit = False
+        for o in occupied:
+            if _rects_overlap(r, o):
+                hit = True; break
+        if not hit:
+            return l, t
+    return base_left, base_top
 import matplotlib.pyplot as plt
 import pandas as pd
 import pytz
@@ -16,8 +41,19 @@ import streamlit as st
 import swisseph as swe
 from timezonefinder import TimezoneFinder
 
+
+def _bbox_of_poly(poly):
+    xs, ys = zip(*poly)
+    return {'left': min(xs), 'top': min(ys), 'right': max(xs), 'bottom': max(ys)}
+
+def _clamp_in_bbox(left, top, w, h, bbox, pad):
+    lmin = bbox['left'] + pad
+    tmin = bbox['top'] + pad
+    lmax = bbox['right'] - w - pad
+    tmax = bbox['bottom'] - h - pad
+    return max(lmin, min(left, lmax)), max(tmin, min(top, tmax))
 from docx import Document
-from docx.enum.table import WD_ROW_HEIGHT_RULE
+from docx.enum.table import WD_ROW_HEIGHT_RULE, WD_ALIGN_VERTICAL
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
@@ -29,7 +65,7 @@ st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 AYANAMSHA_VAL = swe.SIDM_LAHIRI
 YEAR_DAYS     = 365.2422
 
-BASE_FONT_PT = 8.0
+BASE_FONT_PT = 7.0
 LATIN_FONT = "Georgia"
 HINDI_FONT = "Mangal"
 
@@ -37,6 +73,91 @@ HN = {'Su':'सूर्य','Mo':'चंद्र','Ma':'मंगल','Me':'�
 
 # Compact Hindi abbreviations for planet boxes
 HN_ABBR = {'Su':'सू','Mo':'चं','Ma':'मं','Me':'बु','Ju':'गु','Ve':'शु','Sa':'श','Ra':'रा','Ke':'के'}
+
+# ==== Status helpers (Rāśi vs Navāṁśa aware) ====
+SIGN_LORD = {1:'Ma',2:'Ve',3:'Me',4:'Mo',5:'Su',6:'Me',7:'Ve',8:'Ma',9:'Ju',10:'Sa',11:'Sa',12:'Ju'}
+EXALT_SIGN = {'Su':1,'Mo':2,'Ma':10,'Me':6,'Ju':4,'Ve':12,'Sa':7,'Ra':2,'Ke':8}
+DEBIL_SIGN = {'Su':7,'Mo':8,'Ma':4,'Me':12,'Ju':10,'Ve':6,'Sa':1,'Ra':8,'Ke':2}
+# --- Combustion settings ---
+# Only the SUN causes combustion. Rahu/Ketu never combust. Moon CAN be combust (by Sun) if within orb.
+# Set this to True if you want to mark combustion ONLY when the Sun and the planet are in the SAME rāśi sign.
+REQUIRE_SAME_SIGN_FOR_COMBUST = False  # change to True if that matches your tradition
+
+COMBUST_ORB = {'Mo':12.0,'Ma':17.0,'Me':12.0,'Ju':11.0,'Ve':10.0,'Sa':15.0}
+
+def _min_circ_angle(a, b):
+    d = abs((a - b) % 360.0)
+    return d if d <= 180.0 else 360.0 - d
+
+def _xml_text(s):
+    return (str(s).replace("&","&amp;").replace("<","&lt;").replace(">","&gt;"))
+
+def planet_rasi_sign(lon_sid):
+    return int(lon_sid // 30) + 1  # 1..12
+
+def compute_statuses_all(sidelons):
+    """Return per-planet dict containing both rasi-based and nav-based flags."""
+    out = {}
+    sun_lon = sidelons.get('Su', 0.0)
+    for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
+        lon = sidelons[code]
+        rasi = planet_rasi_sign(lon)
+        nav  = navamsa_sign_from_lon_sid(lon)
+        varg = (rasi == nav)
+        # Combustion: Sun only, optional same-sign constraint
+        combust = False
+        if code in COMBUST_ORB and code != 'Su':
+            sep = _min_circ_angle(lon, sun_lon)
+            if not REQUIRE_SAME_SIGN_FOR_COMBUST or (planet_rasi_sign(lon) == planet_rasi_sign(sun_lon)):
+                combust = (sep <= COMBUST_ORB[code])
+
+        out[code] = {
+            'rasi': rasi,
+            'nav': nav,
+            'vargottama': varg,
+            'combust': combust,
+            'self_rasi': (SIGN_LORD.get(rasi) == code),
+            'self_nav':  (SIGN_LORD.get(nav)  == code),
+            'exalt_rasi': (EXALT_SIGN.get(code) == rasi),
+            'exalt_nav':  (EXALT_SIGN.get(code) == nav),
+            'debil_rasi': (DEBIL_SIGN.get(code) == rasi),
+            'debil_nav':  (DEBIL_SIGN.get(code) == nav),
+        }
+        # Nodes (Rahu/Ketu): do not mark exaltation/debilitation
+        if code in ('Ra','Ke'):
+            out[code]['exalt_rasi'] = False
+            out[code]['exalt_nav'] = False
+            out[code]['debil_rasi'] = False
+            out[code]['debil_nav'] = False
+    return out
+
+def _make_flags(view, st):
+    """Reduce the big dict to the fields used by the renderer for a given chart view."""
+    if view == 'nav':
+        return {
+            'self': st['self_nav'],
+            'exalted': st['exalt_nav'],
+            'debilitated': st['debil_nav'],
+            'vargottama': st['vargottama'],
+            'combust': False,
+        }
+    # default: rasi
+    return {
+        'self': st['self_rasi'],
+        'exalted': st['exalt_rasi'],
+        'debilitated': st['debil_rasi'],
+        'vargottama': st['vargottama'],
+        'combust': st['combust'],
+    }
+
+def fmt_planet_label(code, flags):
+    base = HN_ABBR.get(code, code)
+    if flags.get('exalted'): base += '↑'
+    if flags.get('debilitated'): base += '↓'
+    if flags.get('combust'): base += '^'
+    return base
+
+
 
 def planet_navamsa_house(lon_sid, nav_lagna_sign):
     # Return 1..12 house index in Navamsa for a planet
@@ -50,6 +171,36 @@ def build_navamsa_house_planets(sidelons, nav_lagna_sign):
         h = planet_navamsa_house(sidelons[code], nav_lagna_sign)
         house_map[h].append(HN_ABBR.get(code, code))
     return house_map
+
+
+def build_rasi_house_planets_marked(sidelons, lagna_sign):
+    house_map = {i: [] for i in range(1, 13)}
+    stats = compute_statuses_all(sidelons)
+    for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
+        sign = planet_rasi_sign(sidelons[code])
+        h = ((sign - lagna_sign) % 12) + 1
+        fl = _make_flags('rasi', stats[code])
+        label = fmt_planet_label(code, fl)
+        house_map[h].append({'txt': label, 'flags': fl})
+    return house_map
+
+def build_navamsa_house_planets_marked(sidelons, nav_lagna_sign):
+    house_map = {i: [] for i in range(1, 13)}
+    stats = compute_statuses_all(sidelons)
+    sun_nav = stats['Su']['nav']  # Sun's Navāṁśa sign
+    for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
+        nav_sign = navamsa_sign_from_lon_sid(sidelons[code])
+        h = ((nav_sign - nav_lagna_sign) % 12) + 1
+        fl = _make_flags('nav', stats[code])   # nav-based self/exalt/debil
+        # Navāṁśa combust rule: planet combust iff shares Nav sign with Sun
+        if code not in ('Su','Ra','Ke'):
+            fl['combust'] = (nav_sign == sun_nav)
+        else:
+            fl['combust'] = False
+        label = fmt_planet_label(code, fl)
+        house_map[h].append({'txt': label, 'flags': fl})
+    return house_map
+
 
 def build_rasi_house_planets(sidelons, lagna_sign):
     # Map: house -> list of planet abbreviations in Rasi (Lagna) chart
@@ -211,7 +362,7 @@ def rotated_house_labels(lagna_sign):
     return {"1":order[0],"2":order[1],"3":order[2],"4":order[3],"5":order[4],"6":order[5],"7":order[6],"8":order[7],"9":order[8],"10":order[9],"11":order[10],"12":order[11]}
 
 
-def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
+def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
     # Like kundali_w_p_with_centroid_labels but adds small side-by-side planet boxes below the number
     if house_planets is None:
         house_planets = {i: [] for i in range(1, 13)}
@@ -243,13 +394,18 @@ def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
         if abs(A)<1e-9:
             xs,ys=zip(*poly); return (sum(xs)/n, sum(ys)/n)
         return (Cx/(6*A), Cy/(6*A))
-    num_boxes=[]; planet_boxes=[]
-    num_w=num_h=20; p_w,p_h=16,14; gap_x=4; offset_y=12
+    num_boxes=[]; planet_boxes=[]; occupied_rects=[]
+    num_w=num_h=12; p_w,p_h=16,14; gap_x=4; offset_y=12
     for k,poly in houses.items():
+        bbox = _bbox_of_poly(poly)
         # house number box
         x,y = centroid(poly); left = x - num_w/2; top = y - num_h/2; txt = labels[k]
+        left, top = _clamp_in_bbox(left, top, num_w, num_h, bbox, pad=2)
+
+        nl, nt = _nudge_number_box(left, top, num_w, num_h, S, occupied_rects)
+        left, top = nl, nt
         num_boxes.append(f'''
-        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:5" strokecolor="none">
+        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:80" fillcolor="#ffffff" strokecolor="none" strokeweight="0pt">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
@@ -260,20 +416,71 @@ def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
         # planet row below number
         planets = house_planets.get(int(k), [])
         if planets:
-            n=len(planets); total_w = n*p_w + (n-1)*gap_x
-            start_left = x - total_w/2; top_planet = y - p_h/2 + offset_y
-            for idx,pl in enumerate(planets):
-                left_pl = start_left + idx*(p_w+gap_x)
-                planet_boxes.append(f'''
-                <v:rect style="position:absolute;left:{left_pl}pt;top:{top_planet}pt;width:{p_w}pt;height:{p_h}pt;z-index:6" strokecolor="none">
-                  <v:textbox inset="0,0,0,0">
-                    <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-                      <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{pl}</w:t></w:r></w:p>
-                    </w:txbxContent>
-                  </v:textbox>
-                </v:rect>
-                ''')
-    boxes_xml = "\\n".join(num_boxes + planet_boxes)
+            n = len(planets)
+            max_cols = 2  # wrap after this many per row
+            rows = (n + max_cols - 1) // max_cols
+            gap_y = 2
+            # compute total grid height and top start
+            total_h = rows * p_h + (rows - 1) * gap_y
+            # start rows just below the number box
+            grid_top = y + (p_h/2 + 2) + offset_y
+            for idx, pl in enumerate(planets):
+                # normalize input item
+                if isinstance(pl, dict):
+                    label = str(pl.get('txt', '')).strip() or '?'
+                    fl = pl.get('flags', {}) or {}
+                else:
+                    label = str(pl).strip() or '?'
+                    fl = {}
+                r = idx // max_cols
+                c = idx % max_cols
+                # columns in this row (last row can be shorter)
+                cols_this = max_cols if r < rows - 1 else (n - max_cols * (rows - 1)) or max_cols
+                row_w = cols_this * p_w + (cols_this - 1) * gap_x
+                row_left = x - row_w / 2
+                top_box = grid_top + r * (p_h + gap_y) - p_h / 2
+                # keep within chart square bounds with margin and tiny shrink on edges
+                M = 5
+                row_left = max(M, min(row_left, S - row_w - M))
+                top_box  = max(M, min(top_box,  S - p_h - M))
+                edge_touch = (row_left <= M + 0.05) or (row_left >= S - row_w - M - 0.05) or (top_box <= M + 0.05) or (top_box >= S - p_h - M - 0.05)
+                pw = p_w - (1 if edge_touch else 0)
+                ph = p_h - (1 if edge_touch else 0)
+                left_pl = row_left + c * (pw + gap_x)
+                box_xml = (
+                    f"<v:rect style=\"position:absolute;left:{left_pl}pt;top:{top_box}pt;width:{pw}pt;height:{ph}pt;z-index:6\" strokecolor=\"none\">"
+                    + "<v:textbox inset=\"0,0,0,0\">"
+                    + "<w:txbxContent xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
+                    + f"<w:p><w:pPr><w:jc w:val=\"center\"/></w:pPr><w:r><w:t>{_xml_text(label)}</w:t></w:r></w:p>"
+                    + "</w:txbxContent>"
+                    + "</v:textbox>"
+                    + "</v:rect>"
+                )
+                planet_boxes.append(box_xml)
+                # overlays
+                try:
+                    selfr = bool(fl.get('self'))
+                    varg  = bool(fl.get('vargottama'))
+                except Exception:
+                    selfr = varg = False
+                if selfr:
+                    circle_left = left_pl + 2
+                    circle_top  = top_box + 1
+                    circle_w    = pw - 4
+                    circle_h    = ph - 2
+                    oval_xml = (
+                        f"<v:oval style=\"position:absolute;left:{circle_left}pt;top:{circle_top}pt;width:{circle_w}pt;height:{circle_h}pt;z-index:7\" fillcolor=\"none\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
+                    )
+                    planet_boxes.append(oval_xml)
+                if varg:
+                    badge_w = 5; badge_h = 5
+                    badge_left = left_pl + pw - badge_w + 0.5
+                    badge_top  = top_box - 2
+                    badge_xml = (
+                        f"<v:rect style=\"position:absolute;left:{badge_left}pt;top:{badge_top}pt;width:{badge_w}pt;height:{badge_h}pt;z-index:8\" fillcolor=\"#ffffff\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
+                    )
+                    planet_boxes.append(badge_xml)
+            boxes_xml = "\\n".join(num_boxes + planet_boxes)
     xml = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
@@ -430,9 +637,10 @@ def set_col_widths(table, widths_inch):
             row.cells[i].width = Inches(w)
 
 def sanitize_filename(name: str) -> str:
-    cleaned = "".join(ch for ch in (name or "Horoscope") if ch.isalnum() or ch in "_- ")
-    cleaned = cleaned.strip().replace(" ", "_")
-    return cleaned or "Horoscope"
+    # Keep spaces; strip leading/trailing; allow letters/digits/space/_/- only
+    raw = (name or 'Horoscope').strip()
+    cleaned = ''.join(ch for ch in raw if ch.isalnum() or ch in ' _-')
+    return cleaned or 'Horoscope'
 
 def _utc_to_local(dt_utc, tzname, tz_hours, used_manual):
     if used_manual: return dt_utc + datetime.timedelta(hours=tz_hours)
@@ -527,7 +735,7 @@ def main():
 
             df_md = pd.DataFrame([
                 {"ग्रह": HN[s["planet"]],
-                 "प्रारंभ तिथि": _utc_to_local(s["start"], tzname, tz_hours, used_manual).strftime("%d-%m-%Y"),
+                 "समाप्ति तिथि": _utc_to_local(s["end"], tzname, tz_hours, used_manual).strftime("%d-%m-%Y"),
                  "आयु (वर्ष)": age_years(dt_local, s["end"])}
                 for s in md_segments_utc
             ])
@@ -552,26 +760,77 @@ def main():
             style = doc.styles['Normal']; style.font.name = LATIN_FONT; style.font.size = Pt(BASE_FONT_PT)
             style._element.rPr.rFonts.set(qn('w:eastAsia'), HINDI_FONT); style._element.rPr.rFonts.set(qn('w:cs'), HINDI_FONT)
 
-            title = doc.add_paragraph(f"{name or '—'} — Horoscope"); title.runs[0].font.size = Pt(BASE_FONT_PT+3); title.runs[0].bold = True
+            
+            
+            
+            
+            # ===== Report Header Block (exact lines) =====
+            try:
+                # MRIDAASTRO
+                hdr1 = doc.add_paragraph(); hdr1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r = hdr1.add_run("MRIDAASTRO"); r.font.bold = True; r.font.small_caps = True; r.font.size = Pt(16)
+
+                # Tagline
+                hdr2 = doc.add_paragraph(); hdr2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r2 = hdr2.add_run("In the light of the divine, let your soul journey shine."); r2.italic = True; r2.font.size = Pt(10)
+
+                # Title
+                hdr3 = doc.add_paragraph(); hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI)"); r3.bold = True; r3.font.size = Pt(13)
+
+                # Blank separator (small)
+                # hdr3.paragraph_format.space_after = Pt(2)
+
+                # Name
+                hdr4 = doc.add_paragraph(); hdr4.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r4 = hdr4.add_run("Niyati Golwalkar"); r4.font.size = Pt(10); r4.bold = True
+
+                # Role line
+                hdr5 = doc.add_paragraph(); hdr5.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r5 = hdr5.add_run("Astrologer • Sound & Mantra Healer"); r5.font.size = Pt(9.5)
+
+                # Contact line
+                hdr6 = doc.add_paragraph(); hdr6.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r6 = hdr6.add_run("Phone: +91 9302413816  |  Electronic City Phase 1, Bangalore, India"); r6.font.size = Pt(9.5)
+            except Exception:
+                pass
+            # ===== End Header Block (exact lines) =====
+# ===== End Header Block (simplified & robust) =====
+# ===== End Header Block (safe) =====
+
 
             outer = doc.add_table(rows=1, cols=2); outer.autofit=False
-            right_width_in = 3.3; outer.columns[0].width = Inches(3.3); outer.columns[1].width = Inches(right_width_in)
+            right_width_in = 4.6; outer.columns[0].width = Inches(2.2); outer.columns[1].width = Inches(right_width_in)
             tbl = outer._tbl; tblPr = tbl.tblPr; tblBorders = OxmlElement('w:tblBorders')
             for edge in ('top','left','bottom','right','insideH','insideV'):
                 el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'single'); el.set(qn('w:sz'),'6'); tblBorders.append(el)
             tblPr.append(tblBorders)
 
             left = outer.rows[0].cells[0]
-            p = left.add_paragraph("Personal Details"); p.runs[0].bold=True
-            left.add_paragraph(f"Name: {name}")
-            left.add_paragraph(f"DOB: {dob}  |  TOB: {tob}")
-            left.add_paragraph(f"Place: {disp}")
+            # Personal Details styled: bold section, underlined labels, larger font
+            p = left.add_paragraph('Personal Details'); p.runs[0].bold = True; p.runs[0].font.size = Pt(BASE_FONT_PT+4)
+            # Name
+            pname = left.add_paragraph();
+            r1 = pname.add_run('Name: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r2 = pname.add_run(str(name)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
+            # DOB | TOB
+            pdob = left.add_paragraph();
+            r1 = pdob.add_run('DOB: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r2 = pdob.add_run(str(dob)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
+            r3 = pdob.add_run('  |  TOB: '); r3.bold = True; r3.font.size = Pt(BASE_FONT_PT+3)
+            r4 = pdob.add_run(str(tob)); r4.bold = True; r4.font.size = Pt(BASE_FONT_PT+3)
+            # Place
+            pplace = left.add_paragraph();
+            r1 = pplace.add_run('Place: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r2 = pplace.add_run(str(disp)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
+            # Time Zone
+            ptz = left.add_paragraph();
+            r1 = ptz.add_run('Time Zone: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             if used_manual:
-                left.add_paragraph(f"Time Zone: {tzname}")
+                r2 = ptz.add_run(str(tzname)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
             else:
-                left.add_paragraph(f"Time Zone: {tzname} (UTC{tz_hours:+.2f})")
-
-            # ---- Hindi headings ----
+                r2 = ptz.add_run(f'{tzname} (UTC{tz_hours:+.2f})'); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
+                        # ---- Hindi headings ----
             h1 = left.add_paragraph("ग्रह स्थिति"); _apply_hindi_caption_style(h1, size_pt=11, underline=True, bold=True)
             t1 = left.add_table(rows=1, cols=len(df_positions.columns)); t1.autofit=False
             for i,c in enumerate(df_positions.columns): t1.rows[0].cells[i].text=c
@@ -580,6 +839,10 @@ def main():
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT); add_table_borders(t1, size=6)
             set_col_widths(t1, [0.7,0.5,0.9,0.8,1.05])
+            # Left align ONLY the header cell of the last column (उप‑नक्षत्र / Sublord)
+            for p in t1.rows[0].cells[-1].paragraphs:
+                p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+
 
             h2 = left.add_paragraph("विंशोत्तरी महादशा"); _apply_hindi_caption_style(h2, size_pt=11, underline=True, bold=True)
             t2 = left.add_table(rows=1, cols=len(df_md.columns)); t2.autofit=False
@@ -600,21 +863,25 @@ def main():
             set_col_widths(t3, [0.85,0.9,1.05,0.7])
 
             right = outer.rows[0].cells[1]
-            kt = right.add_table(rows=2, cols=1); kt.autofit=False; kt.columns[0].width = Inches(right_width_in)
-            for row in kt.rows: row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY; row.height = Pt(340)
+            kt = right.add_table(rows=2, cols=1)
+            right.vertical_alignment = WD_ALIGN_VERTICAL.TOP
+            kt.autofit = False
+            kt.columns[0].width = Inches(right_width_in)
+            for row in kt.rows: row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY; row.height = Pt(288)
+            
 
-            cell1 = kt.rows[0].cells[0]; cell1.add_paragraph(); cap1 = cell1.add_paragraph("लग्न कुंडली")
-            cap1.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap1, size_pt=11, underline=True, bold=True)
-            p1 = cell1.add_paragraph();
+            cell1 = kt.rows[0].cells[0]; cap1 = cell1.add_paragraph("लग्न कुंडली")
+            cap1.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap1, size_pt=11, underline=True, bold=True); cap1.paragraph_format.space_before = Pt(0); cap1.paragraph_format.space_after = Pt(1)
+            p1 = cell1.add_paragraph(); p1.paragraph_format.space_before = Pt(0); p1.paragraph_format.space_after = Pt(0)
             # Lagna chart with planets in single box per house
-            rasi_house_planets = build_rasi_house_planets(sidelons, lagna_sign)
-            p1._p.addnext(kundali_single_box(size_pt=220, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
+            rasi_house_planets = build_rasi_house_planets_marked(sidelons, lagna_sign)
+            p1._p.addnext(kundali_with_planets(size_pt=230, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
 
-            cell2 = kt.rows[1].cells[0]; cell2.add_paragraph(); cap2 = cell2.add_paragraph("नवांश कुंडली")
-            cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap2, size_pt=11, underline=True, bold=True)
-            p2 = cell2.add_paragraph();
-            nav_house_planets = build_navamsa_house_planets(sidelons, nav_lagna_sign)
-            p2._p.addnext(kundali_single_box(size_pt=220, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
+            cell2 = kt.rows[1].cells[0]; cap2 = cell2.add_paragraph("नवांश कुंडली")
+            cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap2, size_pt=11, underline=True, bold=True); cap2.paragraph_format.space_before = Pt(0); cap2.paragraph_format.space_after = Pt(1)
+            p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0)
+            nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
+            p2._p.addnext(kundali_with_planets(size_pt=230, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
 
             out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
