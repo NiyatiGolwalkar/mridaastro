@@ -72,6 +72,30 @@ from docx.enum.table import WD_ROW_HEIGHT_RULE, WD_ALIGN_VERTICAL
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
+from docx.oxml import OxmlElement
+
+def set_cell_background(cell, fill_hex="FFFFFF"):
+    try:
+        tcPr = cell._tc.get_or_add_tcPr()
+        shd = OxmlElement('w:shd')
+        shd.set(qn('w:val'), 'clear')
+        shd.set(qn('w:fill'), fill_hex)
+        tcPr.append(shd)
+    except Exception:
+        pass
+
+def set_cell_border(cell, size="12", color="000000"):
+    try:
+        tcPr = cell._tc.get_or_add_tcPr()
+        for edge in ("top","left","bottom","right"):
+            el = OxmlElement(f'w:{edge}')
+            el.set(qn('w:val'), 'single')
+            el.set(qn('w:sz'), size)
+            el.set(qn('w:color'), color)
+            tcPr.append(el)
+    except Exception:
+        pass
+
 from docx.shared import Inches, Mm, Pt
 
 APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
@@ -836,7 +860,7 @@ def main():
 
             left = outer.rows[0].cells[0]
             # व्यक्तिगत विवरण styled: bold section, underlined labels, larger font
-            p = left.add_paragraph('व्यक्तिगत विवरण'); p.runs[0].bold = True; p.runs[0].underline = True; p.runs[0].font.size = Pt(BASE_FONT_PT+5)
+            p = left.add_paragraph('व्यक्तिगत विवरण'); p.runs[0].bold = True; p.runs[0].underline = True; p.runs[0].font.size = Pt(BASE_FONT_PT+5); p.paragraph_format.space_after = Pt(6)
             # Name
             pname = left.add_paragraph();
             r1 = pname.add_run('नाम: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
