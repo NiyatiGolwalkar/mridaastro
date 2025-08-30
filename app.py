@@ -377,7 +377,7 @@ def rotated_house_labels(lagna_sign):
     return {"1":order[0],"2":order[1],"3":order[2],"4":order[3],"5":order[4],"6":order[5],"7":order[6],"8":order[7],"9":order[8],"10":order[9],"11":order[10],"12":order[11]}
 
 
-def kundali_with_planets(size_pt=190, lagna_sign=1, house_planets=None):
+def kundali_with_planets(size_pt=205, lagna_sign=1, house_planets=None):
     # Like kundali_w_p_with_centroid_labels but adds small side-by-side planet boxes below the number
     if house_planets is None:
         house_planets = {i: [] for i in range(1, 13)}
@@ -1042,7 +1042,7 @@ def main():
             except Exception:
                 pass
             kt = right.add_table(rows=2, cols=1)
-            # Tighten right-cell paragraphs
+            # Compact right-cell paragraph spacing
             try:
                 for p in right.paragraphs:
                     p.paragraph_format.space_before = Pt(0)
@@ -1060,13 +1060,13 @@ def main():
             p1 = cell1.add_paragraph(); p1.paragraph_format.space_before = Pt(0); p1.paragraph_format.space_after = Pt(0)
             # Lagna chart with planets in single box per house
             rasi_house_planets = build_rasi_house_planets_marked(sidelons, lagna_sign)
-            p1._p.addnext(kundali_with_planets(size_pt=190, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
+            p1._p.addnext(kundali_with_planets(size_pt=205, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
 
             cell2 = kt.rows[1].cells[0]; cap2 = cell2.add_paragraph("नवांश कुंडली")
             cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap2, size_pt=11, underline=True, bold=True); cap2.paragraph_format.space_before = Pt(2); cap2.paragraph_format.space_after = Pt(2)
             p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0)
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
-            p2._p.addnext(kundali_with_planets(size_pt=190, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
+            p2._p.addnext(kundali_with_planets(size_pt=205, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
             # (प्रमुख बिंदु moved to row 2 of outer table)
             # Ensure content goes below chart shape
             cell2.add_paragraph("")
