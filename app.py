@@ -395,7 +395,7 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
             xs,ys=zip(*poly); return (sum(xs)/n, sum(ys)/n)
         return (Cx/(6*A), Cy/(6*A))
     num_boxes=[]; planet_boxes=[]; occupied_rects=[]
-    num_w=num_h=12; p_w,p_h=16,14; gap_x=4; offset_y=12
+    num_w=12; num_h=14; p_w,p_h=16,14; gap_x=4; offset_y=12
     for k,poly in houses.items():
         bbox = _bbox_of_poly(poly)
         # house number box
@@ -404,6 +404,7 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
 
         nl, nt = _nudge_number_box(left, top, num_w, num_h, S, occupied_rects)
         left, top = nl, nt
+        occupied_rects.append({'left': left, 'top': top, 'right': left + num_w, 'bottom': top + num_h});
         num_boxes.append(f'''
         <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:80" fillcolor="#ffffff" strokecolor="none" strokeweight="0pt">
           <v:textbox inset="0,0,0,0">
@@ -480,8 +481,11 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
                         f"<v:rect style=\"position:absolute;left:{badge_left}pt;top:{badge_top}pt;width:{badge_w}pt;height:{badge_h}pt;z-index:8\" fillcolor=\"#ffffff\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
                     )
                     planet_boxes.append(badge_xml)
-            boxes_xml = "\\n".join(num_boxes + planet_boxes)
-    xml = f'''
+# Compose shapes after processing all houses
+
+boxes_xml = \"\\n\".join(num_boxes + planet_boxes)
+
+xml = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
         <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
