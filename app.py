@@ -10,20 +10,23 @@ import math
 import datetime, json, urllib.parse, urllib.request
 from io import BytesIO
 
+
 def set_doc_background(doc, hexcolor=None):
     """Apply a full-page background color to the Word document."""
-    try:
     if hexcolor is None:
-    try:
-    hexcolor = DOC_BACKGROUND_COLOR
-    except NameError:
-    hexcolor = 'E0F2F1'
+        try:
+            hexcolor = DOC_BACKGROUND_COLOR
+        except NameError:
+            hexcolor = "E0F2F1"  # fallback soft sea-green
+
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
     background = OxmlElement('w:background')
     background.set(qn('w:color'), hexcolor)
-    # put as first child
+    # Insert as first child
     doc._element.insert(0, background)
-    except Exception:
-    pass
+
 
 def set_cell_background(cell, fill_hex="FFFFFF"):
     """Set background color of a cell (hex without #)."""
