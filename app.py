@@ -46,7 +46,7 @@ def _bbox_of_poly(poly):
     xs, ys = zip(*poly)
     return {'left': min(xs), 'top': min(ys), 'right': max(xs), 'bottom': max(ys)}
 
-def _clamp_in_bbox(left, top, w, h, bbox, pad):
+def _clamp_in_get_bbox(left, top, w, h, bbox, pad):
     lmin = bbox['left'] + pad
     tmin = bbox['top'] + pad
     lmax = bbox['right'] - w - pad
@@ -394,7 +394,7 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
         if abs(A)<1e-9:
             xs,ys=zip(*poly); return (sum(xs)/n, sum(ys)/n)
         return (Cx/(6*A), Cy/(6*A))
-    bboxes={k:_bbox(poly) for k,poly in houses.items()}
+    bboxes={k:_get_bbox(poly) for k,poly in houses.items()}
     num_boxes=[]; planet_boxes=[]
     num_w=num_h=20; p_w,p_h=16,14; gap_x=4; offset_y=12
     for k, poly in houses.items():
@@ -402,7 +402,7 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
         left=cx-num_w/2; top=cy-num_h/2
         if k in ("11","12"):
             left-=2.0
-        left,top=_clamp_in_bbox(left,top,num_w,num_h,bboxes[k],pad=1.5)
+        left,top=_clamp_in_get_bbox(left,top,num_w,num_h,bboxes[k],pad=1.5)
         txt=labels[k]
         num_boxes.append(f"""
         <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:90" strokecolor="none">
@@ -417,7 +417,7 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
         if plist:
             n=len(plist); total_w=n*p_w+(n-1)*gap_x
             start_left=cx-total_w/2; top_planet=cy-p_h/2+offset_y
-            start_left,top_planet=_clamp_in_bbox(start_left,top_planet,total_w,p_h,bboxes[k],pad=1.5)
+            start_left,top_planet=_clamp_in_get_bbox(start_left,top_planet,total_w,p_h,bboxes[k],pad=1.5)
             for idx,pl in enumerate(plist):
                 left_pl=start_left+idx*(p_w+gap_x)
                 planet_boxes.append(f"""
