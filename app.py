@@ -52,6 +52,28 @@ def set_cell_border(cell, size="12", color="000000"):
     except Exception:
         pass
 
+def shade_header_row(tbl, fill_hex=TABLE_HEADER_SHADE):
+    # Shade the first row of a python-docx table
+    try:
+        hdr = tbl.rows[0]
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+        for cell in hdr.cells:
+            tcPr = cell._tc.get_or_add_tcPr()
+            shd = OxmlElement('w:shd')
+            shd.set(qn('w:val'), 'clear')
+            shd.set(qn('w:fill'), fill_hex)
+            tcPr.append(shd)
+            # Make header text bold and primary color
+            for p in cell.paragraphs:
+                for r in p.runs:
+                    r.font.bold = True
+                    try:
+                        r.font.color.rgb = COLOR_PRIMARY
+                    except Exception:
+                        pass
+    except Exception:
+        pass
 from docx.shared import RGBColor
 
 # --- Appearance configuration ---
@@ -992,25 +1014,3 @@ def main():
 if __name__=='__main__':
     main()
 
-def shade_header_row(tbl, fill_hex=TABLE_HEADER_SHADE):
-    # Shade the first row of a python-docx table
-    try:
-        hdr = tbl.rows[0]
-        from docx.oxml import OxmlElement
-        from docx.oxml.ns import qn
-        for cell in hdr.cells:
-            tcPr = cell._tc.get_or_add_tcPr()
-            shd = OxmlElement('w:shd')
-            shd.set(qn('w:val'), 'clear')
-            shd.set(qn('w:fill'), fill_hex)
-            tcPr.append(shd)
-            # Make header text bold and primary color
-            for p in cell.paragraphs:
-                for r in p.runs:
-                    r.font.bold = True
-                    try:
-                        r.font.color.rgb = COLOR_PRIMARY
-                    except Exception:
-                        pass
-    except Exception:
-        pass
