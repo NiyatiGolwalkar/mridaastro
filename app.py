@@ -126,4 +126,4 @@ if __name__=='__main__':
     sidelons={k:15.0+i*30 for i,k in enumerate(HN_ABBR.keys())}
     lagna_sign,nav_lagna_sign=2,4
     doc=Document(); render_kundalis_into_doc(doc,sidelons,lagna_sign,nav_lagna_sign,230)
-    out='/mnt/data/kundali_demo.docx'; doc.save(out); print('Saved',out)
+    out='kundali_demo.docx'; doc.save(out); print('Saved',out)
