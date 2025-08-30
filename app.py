@@ -759,9 +759,10 @@ def detect_neech_bhang(sidelons:dict, lagna_sign:int)->bool:
         return False
 
 def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
-    # Hard page break to keep table off the chart page
-    pb = container_cell.add_paragraph()
-    pb.add_run().add_break(WD_BREAK.PAGE)
+    # Spacer paragraphs to avoid shape overlap
+    sp = container_cell.add_paragraph("")
+    sp.paragraph_format.space_after = Pt(6)
+    container_cell.add_paragraph("")
     # Title
     title = container_cell.add_paragraph("प्रमुख बिंदु")
     # Match other section titles
@@ -1024,6 +1025,13 @@ def main():
             set_col_widths(t3, [0.85,0.9,1.05,0.7])
 
             right = outer.rows[0].cells[1]
+            # Insert Pramukh Bindu section at top of right column, next to Antar/Pratyantar
+            try:
+                add_pramukh_bindu_section(right, sidelons, lagna_sign, dt_utc)
+                # spacer before charts
+                right.add_paragraph("")
+            except Exception:
+                pass
             kt = right.add_table(rows=2, cols=1)
             right.vertical_alignment = WD_ALIGN_VERTICAL.TOP
             kt.autofit = False
@@ -1045,11 +1053,8 @@ def main():
             p2._p.addnext(kundali_with_planets(size_pt=230, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
             # Ensure content goes below chart shape
             cell2.add_paragraph("")
-            # Add Pramukh Bindu under Navamsha
-            try:
-                add_pramukh_bindu_section(cell2, sidelons, lagna_sign, dt_utc)
-            except Exception:
-                pass
+            cell2.add_paragraph("")
+            # (Pramukh Bindu moved above charts)
 
             out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
