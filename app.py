@@ -377,7 +377,7 @@ def rotated_house_labels(lagna_sign):
     return {"1":order[0],"2":order[1],"3":order[2],"4":order[3],"5":order[4],"6":order[5],"7":order[6],"8":order[7],"9":order[8],"10":order[9],"11":order[10],"12":order[11]}
 
 
-def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
+def kundali_with_planets(size_pt=205, lagna_sign=1, house_planets=None):
     # Like kundali_w_p_with_centroid_labels but adds small side-by-side planet boxes below the number
     if house_planets is None:
         house_planets = {i: [] for i in range(1, 13)}
@@ -758,6 +758,16 @@ def detect_neech_bhang(sidelons:dict, lagna_sign:int)->bool:
     except Exception:
         return False
 
+def compact_table_paragraphs(tbl):
+    try:
+        for row in tbl.rows:
+            for cell in row.cells:
+                for p in cell.paragraphs:
+                    p.paragraph_format.space_before = Pt(0)
+                    p.paragraph_format.space_after = Pt(0)
+    except Exception:
+        pass
+
 def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
     # Spacer paragraphs to avoid shape overlap
     sp = container_cell.add_paragraph("")
@@ -812,6 +822,7 @@ def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
 
     # Borders similar to other tables
     add_table_borders(t, size=6)
+    compact_table_paragraphs(t)
 def main():
     st.title(APP_TITLE)
     col0, col1 = st.columns([1.2, 1])
@@ -1029,8 +1040,7 @@ def main():
             try:
                 add_pramukh_bindu_section(right, sidelons, lagna_sign, dt_utc)
                 # spacer before charts
-                right.add_paragraph("")
-            except Exception:
+                            except Exception:
                 pass
             kt = right.add_table(rows=2, cols=1)
             right.vertical_alignment = WD_ALIGN_VERTICAL.TOP
@@ -1044,13 +1054,13 @@ def main():
             p1 = cell1.add_paragraph(); p1.paragraph_format.space_before = Pt(0); p1.paragraph_format.space_after = Pt(0)
             # Lagna chart with planets in single box per house
             rasi_house_planets = build_rasi_house_planets_marked(sidelons, lagna_sign)
-            p1._p.addnext(kundali_with_planets(size_pt=230, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
+            p1._p.addnext(kundali_with_planets(size_pt=205, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
 
             cell2 = kt.rows[1].cells[0]; cap2 = cell2.add_paragraph("नवांश कुंडली")
             cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap2, size_pt=11, underline=True, bold=True); cap2.paragraph_format.space_before = Pt(0); cap2.paragraph_format.space_after = Pt(1)
             p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0)
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
-            p2._p.addnext(kundali_with_planets(size_pt=230, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
+            p2._p.addnext(kundali_with_planets(size_pt=205, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
             # (प्रमुख बिंदु moved to row 2 of outer table)
             # Ensure content goes below chart shape
             cell2.add_paragraph("")
