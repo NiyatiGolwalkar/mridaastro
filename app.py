@@ -1025,13 +1025,6 @@ def main():
             set_col_widths(t3, [0.85,0.9,1.05,0.7])
 
             right = outer.rows[0].cells[1]
-            # Insert Pramukh Bindu section at top of right column, next to Antar/Pratyantar
-            try:
-                add_pramukh_bindu_section(right, sidelons, lagna_sign, dt_utc)
-                # spacer before charts
-                right.add_paragraph("")
-            except Exception:
-                pass
             kt = right.add_table(rows=2, cols=1)
             right.vertical_alignment = WD_ALIGN_VERTICAL.TOP
             kt.autofit = False
@@ -1051,6 +1044,14 @@ def main():
             p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0)
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
             p2._p.addnext(kundali_with_planets(size_pt=230, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
+            # Add generous spacers to ensure the table stays below both charts
+            cell2.add_paragraph("")
+            cell2.add_paragraph("")
+            cell2.add_paragraph("")
+            try:
+                add_pramukh_bindu_section(cell2, sidelons, lagna_sign, dt_utc)
+            except Exception:
+                pass
             # Ensure content goes below chart shape
             cell2.add_paragraph("")
             cell2.add_paragraph("")
