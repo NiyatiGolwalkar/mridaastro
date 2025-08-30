@@ -693,7 +693,7 @@ def detect_muntha_house(lagna_sign:int, dob_dt):
     # Approx: years elapsed since birth to today -> advance houses from lagna
     try:
         from datetime import datetime, timezone
-        years = datetime.now(timezone.utc).year - dob_dt.year
+        years = max(0, datetime.now(timezone.utc).year - dob_dt.year)
         return ((lagna_sign - 1 + years) % 12) + 1
     except Exception:
         return None
