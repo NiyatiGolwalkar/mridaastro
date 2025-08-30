@@ -1048,6 +1048,11 @@ def main():
             cell2.add_paragraph("")
             cell2.add_paragraph("")
             cell2.add_paragraph("")
+            cell2.add_paragraph("")
+            cell2.add_paragraph("")
+            cell2.add_paragraph("")
+            cell2.add_paragraph("")
+            cell2.add_paragraph("")
             try:
                 add_pramukh_bindu_section(cell2, sidelons, lagna_sign, dt_utc)
             except Exception:
