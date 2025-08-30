@@ -44,21 +44,14 @@ def planet_navamsa_house(lon_sid, nav_lagna_sign):
     return ((nav_sign - nav_lagna_sign) % 12) + 1
 
 def build_navamsa_house_planets(sidelons, nav_lagna_sign):
+    # (patched to include flags)
     # Map: house -> list of planet abbreviations in Navamsa
-    house_map = {i: [] for i in range(1, 13)}
-    for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
-        h = planet_navamsa_house(sidelons[code], nav_lagna_sign)
-        house_map[h].append(HN_ABBR.get(code, code))
-    return house_map
+    return build_house_planets_with_flags(sidelons, lagna_sign=None, use_navamsa=True, nav_lagna_sign=nav_lagna_sign)
 
 def build_rasi_house_planets(sidelons, lagna_sign):
+    # (patched to include flags)
     # Map: house -> list of planet abbreviations in Rasi (Lagna) chart
-    house_map = {i: [] for i in range(1, 13)}
-    for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
-        sign = int(sidelons[code] // 30) + 1  # 1..12
-        h = ((sign - lagna_sign) % 12) + 1
-        house_map[h].append(HN_ABBR.get(code, code))
-    return house_map
+    return build_house_planets_with_flags(sidelons, lagna_sign, use_navamsa=False)
 
 def _apply_hindi_caption_style(paragraph, size_pt=11, underline=True, bold=True):
     if not paragraph.runs:
@@ -130,6 +123,44 @@ def ascendant_sign(jd, lat, lon, ay):
     cusps, ascmc = swe.houses_ex(jd, lat, lon, b'P'); asc_trop = ascmc[0]; asc_sid = (asc_trop - ay) % 360.0
     return int(asc_sid // 30) + 1, asc_sid
 
+
+# ---- Dignity & markers helpers (added) ----
+SELF_SIGNS = {
+    'Su': {5}, 'Mo': {4}, 'Ma': {1, 8}, 'Me': {3, 6}, 'Ju': {9, 12},
+    'Ve': {2, 7}, 'Sa': {10, 11}, 'Ra': set(), 'Ke': set()
+}
+EXALT_SIGN = {'Su': 1, 'Mo': 2, 'Ma': 10, 'Me': 6, 'Ju': 4, 'Ve': 12, 'Sa': 7, 'Ra': 2, 'Ke': 8}
+DEBIL_SIGN = {p: ((s + 5) % 12) + 1 for p, s in EXALT_SIGN.items()}
+COMB_ORB = {'Mo': 12, 'Ma': 17, 'Me': 12, 'Ju': 11, 'Ve': 10, 'Sa': 15, 'Ra': 0, 'Ke': 0}
+UP_ARROW, DOWN_ARROW, COMBUST = '↑', '↓', '^'
+
+def _rasi_sign(lon_sid): return int(lon_sid // 30) + 1
+def _sep_deg(a, b): d = abs((a - b) % 360.0); return d if d <= 180 else 360 - d
+def _is_combust(code, sidelons): 
+    if code not in COMB_ORB or COMB_ORB[code] == 0: return False
+    return _sep_deg(sidelons[code], sidelons['Su']) <= COMB_ORB[code]
+def _is_vargottama(lon_sid):
+    rasi = _rasi_sign(lon_sid); nava = navamsa_sign_from_lon_sid(lon_sid); return rasi == nava
+
+def build_house_planets_with_flags(sidelons, lagna_sign, use_navamsa=False, nav_lagna_sign=None):
+    house_map = {i: [] for i in range(1, 13)}
+    for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
+        lon = sidelons[code]
+        rasi_sign = _rasi_sign(lon)
+        if use_navamsa:
+            nsign = navamsa_sign_from_lon_sid(lon)
+            h = ((nsign - nav_lagna_sign) % 12) + 1
+        else:
+            h = ((rasi_sign - lagna_sign) % 12) + 1
+        flags = {
+            'self': rasi_sign in SELF_SIGNS.get(code, set()),
+            'exalt': EXALT_SIGN.get(code) == rasi_sign,
+            'debil': DEBIL_SIGN.get(code) == rasi_sign,
+            'comb': _is_combust(code, sidelons),
+            'varg': _is_vargottama(lon),
+        }
+        house_map[h].append({'txt': HN_ABBR.get(code, code), 'flags': flags})
+    return house_map
 def navamsa_sign_from_lon_sid(lon_sid):
     sign = int(lon_sid // 30) + 1; deg_in_sign = lon_sid % 30.0; pada = int(deg_in_sign // (30.0/9.0))
     if sign in (1,4,7,10): start = sign
@@ -249,7 +280,7 @@ def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
         # house number box
         x,y = centroid(poly); left = x - num_w/2; top = y - num_h/2; txt = labels[k]
         num_boxes.append(f'''
-        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:5" strokecolor="none">
+        <v:rect o:shadow="f" style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:5" strokecolor="none">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
@@ -265,7 +296,7 @@ def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
             for idx,pl in enumerate(planets):
                 left_pl = start_left + idx*(p_w+gap_x)
                 planet_boxes.append(f'''
-                <v:rect style="position:absolute;left:{left_pl}pt;top:{top_planet}pt;width:{p_w}pt;height:{p_h}pt;z-index:6" strokecolor="none">
+                <v:rect o:shadow="f" style="position:absolute;left:{left_pl}pt;top:{top_planet}pt;width:{p_w}pt;height:{p_h}pt;z-index:6" strokecolor="none">
                   <v:textbox inset="0,0,0,0">
                     <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
                       <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{pl}</w:t></w:r></w:p>
@@ -278,7 +309,7 @@ def kundali_with_planets(size_pt=220, lagna_sign=1, house_planets=None):
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
         <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
-          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
+          <v:rect o:shadow="f" style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.5pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
           <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
@@ -339,7 +370,7 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
         else:
             content = f'<w:r><w:t>{num}</w:t></w:r>'
         text_boxes.append(f'''
-        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{box_w}pt;height:{box_h}pt;z-index:5" strokecolor="none">
+        <v:rect o:shadow="f" style="position:absolute;left:{left}pt;top:{top}pt;width:{box_w}pt;height:{box_h}pt;z-index:5" strokecolor="none">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:p><w:pPr><w:jc w:val="center"/></w:pPr>{content}</w:p>
@@ -352,7 +383,7 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
         <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
-          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
+          <v:rect o:shadow="f" style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.5pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
           <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
@@ -382,7 +413,7 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
     for k,poly in houses.items():
         x,y = centroid(poly); left = x - w/2; top = y - h/2; txt = labels[k]
         boxes.append(f'''
-        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{w}pt;height:{h}pt;z-index:5" strokecolor="none">
+        <v:rect o:shadow="f" style="position:absolute;left:{left}pt;top:{top}pt;width:{w}pt;height:{h}pt;z-index:5" strokecolor="none">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
@@ -393,7 +424,7 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
     xml = f'''<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
         <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
           <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
-            <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
+            <v:rect o:shadow="f" style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
             <v:line style="position:absolute;z-index:2" from="0,0" to="{S},{S}" strokecolor="black" strokeweight="1.5pt"/>
             <v:line style="position:absolute;z-index:2" from="{S},0" to="0,{S}" strokecolor="black" strokeweight="1.5pt"/>
             <v:line style="position:absolute;z-index:2" from="{S/2},0" to="{S},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
