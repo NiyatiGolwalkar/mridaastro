@@ -72,30 +72,6 @@ from docx.enum.table import WD_ROW_HEIGHT_RULE, WD_ALIGN_VERTICAL
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
-from docx.oxml import OxmlElement
-
-def set_cell_background(cell, fill_hex="FFFFFF"):
-    try:
-        tcPr = cell._tc.get_or_add_tcPr()
-        shd = OxmlElement('w:shd')
-        shd.set(qn('w:val'), 'clear')
-        shd.set(qn('w:fill'), fill_hex)
-        tcPr.append(shd)
-    except Exception:
-        pass
-
-def set_cell_border(cell, size="12", color="000000"):
-    try:
-        tcPr = cell._tc.get_or_add_tcPr()
-        for edge in ("top","left","bottom","right"):
-            el = OxmlElement(f'w:{edge}')
-            el.set(qn('w:val'), 'single')
-            el.set(qn('w:sz'), size)
-            el.set(qn('w:color'), color)
-            tcPr.append(el)
-    except Exception:
-        pass
-
 from docx.shared import Inches, Mm, Pt
 
 APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
@@ -702,6 +678,131 @@ def _utc_to_local(dt_utc, tzname, tz_hours, used_manual):
         return dt_utc + datetime.timedelta(hours=tz_hours)
 
 # Core UI
+
+def _house_from_lagna(sign:int, lagna_sign:int)->int:
+    return ((sign - lagna_sign) % 12) + 1  # 1..12
+
+def _english_bhav_label(h:int)->str:
+    try:
+        h_int = int(h)
+    except Exception:
+        return f"{h}वाँ भाव"
+    return f"{h_int}वाँ भाव"
+
+def detect_muntha_house(lagna_sign:int, dob_dt):
+    # Approx: years elapsed since birth to today -> advance houses from lagna
+    try:
+        from datetime import datetime, timezone
+        years = datetime.now(timezone.utc).year - dob_dt.year
+        return ((lagna_sign - 1 + years) % 12) + 1
+    except Exception:
+        return None
+
+def detect_sade_sati_or_dhaiyya(sidelons:dict):
+    # Returns: (status, phase) where status in {"साढ़ेसाती", "शनि ढैय्या", None}
+    # Phase only if साढ़ेसाती: "प्रथम चरण" / "द्वितीय चरण" / "तृतीय चरण"
+    try:
+        moon = planet_rasi_sign(sidelons['Mo'])
+        sat  = planet_rasi_sign(sidelons['Sa'])
+        d = (sat - moon) % 12
+        if d in (11, 0, 1):
+            phase = {11: "प्रथम चरण", 0: "द्वितीय चरण", 1: "तृतीय चरण"}[d]
+            return "साढ़ेसाती", phase
+        if d in (3, 7):
+            return "शनि ढैय्या", None
+        return None, None
+    except Exception:
+        return None, None
+
+def detect_kaalsarp(sidelons:dict)->bool:
+    try:
+        ra = sidelons['Ra'] % 360.0
+        ke = (ra + 180.0) % 360.0
+        span = (ke - ra) % 360.0  # should be 180
+        inside = 0
+        for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa']:
+            ang = (sidelons[code] - ra) % 360.0
+            if ang <= span:
+                inside += 1
+        return inside == 7
+    except Exception:
+        return False
+
+def detect_chandal(sidelons:dict)->bool:
+    try:
+        ju = planet_rasi_sign(sidelons['Ju'])
+        return ju == planet_rasi_sign(sidelons['Ra']) or ju == planet_rasi_sign(sidelons['Ke'])
+    except Exception:
+        return False
+
+def detect_pitru(sidelons:dict)->bool:
+    try:
+        su = planet_rasi_sign(sidelons['Su'])
+        return su == planet_rasi_sign(sidelons['Ra']) or su == planet_rasi_sign(sidelons['Ke'])
+    except Exception:
+        return False
+
+def detect_neech_bhang(sidelons:dict, lagna_sign:int)->bool:
+    try:
+        stats = compute_statuses_all(sidelons)
+        for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa']:
+            if stats[code]['debil_rasi']:
+                debil_sign = stats[code]['rasi']
+                lord = SIGN_LORD.get(debil_sign)
+                if lord and lord in sidelons:
+                    lord_sign = planet_rasi_sign(sidelons[lord])
+                    h = _house_from_lagna(lord_sign, lagna_sign)
+                    if h in (1,4,7,10):
+                        return True
+        return False
+    except Exception:
+        return False
+
+def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
+    # Title
+    title = container_cell.add_paragraph("प्रमुख बिंदु")
+    title.runs[0].bold = True
+    title.runs[0].underline = True
+    title.paragraph_format.space_before = Pt(6)
+    title.paragraph_format.space_after = Pt(3)
+
+    rows = []
+
+    # Muntha
+    m = detect_muntha_house(lagna_sign, dob_dt)
+    if m:
+        rows.append(("मुन्था (वर्तमान वर्ष)", _english_bhav_label(m)))
+
+    # Sade Sati / Dhaiyya
+    status, phase = detect_sade_sati_or_dhaiyya(sidelons)
+    if status:
+        rows.append(("साढ़ेसाती/शनि ढैय्या", status))
+        if status == "साढ़ेसाती" and phase:
+            rows.append(("साढ़ेसाती का चरण", phase))
+
+    # Dosha/Yoga (only if True)
+    if detect_kaalsarp(sidelons):
+        rows.append(("कालसर्प दोष", "हाँ"))
+    if detect_chandal(sidelons):
+        rows.append(("चांडाल योग", "हाँ"))
+    if detect_pitru(sidelons):
+        rows.append(("पितृ दोष", "हाँ"))
+    if detect_neech_bhang(sidelons, lagna_sign):
+        rows.append(("नीच भंग राज योग", "हाँ"))
+
+    if not rows:
+        # Nothing to show; avoid adding an empty table
+        return
+
+    t = container_cell.add_table(rows=0, cols=2)
+    t.autofit = True
+    for left_txt, right_txt in rows:
+        r = t.add_row().cells
+        r[0].text = left_txt
+        r[1].text = right_txt
+
+    # Borders similar to other tables
+    add_table_borders(t, size=6)
 def main():
     st.title(APP_TITLE)
     col0, col1 = st.columns([1.2, 1])
@@ -860,7 +961,7 @@ def main():
 
             left = outer.rows[0].cells[0]
             # व्यक्तिगत विवरण styled: bold section, underlined labels, larger font
-            p = left.add_paragraph('व्यक्तिगत विवरण'); p.runs[0].bold = True; p.runs[0].underline = True; p.runs[0].font.size = Pt(BASE_FONT_PT+5); p.paragraph_format.space_after = Pt(6)
+            p = left.add_paragraph('व्यक्तिगत विवरण'); p.runs[0].bold = True; p.runs[0].underline = True; p.runs[0].font.size = Pt(BASE_FONT_PT+5)
             # Name
             pname = left.add_paragraph();
             r1 = pname.add_run('नाम: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
@@ -934,6 +1035,11 @@ def main():
             p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0)
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
             p2._p.addnext(kundali_with_planets(size_pt=230, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
+            # Add Pramukh Bindu under Navamsha
+            try:
+                add_pramukh_bindu_section(cell2, sidelons, lagna_sign, dt_utc)
+            except Exception:
+                pass
 
             out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
