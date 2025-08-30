@@ -10,7 +10,53 @@ import math
 import datetime, json, urllib.parse, urllib.request
 from io import BytesIO
 
+def set_doc_background(doc, hexcolor=DOC_BACKGROUND_COLOR):
+    """Apply a full-page background color to the Word document."""
+    try:
+        background = OxmlElement('w:background')
+        background.set(qn('w:color'), hexcolor)
+        # put as first child
+        doc._element.insert(0, background)
+    except Exception:
+        pass
+
+def set_cell_background(cell, fill_hex="FFFFFF"):
+    """Set background color of a cell (hex without #)."""
+    try:
+        tcPr = cell._tc.get_or_add_tcPr()
+        shd = OxmlElement('w:shd')
+        shd.set(qn('w:val'), 'clear')
+        shd.set(qn('w:fill'), fill_hex)
+        tcPr.append(shd)
+    except Exception:
+        pass
+
+def set_cell_border(cell, size="12", color="000000"):
+    """Add a rectangle border around a cell."""
+    try:
+        tcPr = cell._tc.get_or_add_tcPr()
+        for edge in ("top","left","bottom","right"):
+            el = OxmlElement(f'w:{edge}')
+            el.set(qn('w:val'),'single')
+            el.set(qn('w:sz'), size)      # thickness (1/8 pt units)
+            el.set(qn('w:color'), color)  # hex color
+            tcPr.append(el)
+    except Exception:
+        pass
+
+from docx.shared import RGBColor
+
 # --- Appearance configuration ---
+# Page background (Word background fill)
+DOC_BACKGROUND_COLOR = "E0F2F1"  # soft sea-green (hex, no #)
+
+# Brand/Theme colors (subtle + professional)
+COLOR_PRIMARY = RGBColor(0, 79, 159)   # Deep blue for headings
+COLOR_ACCENT  = RGBColor(0, 112, 192)  # Lighter blue accent
+COLOR_TEXT    = RGBColor(0, 0, 0)
+COLOR_GRAY    = RGBColor(102, 102, 102)
+TABLE_HEADER_SHADE = 'E8F1FB'  # very light blue header fill
+
 # Sizing (pt) — tuned smaller to reduce white space
 NUM_W_PT = 10       # house number box width (was 12)
 NUM_H_PT = 12       # house number box height (was 14)
@@ -782,6 +828,7 @@ def main():
 
             # DOCX
             doc = Document()
+        set_doc_background(doc)
             sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
             margin = Mm(12); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(10); sec.bottom_margin = Mm(10)
 
@@ -835,25 +882,27 @@ def main():
             tblPr.append(tblBorders)
 
             left = outer.rows[0].cells[0]
+            set_cell_background(left, "FFFFFF")
+            set_cell_border(left, size="18", color="000000")
             # व्यक्तिगत विवरण styled: bold section, underlined labels, larger font
-            p = left.add_paragraph('व्यक्तिगत विवरण'); p.runs[0].bold = True; p.runs[0].underline = True; p.runs[0].font.size = Pt(BASE_FONT_PT+5)
+            p = left.add_paragraph('व्यक्तिगत विवरण'); p.runs[0].bold = True; p.runs[0].underline = True; p.runs[0].font.size = Pt(BASE_FONT_PT+5); p.runs[0].font.color.rgb = COLOR_PRIMARY; p.paragraph_format.space_after = Pt(6)
             # Name
             pname = left.add_paragraph();
-            r1 = pname.add_run('नाम: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r1 = pname.add_run('नाम: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3); r1.font.color.rgb = COLOR_PRIMARY
             r2 = pname.add_run(str(name)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
             # DOB | TOB
             pdob = left.add_paragraph();
-            r1 = pdob.add_run('जन्म तिथि: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r1 = pdob.add_run('जन्म तिथि: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3); r1.font.color.rgb = COLOR_PRIMARY
             r2 = pdob.add_run(str(dob)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
-            r3 = pdob.add_run('  |  जन्म समय: '); r3.underline = True; r3.bold = True; r3.font.size = Pt(BASE_FONT_PT+3)
+            r3 = pdob.add_run('  |  जन्म समय: '); r3.underline = True; r3.bold = True; r3.font.size = Pt(BASE_FONT_PT+3); r3.font.color.rgb = COLOR_PRIMARY
             r4 = pdob.add_run(str(tob)); r4.bold = True; r4.font.size = Pt(BASE_FONT_PT+3)
             # Place
             pplace = left.add_paragraph();
-            r1 = pplace.add_run('स्थान: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r1 = pplace.add_run('स्थान: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3); r1.font.color.rgb = COLOR_PRIMARY
             r2 = pplace.add_run(str(disp)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
             # Time Zone
             ptz = left.add_paragraph();
-            r1 = ptz.add_run('समय क्षेत्र: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r1 = ptz.add_run('समय क्षेत्र: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3); r1.font.color.rgb = COLOR_PRIMARY
             if used_manual:
                 r2 = ptz.add_run(str(tzname)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
             else:
@@ -865,7 +914,7 @@ def main():
             for _,row in df_positions.iterrows():
                 r=t1.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
-            center_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT); add_table_borders(t1, size=6)
+            center_header_row(t1); shade_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT); add_table_borders(t1, size=6)
             set_col_widths(t1, [0.7,0.5,0.9,0.8,1.05])
             # Left align ONLY the header cell of the last column (उप‑नक्षत्र / Sublord)
             for p in t1.rows[0].cells[-1].paragraphs:
@@ -934,3 +983,26 @@ def main():
 
 if __name__=='__main__':
     main()
+
+def shade_header_row(tbl, fill_hex=TABLE_HEADER_SHADE):
+    # Shade the first row of a python-docx table
+    try:
+        hdr = tbl.rows[0]
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+        for cell in hdr.cells:
+            tcPr = cell._tc.get_or_add_tcPr()
+            shd = OxmlElement('w:shd')
+            shd.set(qn('w:val'), 'clear')
+            shd.set(qn('w:fill'), fill_hex)
+            tcPr.append(shd)
+            # Make header text bold and primary color
+            for p in cell.paragraphs:
+                for r in p.runs:
+                    r.font.bold = True
+                    try:
+                        r.font.color.rgb = COLOR_PRIMARY
+                    except Exception:
+                        pass
+    except Exception:
+        pass
