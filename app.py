@@ -761,8 +761,8 @@ def detect_neech_bhang(sidelons:dict, lagna_sign:int)->bool:
 def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
     # Title
     title = container_cell.add_paragraph("प्रमुख बिंदु")
-    title.runs[0].bold = True
-    title.runs[0].underline = True
+    # Match other section titles
+    _apply_hindi_caption_style(title, size_pt=11, underline=True, bold=True)
     title.paragraph_format.space_before = Pt(6)
     title.paragraph_format.space_after = Pt(3)
 
@@ -796,6 +796,11 @@ def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
 
     t = container_cell.add_table(rows=0, cols=2)
     t.autofit = True
+    # Match font size with other tables
+    try:
+        set_table_font(t, pt=BASE_FONT_PT)
+    except Exception:
+        pass
     for left_txt, right_txt in rows:
         r = t.add_row().cells
         r[0].text = left_txt
@@ -936,7 +941,7 @@ def main():
 
                 # Name
                 hdr4 = doc.add_paragraph(); hdr4.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r4 = hdr4.add_run("Niyati Golwalkar"); r4.font.size = Pt(10); r4.bold = True
+                r4 = hdr4.add_run("Niyati Niraj Golwalkar"); r4.font.size = Pt(10); r4.bold = True
 
                 # Role line
                 hdr5 = doc.add_paragraph(); hdr5.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -1035,6 +1040,8 @@ def main():
             p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0)
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
             p2._p.addnext(kundali_with_planets(size_pt=230, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
+            # Ensure content goes below chart shape
+            cell2.add_paragraph("")
             # Add Pramukh Bindu under Navamsha
             try:
                 add_pramukh_bindu_section(cell2, sidelons, lagna_sign, dt_utc)
