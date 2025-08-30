@@ -431,7 +431,7 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
         left, top = nl, nt
         occupied_rects.append({'left': left, 'top': top, 'right': left + num_w, 'bottom': top + num_h});
         num_boxes.append(f'''
-        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:80" fillcolor="{NUM_FILL}" strokecolor="{NUM_STROKE}" strokeweight="{NUM_STROKE_W}">
+        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:80" fillcolor="#ffffff" strokecolor="none" strokeweight="0pt">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
