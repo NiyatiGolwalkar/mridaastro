@@ -429,8 +429,7 @@ def kundali_with_planets(size_pt=230, lagna_sign=1, house_planets=None):
                   </v:textbox>
                 </v:rect>
                 """)
-    boxes_xml="
-".join(num_boxes+planet_boxes)
+    boxes_xml = "\n".join(num_boxes+planet_boxes)
     xml=f"""
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
