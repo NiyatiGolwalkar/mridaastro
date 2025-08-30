@@ -836,7 +836,7 @@ def main():
 
             left = outer.rows[0].cells[0]
             # व्यक्तिगत विवरण styled: bold section, underlined labels, larger font
-            p = left.add_paragraph('व्यक्तिगत विवरण'); p.runs[0].bold = True; p.runs[0].font.size = Pt(BASE_FONT_PT+4)
+            p = left.add_paragraph('व्यक्तिगत विवरण'); p.runs[0].bold = True; p.runs[0].underline = True; p.runs[0].font.size = Pt(BASE_FONT_PT+5)
             # Name
             pname = left.add_paragraph();
             r1 = pname.add_run('नाम: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
@@ -845,7 +845,7 @@ def main():
             pdob = left.add_paragraph();
             r1 = pdob.add_run('जन्म तिथि: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             r2 = pdob.add_run(str(dob)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
-            r3 = pdob.add_run('  |  जन्म समय: '); r3.bold = True; r3.font.size = Pt(BASE_FONT_PT+3)
+            r3 = pdob.add_run('  |  जन्म समय: '); r3.underline = True; r3.bold = True; r3.font.size = Pt(BASE_FONT_PT+3)
             r4 = pdob.add_run(str(tob)); r4.bold = True; r4.font.size = Pt(BASE_FONT_PT+3)
             # Place
             pplace = left.add_paragraph();
