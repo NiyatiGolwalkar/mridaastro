@@ -29,6 +29,59 @@ HOUSE_NUM_SHADE = "#fff9d6"  # soft light-yellow
 
 
 
+
+# --- Reliable cell shading (works in all Word views) ---
+def shade_cell(cell, fill_hex="E8FFF5"):
+    try:
+        tcPr = cell._tc.get_or_add_tcPr()
+        shd = OxmlElement('w:shd')
+        shd.set(DOCX_QN('w:val'), 'clear')
+        shd.set(DOCX_QN('w:color'), 'auto')
+        shd.set(DOCX_QN('w:fill'), fill_hex)
+        tcPr.append(shd)
+    except Exception:
+        pass
+
+# --- Page background helper (Word UI may hide it; cell shading above is more reliable) ---
+def set_page_background(doc, hex_color="E8FFF5"):
+    try:
+        bg = OxmlElement('w:background')
+        bg.set(DOCX_QN('w:color'), hex_color)
+        doc.element.insert(0, bg)
+    except Exception:
+        pass
+
+# --- Phalit ruled lines (25 rows) ---
+from docx.enum.table import WD_ROW_HEIGHT_RULE
+def add_phalit_section(container_cell, width_inches=3.60, rows=25):
+    head = container_cell.add_paragraph("फलित")
+    _apply_hindi_caption_style(head, size_pt=11, underline=True, bold=True)
+
+    t = container_cell.add_table(rows=rows, cols=1); t.autofit = False
+    set_col_widths(t, [Inches(width_inches)])
+    for r in t.rows:
+        r.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
+        r.height = Pt(14)
+        c = r.cells[0]
+        # NBSP keeps the row from collapsing but looks visually empty
+        p = c.paragraphs[0]; run = p.add_run("\u00A0"); run.font.size = Pt(1)
+
+        # bottom-only thin light-grey border (ruled line)
+        tcPr = c._tc.get_or_add_tcPr()
+        for el in list(tcPr):
+            if el.tag.endswith('tcBorders'):
+                tcPr.remove(el)
+        tcBorders = OxmlElement('w:tcBorders')
+        for edge in ('top','left','right'):
+            el = OxmlElement(f'w:{edge}'); el.set(DOCX_QN('w:val'), 'nil'); tcBorders.append(el)
+        el = OxmlElement('w:bottom')
+        el.set(DOCX_QN('w:val'), 'single')
+        el.set(DOCX_QN('w:sz'), '6')
+        el.set(DOCX_QN('w:space'), '0')
+        el.set(DOCX_QN('w:color'), 'D9D9D9')
+        tcBorders.append(el)
+        tcPr.append(tcBorders)
+
 def _rects_overlap(a, b):
     return not (a['right'] <= b['left'] or a['left'] >= b['right'] or a['bottom'] <= b['top'] or a['top'] >= b['bottom'])
 
@@ -73,9 +126,9 @@ def _clamp_in_bbox(left, top, w, h, bbox, pad):
 from docx import Document
 from docx.enum.table import WD_ROW_HEIGHT_RULE, WD_ALIGN_VERTICAL
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml import OxmlElement, parse_xml
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn as DOCX_QN, parse_xml
 from docx.shared import Inches, Mm, Pt
-from docx.oxml.ns import qn as DOCX_QN
 
 # --- Table header shading helper (match kundali bg) ---
 def shade_header_row(table, fill_hex="F3E2C7"):
@@ -825,14 +878,14 @@ def compact_table_paragraphs(tbl):
         pass
 
 def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
-    # Spacer paragraphs to avoid shape overlap
-    sp = container_cell.add_paragraph("")
-    sp.paragraph_format.space_after = Pt(6)
-    container_cell.add_paragraph("")
+    spacer = container_cell.add_paragraph("")
+    spacer.paragraph_format.space_after = Pt(8)
     # Title
     title = container_cell.add_paragraph("प्रमुख बिंदु")
     # Match other section titles
     _apply_hindi_caption_style(title, size_pt=11, underline=True, bold=True)
+    title.paragraph_format.space_before = Pt(0)
+    title.paragraph_format.space_after = Pt(3)
     title.paragraph_format.space_before = Pt(6)
     title.paragraph_format.space_after = Pt(3)
 
@@ -1072,7 +1125,7 @@ def main():
             shade_header_row(t2)
             set_col_widths(t2, [1.20, 1.50, 1.00])
 
-            h3 = left.add_paragraph("महादशा / अंतरदशा — अगली 5 तिथियाँ"); _apply_hindi_caption_style(h3, size_pt=11, underline=True, bold=True)
+            h3 = left.add_paragraph("महादशा / अंतरदशा"); _apply_hindi_caption_style(h3, size_pt=11, underline=True, bold=True)
             t3 = left.add_table(rows=1, cols=len(df_an.columns)); t3.autofit=False
             for i,c in enumerate(df_an.columns): t3.rows[0].cells[i].text=c
             for _,row in df_an.iterrows():
@@ -1086,16 +1139,7 @@ def main():
             # One-page: place Pramukh Bindu under tables (left column) to free right column for charts
             try:
                 add_pramukh_bindu_section(left, sidelons, lagna_sign, dt_utc)
-
-                # --- फलित (Phalit) section: 25 writable lines ---
-                h_ph = left.add_paragraph("फलित")
-                _apply_hindi_caption_style(h_ph, size_pt=11, underline=True, bold=True)
-                t_ph = left.add_table(rows=25, cols=1); t_ph.autofit = False
-                set_col_widths(t_ph, [Inches(3.60)])
-                for r in t_ph.rows:
-                    r.height = Pt(14)
-                    r.cells[0].text = ""
-                add_table_borders(t_ph, size=4)
+                add_phalit_section(left)
             except Exception:
                 pass
             right = outer.rows[0].cells[1]
@@ -1141,7 +1185,7 @@ def main():
                 st.dataframe(df_positions.reset_index(drop=True), use_container_width=True, hide_index=True)
                 st.subheader("विंशोत्तरी महादशा")
                 st.dataframe(df_md.reset_index(drop=True), use_container_width=True, hide_index=True)
-                st.subheader("महादशा / अंतरदशा — अगली 5 तिथियाँ")
+                st.subheader("महादशा / अंतरदशा")
                 st.dataframe(df_an.reset_index(drop=True), use_container_width=True, hide_index=True)
             with rc:
                 st.subheader("Lagna Kundali (Preview)")
