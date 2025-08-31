@@ -698,12 +698,20 @@ def detect_muntha_house(lagna_sign:int, dob_dt):
     except Exception:
         return None
 
-def detect_sade_sati_or_dhaiyya(sidelons:dict):
+def detect_sade_sati_or_dhaiyya(sidelons:dict, transit_dt=None):
     # Returns: (status, phase) where status in {"साढ़ेसाती", "शनि ढैय्या", None}
-    # Phase only if साढ़ेसाती: "प्रथम चरण" / "द्वितीय चरण" / "तृतीय चरण"
+    # Uses *transit Saturn* vs *natal Moon*. Phase only if साढ़ेसाती: "प्रथम चरण" / "द्वितीय चरण" / "तृतीय चरण".
     try:
+        # Natal Moon sign
         moon = planet_rasi_sign(sidelons['Mo'])
-        sat  = planet_rasi_sign(sidelons['Sa'])
+        # Transit Saturn sign at transit_dt (or now)
+        from datetime import datetime, timezone
+        if transit_dt is None:
+            tdt = datetime.now(timezone.utc)
+        else:
+            tdt = transit_dt
+        _jd, _ay, trans = sidereal_positions(tdt.replace(tzinfo=None) if hasattr(tdt, 'tzinfo') else tdt)
+        sat = planet_rasi_sign(trans['Sa'])
         d = (sat - moon) % 12
         if d in (11, 0, 1):
             phase = {11: "प्रथम चरण", 0: "द्वितीय चरण", 1: "तृतीय चरण"}[d]
