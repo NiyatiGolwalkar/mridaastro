@@ -74,24 +74,21 @@ from docx import Document
 from docx.enum.table import WD_ROW_HEIGHT_RULE, WD_ALIGN_VERTICAL
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement, parse_xml
-from docx.oxml.ns import qn
 from docx.shared import Inches, Mm, Pt
+from docx.oxml.ns import qn as DOCX_QN
 
 # --- Table header shading helper (match kundali bg) ---
 def shade_header_row(table, fill_hex="F3E2C7"):
     try:
         from docx.oxml import OxmlElement
-        from docx.oxml.ns import qn
-
-
         hdr = table.rows[0]
         for cell in hdr.cells:
             tc = cell._tc
             tcPr = tc.get_or_add_tcPr()
             shd = OxmlElement('w:shd')
-            shd.set(qn('w:val'), 'clear')
-            shd.set(qn('w:color'), 'auto')
-            shd.set(qn('w:fill'), fill_hex)
+            shd.set(DOCX_QN('w:val'), 'clear')
+            shd.set(DOCX_QN('w:color'), 'auto')
+            shd.set(DOCX_QN('w:fill'), fill_hex)
             tcPr.append(shd)
     except Exception:
         pass
@@ -101,9 +98,8 @@ def set_page_background(doc, hex_color="E8FFF5"):
     """Set document page background color (Word 'Page Color')."""
     try:
         from docx.oxml import OxmlElement
-        from docx.oxml.ns import qn
         bg = OxmlElement('w:background')
-        bg.set(qn('w:color'), hex_color)
+        bg.set(DOCX_QN('w:color'), hex_color)
         # Insert as first child of the document root
         doc.element.insert(0, bg)
     except Exception:
@@ -302,9 +298,9 @@ def _apply_hindi_caption_style(paragraph, size_pt=11, underline=True, bold=True)
     r.bold = bold; r.underline = underline; r.font.size = Pt(size_pt)
     rpr = r._element.rPr or OxmlElement('w:rPr')
     if r._element.rPr is None: r._element.append(rpr)
-    rfonts = rpr.find(qn('w:rFonts')) or OxmlElement('w:rFonts')
-    if rpr.find(qn('w:rFonts')) is None: rpr.append(rfonts)
-    rfonts.set(qn('w:eastAsia'), HINDI_FONT)
+    rfonts = rpr.find(DOCX_QN('w:rFonts')) or OxmlElement('w:rFonts')
+    if rpr.find(DOCX_QN('w:rFonts')) is None: rpr.append(rfonts)
+    rfonts.set(DOCX_QN('w:eastAsia'), HINDI_FONT)
 
 def set_sidereal_locked():
     swe.set_sid_mode(AYANAMSHA_VAL, 0, 0)
@@ -695,7 +691,7 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
 def add_table_borders(table, size=6):
     tbl = table._tbl; tblPr = tbl.tblPr; tblBorders = OxmlElement('w:tblBorders')
     for edge in ('top','left','bottom','right','insideH','insideV'):
-        el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'single'); el.set(qn('w:sz'),str(size)); tblBorders.append(el)
+        el = OxmlElement(f'w:{edge}'); el.set(DOCX_QN('w:val'),'single'); el.set(DOCX_QN('w:sz'),str(size)); tblBorders.append(el)
     tblPr.append(tblBorders)
 
 def set_table_font(table, pt=8.0):
@@ -829,14 +825,15 @@ def compact_table_paragraphs(tbl):
         pass
 
 def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
-    # Single spacer before section: exactly 8pt
+    # Spacer paragraphs to avoid shape overlap
     sp = container_cell.add_paragraph("")
-    sp.paragraph_format.space_after = Pt(8)
+    sp.paragraph_format.space_after = Pt(6)
+    container_cell.add_paragraph("")
     # Title
     title = container_cell.add_paragraph("प्रमुख बिंदु")
     # Match other section titles
     _apply_hindi_caption_style(title, size_pt=11, underline=True, bold=True)
-    title.paragraph_format.space_before = Pt(0)
+    title.paragraph_format.space_before = Pt(6)
     title.paragraph_format.space_after = Pt(3)
 
     rows = []
@@ -964,7 +961,7 @@ def main():
             margin = Mm(12); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(8); sec.bottom_margin = Mm(8)
 
             style = doc.styles['Normal']; style.font.name = LATIN_FONT; style.font.size = Pt(BASE_FONT_PT)
-            style._element.rPr.rFonts.set(qn('w:eastAsia'), HINDI_FONT); style._element.rPr.rFonts.set(qn('w:cs'), HINDI_FONT)
+            style._element.rPr.rFonts.set(DOCX_QN('w:eastAsia'), HINDI_FONT); style._element.rPr.rFonts.set(DOCX_QN('w:cs'), HINDI_FONT)
 
             
             
@@ -1009,7 +1006,7 @@ def main():
             right_width_in = 3.70; outer.columns[0].width = Inches(3.70); outer.columns[1].width = Inches(3.70)
             tbl = outer._tbl; tblPr = tbl.tblPr; tblBorders = OxmlElement('w:tblBorders')
             for edge in ('top','left','bottom','right','insideH','insideV'):
-                el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'single'); el.set(qn('w:sz'),'6'); tblBorders.append(el)
+                el = OxmlElement(f'w:{edge}'); el.set(DOCX_QN('w:val'),'single'); el.set(DOCX_QN('w:sz'),'6'); tblBorders.append(el)
             tblPr.append(tblBorders)
 
             left = outer.rows[0].cells[0]
@@ -1075,7 +1072,7 @@ def main():
             shade_header_row(t2)
             set_col_widths(t2, [1.20, 1.50, 1.00])
 
-            h3 = left.add_paragraph("महादशा / अंतरदशा"); _apply_hindi_caption_style(h3, size_pt=11, underline=True, bold=True)
+            h3 = left.add_paragraph("महादशा / अंतरदशा — अगली 5 तिथियाँ"); _apply_hindi_caption_style(h3, size_pt=11, underline=True, bold=True)
             t3 = left.add_table(rows=1, cols=len(df_an.columns)); t3.autofit=False
             for i,c in enumerate(df_an.columns): t3.rows[0].cells[i].text=c
             for _,row in df_an.iterrows():
@@ -1085,41 +1082,22 @@ def main():
             
             shade_header_row(t3)
             set_col_widths(t3, [1.20, 1.50, 1.10])
-            pad = left.add_paragraph("")
-            pad.paragraph_format.space_before = Pt(0)
-            pad.paragraph_format.space_after = Pt(0)
 
-            
             # One-page: place Pramukh Bindu under tables (left column) to free right column for charts
             try:
                 add_pramukh_bindu_section(left, sidelons, lagna_sign, dt_utc)
 
-                # --- फलित (Phalit) section: 25 ruled lines (light grey) ---
+                # --- फलित (Phalit) section: 25 writable lines ---
                 h_ph = left.add_paragraph("फलित")
                 _apply_hindi_caption_style(h_ph, size_pt=11, underline=True, bold=True)
                 t_ph = left.add_table(rows=25, cols=1); t_ph.autofit = False
                 set_col_widths(t_ph, [Inches(3.60)])
                 for r in t_ph.rows:
                     r.height = Pt(14)
-                    c = r.cells[0]; c.text = ""
-                    # bottom-only thin border for ruled effect
-                    try:
-                        from docx.oxml import OxmlElement
-                        from docx.oxml.ns import qn
-                        tc = c._tc; tcPr = tc.get_or_add_tcPr()
-                        for el in list(tcPr):
-                            if el.tag.endswith('tcBorders'):
-                                tcPr.remove(el)
-                        tcBorders = OxmlElement('w:tcBorders')
-                        for edge in ('top','left','right'):
-                            el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'nil'); tcBorders.append(el)
-                        el = OxmlElement('w:bottom'); el.set(qn('w:val'),'single'); el.set(qn('w:sz'),'6'); el.set(qn('w:space'),'0'); el.set(qn('w:color'),'D9D9D9'); tcBorders.append(el)
-                        tcPr.append(tcBorders)
-                    except Exception:
-                        pass
+                    r.cells[0].text = ""
+                add_table_borders(t_ph, size=4)
             except Exception:
                 pass
-
             right = outer.rows[0].cells[1]
             kt = right.add_table(rows=2, cols=1)
             # Compact right-cell paragraph spacing
@@ -1163,7 +1141,7 @@ def main():
                 st.dataframe(df_positions.reset_index(drop=True), use_container_width=True, hide_index=True)
                 st.subheader("विंशोत्तरी महादशा")
                 st.dataframe(df_md.reset_index(drop=True), use_container_width=True, hide_index=True)
-                st.subheader("महादशा / अंतरदशा")
+                st.subheader("महादशा / अंतरदशा — अगली 5 तिथियाँ")
                 st.dataframe(df_an.reset_index(drop=True), use_container_width=True, hide_index=True)
             with rc:
                 st.subheader("Lagna Kundali (Preview)")
