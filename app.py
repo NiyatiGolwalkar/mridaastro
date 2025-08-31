@@ -948,12 +948,12 @@ def main():
             ])
 
             now_utc = datetime.datetime.utcnow()
-            rows_an = next_antar_in_days_utc(now_utc, md_segments_utc, days_window=365)
+            rows_an = next_antar_in_days_utc(now_utc, md_segments_utc, days_window=365*10)
             df_an = pd.DataFrame([
                 {"महादशा": HN[r["major"]], "अंतरदशा": HN[r["antar"]],
                  "तिथि": _utc_to_local(r["end"], tzname, tz_hours, used_manual).strftime("%d-%m-%Y")}
                 for r in rows_an
-            ])
+            ]).head(5)
 
             img_lagna = render_north_diamond(size_px=800, stroke=3)
             img_nav   = render_north_diamond(size_px=800, stroke=3)
@@ -1049,7 +1049,7 @@ def main():
             r5 = pplace.add_run('स्थान: '); r5.underline = True; r5.bold = True; r5.font.size = Pt(BASE_FONT_PT+3)
             r6 = pplace.add_run(str(place_disp)); r6.bold = True; r6.font.size = Pt(BASE_FONT_PT+3)
             pplace.paragraph_format.space_before = Pt(0)
-            pplace.paragraph_format.space_after = Pt(3)
+            pplace.paragraph_format.space_after = Pt(8)
             h1 = left.add_paragraph("ग्रह स्थिति"); _apply_hindi_caption_style(h1, size_pt=11, underline=True, bold=True)
             t1 = left.add_table(rows=1, cols=len(df_positions.columns)); t1.autofit=False
             for i,c in enumerate(df_positions.columns): t1.rows[0].cells[i].text=c
@@ -1076,7 +1076,7 @@ def main():
             shade_header_row(t2)
             set_col_widths(t2, [1.20, 1.50, 1.00])
 
-            h3 = left.add_paragraph("महादशा / अंतरदशा (अगले 1 वर्ष)"); _apply_hindi_caption_style(h3, size_pt=11, underline=True, bold=True)
+            h3 = left.add_paragraph("महादशा / अंतरदशा — अगली 5 तिथियाँ"); _apply_hindi_caption_style(h3, size_pt=11, underline=True, bold=True)
             t3 = left.add_table(rows=1, cols=len(df_an.columns)); t3.autofit=False
             for i,c in enumerate(df_an.columns): t3.rows[0].cells[i].text=c
             for _,row in df_an.iterrows():
@@ -1090,6 +1090,16 @@ def main():
             # One-page: place Pramukh Bindu under tables (left column) to free right column for charts
             try:
                 add_pramukh_bindu_section(left, sidelons, lagna_sign, dt_utc)
+
+                # --- फलित (Phalit) section: 25 writable lines ---
+                h_ph = left.add_paragraph("फलित")
+                _apply_hindi_caption_style(h_ph, size_pt=11, underline=True, bold=True)
+                t_ph = left.add_table(rows=25, cols=1); t_ph.autofit = False
+                set_col_widths(t_ph, [Inches(3.60)])
+                for r in t_ph.rows:
+                    r.height = Pt(14)
+                    r.cells[0].text = ""
+                add_table_borders(t_ph, size=4)
             except Exception:
                 pass
             right = outer.rows[0].cells[1]
@@ -1135,7 +1145,7 @@ def main():
                 st.dataframe(df_positions.reset_index(drop=True), use_container_width=True, hide_index=True)
                 st.subheader("विंशोत्तरी महादशा")
                 st.dataframe(df_md.reset_index(drop=True), use_container_width=True, hide_index=True)
-                st.subheader("महादशा / अंतरदशा (अगले 1 वर्ष)")
+                st.subheader("महादशा / अंतरदशा — अगली 5 तिथियाँ")
                 st.dataframe(df_an.reset_index(drop=True), use_container_width=True, hide_index=True)
             with rc:
                 st.subheader("Lagna Kundali (Preview)")
