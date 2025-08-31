@@ -329,12 +329,21 @@ def geocode(place, api_key):
         res=j["results"][0]; return float(res["lat"]), float(res["lon"]), res.get("formatted", place)
     raise RuntimeError("Place not found.")
 
+
 def tz_from_latlon(lat, lon, dt_local):
     tf = TimezoneFinder(); tzname = tf.timezone_at(lat=lat, lng=lon) or "Etc/UTC"
-    tz = pytz.timezone(tzname); dt_local_aware = tz.localize(dt_local)
+    # Ensure naive before localize (pytz requires naive datetime)
+    if getattr(dt_local, "tzinfo", None) is not None:
+        dt_local = dt_local.replace(tzinfo=None)
+    tz = pytz.timezone(tzname)
+    try:
+        dt_local_aware = tz.localize(dt_local)
+    except Exception:
+        dt_local_aware = tz.localize(dt_local.replace(tzinfo=None))
     dt_utc_naive = dt_local_aware.astimezone(pytz.utc).replace(tzinfo=None)
     offset_hours = tz.utcoffset(dt_local_aware).total_seconds()/3600.0
     return tzname, offset_hours, dt_utc_naive
+
 
 def sidereal_positions(dt_utc):
     jd = swe.julday(dt_utc.year, dt_utc.month, dt_utc.day, dt_utc.hour + dt_utc.minute/60 + dt_utc.second/3600)
@@ -876,7 +885,7 @@ def main():
     if st.button("Generate DOCX"):
         try:
             lat, lon, disp = geocode(place, api_key)
-            dt_local = datetime.datetime.combine(dob, tob)
+            dt_local = datetime.datetime.combine(dob, tob).replace(tzinfo=None)
             used_manual = False
             if tz_override.strip():
                 tz_hours = float(tz_override)
