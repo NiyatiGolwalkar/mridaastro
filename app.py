@@ -77,6 +77,35 @@ from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
 from docx.shared import Inches, Mm, Pt
 
+# ---- Dasha helpers (top-level; ORDER & YEARS must exist at call time) ----
+def antar_segments_in_md_utc(md_lord, md_start_utc, md_days):
+    res=[]; t=md_start_utc; start_idx=ORDER.index(md_lord)
+    for i in range(9):
+        L=ORDER[(start_idx+i)%9]; dur = YEARS[L]*(md_days/(120.0)); start = t; end = t + datetime.timedelta(days=dur)
+        res.append((L, start, end, dur)); t = end
+    return res
+
+def pratyantars_in_antar_utc(antar_lord, antar_start_utc, antar_days):
+    res=[]; t=antar_start_utc; start_idx=ORDER.index(antar_lord)
+    for i in range(9):
+        L=ORDER[(start_idx+i)%9]; dur = YEARS[L]*(antar_days/(120.0)); start = t; end = t + datetime.timedelta(days=dur)
+        res.append((L, start, end)); t = end
+    return res
+
+def next_antar_in_days_utc(now_utc, md_segments, days_window):
+    rows=[]; horizon=now_utc + datetime.timedelta(days=days_window)
+    for seg in md_segments:
+        MD = seg["planet"]; ms = seg["start"]; me = seg["end"]; md_days = seg["days"]
+        for AL, as_, ae, adays in antar_segments_in_md_utc(MD, ms, md_days):
+            if ae < now_utc or as_ > horizon: 
+                continue
+            end = min(ae, horizon)
+            rows.append({"major": MD, "antar": AL, "end": end})
+    rows.sort(key=lambda r:r["end"])
+    return rows
+# ---- End helpers ----
+
+
 # ---- Dasha helpers (top-level; use ORDER & YEARS defined before calls) ----
 # ---- End helpers ----
 
