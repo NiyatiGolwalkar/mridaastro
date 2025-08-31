@@ -82,6 +82,8 @@ def shade_header_row(table, fill_hex="F3E2C7"):
     try:
         from docx.oxml import OxmlElement
         from docx.oxml.ns import qn
+
+
         hdr = table.rows[0]
         for cell in hdr.cells:
             tc = cell._tc
@@ -91,6 +93,19 @@ def shade_header_row(table, fill_hex="F3E2C7"):
             shd.set(qn('w:color'), 'auto')
             shd.set(qn('w:fill'), fill_hex)
             tcPr.append(shd)
+    except Exception:
+        pass
+
+# --- Page background helper ---
+def set_page_background(doc, hex_color="E8FFF5"):
+    """Set document page background color (Word 'Page Color')."""
+    try:
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+        bg = OxmlElement('w:background')
+        bg.set(qn('w:color'), hex_color)
+        # Insert as first child of the document root
+        doc.element.insert(0, bg)
     except Exception:
         pass
 
@@ -945,6 +960,7 @@ def main():
 
             # DOCX
             doc = Document()
+            set_page_background(doc, hex_color="E8FFF5")
             sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
             margin = Mm(12); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(8); sec.bottom_margin = Mm(8)
 
@@ -1005,22 +1021,25 @@ def main():
             r1 = pname.add_run('नाम: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             r2 = pname.add_run(str(name)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
             # DOB | TOB
+            pname.paragraph_format.space_after = Pt(1)
             
 # Personal Details (spacing tuned)
 # Name already added above; add DOB, TOB, Place each on its own line
             # Personal Details (spacing tuned)
             # Name already added above; add DOB, TOB, Place each on its own line
+            
+            # Personal Details (compact spacing)
             pdate = left.add_paragraph()
             r1 = pdate.add_run('जन्म तिथि: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             r2 = pdate.add_run(str(dob)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
             pdate.paragraph_format.space_before = Pt(0)
-            pdate.paragraph_format.space_after = Pt(2)
+            pdate.paragraph_format.space_after = Pt(1)
 
             ptime = left.add_paragraph()
             r3 = ptime.add_run('जन्म समय: '); r3.underline = True; r3.bold = True; r3.font.size = Pt(BASE_FONT_PT+3)
             r4 = ptime.add_run(str(tob)); r4.bold = True; r4.font.size = Pt(BASE_FONT_PT+3)
             ptime.paragraph_format.space_before = Pt(0)
-            ptime.paragraph_format.space_after = Pt(2)
+            ptime.paragraph_format.space_after = Pt(1)
 
             pplace = left.add_paragraph()
             try:
@@ -1030,8 +1049,7 @@ def main():
             r5 = pplace.add_run('स्थान: '); r5.underline = True; r5.bold = True; r5.font.size = Pt(BASE_FONT_PT+3)
             r6 = pplace.add_run(str(place_disp)); r6.bold = True; r6.font.size = Pt(BASE_FONT_PT+3)
             pplace.paragraph_format.space_before = Pt(0)
-            pplace.paragraph_format.space_after = Pt(4)
-
+            pplace.paragraph_format.space_after = Pt(3)
             h1 = left.add_paragraph("ग्रह स्थिति"); _apply_hindi_caption_style(h1, size_pt=11, underline=True, bold=True)
             t1 = left.add_table(rows=1, cols=len(df_positions.columns)); t1.autofit=False
             for i,c in enumerate(df_positions.columns): t1.rows[0].cells[i].text=c
