@@ -689,21 +689,34 @@ def _english_bhav_label(h:int)->str:
         return f"{h}वाँ भाव"
     return f"{h_int}वाँ भाव"
 
-def detect_muntha_house(lagna_sign:int, dob_dt):
-    # Approx: years elapsed since birth to today -> advance houses from lagna
+def detect_muntha_house(lagna_sign:int, dob_dt, asof=None):
+    """Muntha = age-based house (Tajika) using completed Varsha year anchored to birthday.
+    Inclusive mapping: if completed years % 12 == 0 → 1st house.
+    Returns the HOUSE NUMBER (1..12) only, as per your display rule.
+    """
     try:
         from datetime import datetime, timezone
-        years = datetime.now(timezone.utc).year - dob_dt.year
-        return ((lagna_sign - 1 + years) % 12) + 1
+        today = (asof if asof else datetime.now(timezone.utc)).date()
+        # Completed years as of today using birthday (month/day) anchor
+        bmd = (dob_dt.month, dob_dt.day)
+        tmd = (today.month, today.day)
+        years = today.year - dob_dt.year - (1 if tmd < bmd else 0)
+        years = max(0, years)
+        # Inclusive mapping: 0 -> 1st, 1 -> 2nd, ... 11 -> 12th
+        house = (years % 12) + 1
+        return house
     except Exception:
         return None
 
+
 def detect_sade_sati_or_dhaiyya(sidelons:dict, transit_dt=None):
-    # Returns: (status, phase) where status in {"साढ़ेसाती", "शनि ढैय्या", None}
-    # Uses *transit Saturn* vs *natal Moon*. Phase only if साढ़ेसाती: "प्रथम चरण" / "द्वितीय चरण" / "तृतीय चरण".
+    """Return (status, phase) where status in {"साढ़ेसाती", "शनि ढैय्या", None}.
+    Uses TRANSIT Saturn (today) vs NATAL Moon. Phase: प्रथम/द्वितीय/तृतीय for Sade Sati.
+    """
     try:
-        # Natal Moon sign
+        # Natal Moon sign from given sidereal longitudes
         moon = planet_rasi_sign(sidelons['Mo'])
+
         # Transit Saturn sign at transit_dt (or now)
         from datetime import datetime, timezone
         if transit_dt is None:
@@ -712,6 +725,7 @@ def detect_sade_sati_or_dhaiyya(sidelons:dict, transit_dt=None):
             tdt = transit_dt
         _jd, _ay, trans = sidereal_positions(tdt.replace(tzinfo=None) if hasattr(tdt, 'tzinfo') else tdt)
         sat = planet_rasi_sign(trans['Sa'])
+
         d = (sat - moon) % 12
         if d in (11, 0, 1):
             phase = {11: "प्रथम चरण", 0: "द्वितीय चरण", 1: "तृतीय चरण"}[d]
@@ -721,6 +735,7 @@ def detect_sade_sati_or_dhaiyya(sidelons:dict, transit_dt=None):
         return None, None
     except Exception:
         return None, None
+
 
 def detect_kaalsarp(sidelons:dict)->bool:
     try:
