@@ -10,6 +10,9 @@ import math
 import datetime, json, urllib.parse, urllib.request
 from io import BytesIO
 
+# --- One-page layout switch ---
+ONE_PAGE = True
+
 # --- Appearance configuration ---
 # Sizing (pt) — tuned smaller to reduce white space
 NUM_W_PT = 10       # house number box width (was 12)
@@ -377,7 +380,7 @@ def rotated_house_labels(lagna_sign):
     return {"1":order[0],"2":order[1],"3":order[2],"4":order[3],"5":order[4],"6":order[5],"7":order[6],"8":order[7],"9":order[8],"10":order[9],"11":order[10],"12":order[11]}
 
 
-def kundali_with_planets(size_pt=205, lagna_sign=1, house_planets=None):
+def kundali_with_planets(size_pt=190, lagna_sign=1, house_planets=None):
     # Like kundali_w_p_with_centroid_labels but adds small side-by-side planet boxes below the number
     if house_planets is None:
         house_planets = {i: [] for i in range(1, 13)}
@@ -689,34 +692,21 @@ def _english_bhav_label(h:int)->str:
         return f"{h}वाँ भाव"
     return f"{h_int}वाँ भाव"
 
-def detect_muntha_house(lagna_sign:int, dob_dt, asof=None):
-    """Muntha = age-based house (Tajika) using completed Varsha year anchored to birthday.
-    Inclusive mapping: if completed years % 12 == 0 → 1st house.
-    Returns the HOUSE NUMBER (1..12) only, as per your display rule.
-    """
+def detect_muntha_house(lagna_sign:int, dob_dt):
+    # Approx: years elapsed since birth to today -> advance houses from lagna
     try:
         from datetime import datetime, timezone
-        today = (asof if asof else datetime.now(timezone.utc)).date()
-        # Completed years as of today using birthday (month/day) anchor
-        bmd = (dob_dt.month, dob_dt.day)
-        tmd = (today.month, today.day)
-        years = today.year - dob_dt.year - (1 if tmd < bmd else 0)
-        years = max(0, years)
-        # Inclusive mapping: 0 -> 1st, 1 -> 2nd, ... 11 -> 12th
-        house = (years % 12) + 1
-        return house
+        years = datetime.now(timezone.utc).year - dob_dt.year
+        return ((lagna_sign - 1 + years) % 12) + 1
     except Exception:
         return None
 
-
 def detect_sade_sati_or_dhaiyya(sidelons:dict, transit_dt=None):
-    """Return (status, phase) where status in {"साढ़ेसाती", "शनि ढैय्या", None}.
-    Uses TRANSIT Saturn (today) vs NATAL Moon. Phase: प्रथम/द्वितीय/तृतीय for Sade Sati.
-    """
+    # Returns: (status, phase) where status in {"साढ़ेसाती", "शनि ढैय्या", None}
+    # Uses *transit Saturn* vs *natal Moon*. Phase only if साढ़ेसाती: "प्रथम चरण" / "द्वितीय चरण" / "तृतीय चरण".
     try:
-        # Natal Moon sign from given sidereal longitudes
+        # Natal Moon sign
         moon = planet_rasi_sign(sidelons['Mo'])
-
         # Transit Saturn sign at transit_dt (or now)
         from datetime import datetime, timezone
         if transit_dt is None:
@@ -725,7 +715,6 @@ def detect_sade_sati_or_dhaiyya(sidelons:dict, transit_dt=None):
             tdt = transit_dt
         _jd, _ay, trans = sidereal_positions(tdt.replace(tzinfo=None) if hasattr(tdt, 'tzinfo') else tdt)
         sat = planet_rasi_sign(trans['Sa'])
-
         d = (sat - moon) % 12
         if d in (11, 0, 1):
             phase = {11: "प्रथम चरण", 0: "द्वितीय चरण", 1: "तृतीय चरण"}[d]
@@ -735,7 +724,6 @@ def detect_sade_sati_or_dhaiyya(sidelons:dict, transit_dt=None):
         return None, None
     except Exception:
         return None, None
-
 
 def detect_kaalsarp(sidelons:dict)->bool:
     try:
@@ -951,7 +939,7 @@ def main():
             # DOCX
             doc = Document()
             sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
-            margin = Mm(12); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(10); sec.bottom_margin = Mm(10)
+            margin = Mm(12); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(8); sec.bottom_margin = Mm(8)
 
             style = doc.styles['Normal']; style.font.name = LATIN_FONT; style.font.size = Pt(BASE_FONT_PT)
             style._element.rPr.rFonts.set(qn('w:eastAsia'), HINDI_FONT); style._element.rPr.rFonts.set(qn('w:cs'), HINDI_FONT)
@@ -996,7 +984,7 @@ def main():
 
 
             outer = doc.add_table(rows=1, cols=2); outer.autofit=False
-            right_width_in = 4.6; outer.columns[0].width = Inches(2.2); outer.columns[1].width = Inches(right_width_in)
+            right_width_in = 3.70; outer.columns[0].width = Inches(3.70); outer.columns[1].width = Inches(3.70)
             tbl = outer._tbl; tblPr = tbl.tblPr; tblBorders = OxmlElement('w:tblBorders')
             for edge in ('top','left','bottom','right','insideH','insideV'):
                 el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'single'); el.set(qn('w:sz'),'6'); tblBorders.append(el)
@@ -1034,7 +1022,7 @@ def main():
                 r=t1.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT); add_table_borders(t1, size=6)
-            set_col_widths(t1, [0.7,0.5,0.9,0.8,1.05])
+            set_col_widths(t1, [0.70, 0.55, 0.85, 0.80, 0.80])
             # Left align ONLY the header cell of the last column (उप‑नक्षत्र / Sublord)
             for p in t1.rows[0].cells[-1].paragraphs:
                 p.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -1047,7 +1035,7 @@ def main():
                 r=t2.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t2); set_table_font(t2, pt=BASE_FONT_PT); add_table_borders(t2, size=6)
-            set_col_widths(t2, [0.9,0.95,0.9])
+            set_col_widths(t2, [1.20, 1.50, 1.00])
 
             h3 = left.add_paragraph("अंतर / प्रत्यंतर (अगले 2 वर्ष)"); _apply_hindi_caption_style(h3, size_pt=11, underline=True, bold=True)
             t3 = left.add_table(rows=1, cols=len(df_ap.columns)); t3.autofit=False
@@ -1058,12 +1046,12 @@ def main():
             center_header_row(t3); set_table_font(t3, pt=BASE_FONT_PT); add_table_borders(t3, size=6)
             set_col_widths(t3, [0.85,0.9,1.05,0.7])
 
-            right = outer.rows[0].cells[1]
-            # Place Pramukh Bindu at the very top of the right column
+            # One-page: place Pramukh Bindu under tables (left column) to free right column for charts
             try:
-                add_pramukh_bindu_section(right, sidelons, lagna_sign, dt_utc)
+                add_pramukh_bindu_section(left, sidelons, lagna_sign, dt_utc)
             except Exception:
                 pass
+            right = outer.rows[0].cells[1]
             kt = right.add_table(rows=2, cols=1)
             # Compact right-cell paragraph spacing
             try:
@@ -1075,7 +1063,7 @@ def main():
             right.vertical_alignment = WD_ALIGN_VERTICAL.TOP
             kt.autofit = False
             kt.columns[0].width = Inches(right_width_in)
-            for row in kt.rows: row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY; row.height = Pt(288)
+            for row in kt.rows: row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY; row.height = Pt(240)
             
 
             cell1 = kt.rows[0].cells[0]; cap1 = cell1.add_paragraph("लग्न कुंडली")
@@ -1083,13 +1071,13 @@ def main():
             p1 = cell1.add_paragraph(); p1.paragraph_format.space_before = Pt(0); p1.paragraph_format.space_after = Pt(0)
             # Lagna chart with planets in single box per house
             rasi_house_planets = build_rasi_house_planets_marked(sidelons, lagna_sign)
-            p1._p.addnext(kundali_with_planets(size_pt=205, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
+            p1._p.addnext(kundali_with_planets(size_pt=190, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
 
             cell2 = kt.rows[1].cells[0]; cap2 = cell2.add_paragraph("नवांश कुंडली")
             cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap2, size_pt=11, underline=True, bold=True); cap2.paragraph_format.space_before = Pt(2); cap2.paragraph_format.space_after = Pt(2)
             p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0)
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
-            p2._p.addnext(kundali_with_planets(size_pt=205, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
+            p2._p.addnext(kundali_with_planets(size_pt=190, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
             # (प्रमुख बिंदु moved to row 2 of outer table)
             # Ensure content goes below chart shape
             cell2.add_paragraph("")
