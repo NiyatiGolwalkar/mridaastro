@@ -77,6 +77,24 @@ from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
 from docx.shared import Inches, Mm, Pt
 
+# --- Table header shading helper (match kundali bg) ---
+def shade_header_row(table, fill_hex="F3E2C7"):
+    try:
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+        hdr = table.rows[0]
+        for cell in hdr.cells:
+            tc = cell._tc
+            tcPr = tc.get_or_add_tcPr()
+            shd = OxmlElement('w:shd')
+            shd.set(qn('w:val'), 'clear')
+            shd.set(qn('w:color'), 'auto')
+            shd.set(qn('w:fill'), fill_hex)
+            tcPr.append(shd)
+    except Exception:
+        pass
+
+
 # ---- Dasha helpers (top-level; ORDER & YEARS must exist at call time) ----
 def antar_segments_in_md_utc(md_lord, md_start_utc, md_days):
     res=[]; t=md_start_utc; start_idx=ORDER.index(md_lord)
@@ -979,22 +997,32 @@ def main():
             r2 = pname.add_run(str(name)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
             # DOB | TOB
             
-            # Single-line Personal Details (DOB | TOB | Place)
-                        # Personal Details (two lines: DOB|TOB, then Place)
+# Personal Details (spacing tuned)
+# Name already added above; add DOB, TOB, Place each on its own line
+            # Personal Details (spacing tuned)
+            # Name already added above; add DOB, TOB, Place each on its own line
             pdate = left.add_paragraph()
-            r = pdate.add_run(f"जन्म तिथि: {dob}  |  जन्म समय: {tob}")
-            r.bold = True
-            r.font.size = Pt(BASE_FONT_PT+3)
-            pdate.paragraph_format.space_after = Pt(0)
+            r1 = pdate.add_run('जन्म तिथि: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r2 = pdate.add_run(str(dob)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
+            pdate.paragraph_format.space_before = Pt(0)
+            pdate.paragraph_format.space_after = Pt(2)
+
+            ptime = left.add_paragraph()
+            r3 = ptime.add_run('जन्म समय: '); r3.underline = True; r3.bold = True; r3.font.size = Pt(BASE_FONT_PT+3)
+            r4 = ptime.add_run(str(tob)); r4.bold = True; r4.font.size = Pt(BASE_FONT_PT+3)
+            ptime.paragraph_format.space_before = Pt(0)
+            ptime.paragraph_format.space_after = Pt(2)
+
             pplace = left.add_paragraph()
             try:
                 place_disp = disp
             except Exception:
                 place_disp = place if 'place' in locals() else ''
-            r2 = pplace.add_run(f"स्थान: {place_disp}")
-            r2.bold = True
-            r2.font.size = Pt(BASE_FONT_PT+3)
-            pplace.paragraph_format.space_after = Pt(2)
+            r5 = pplace.add_run('स्थान: '); r5.underline = True; r5.bold = True; r5.font.size = Pt(BASE_FONT_PT+3)
+            r6 = pplace.add_run(str(place_disp)); r6.bold = True; r6.font.size = Pt(BASE_FONT_PT+3)
+            pplace.paragraph_format.space_before = Pt(0)
+            pplace.paragraph_format.space_after = Pt(4)
+
             h1 = left.add_paragraph("ग्रह स्थिति"); _apply_hindi_caption_style(h1, size_pt=11, underline=True, bold=True)
             t1 = left.add_table(rows=1, cols=len(df_positions.columns)); t1.autofit=False
             for i,c in enumerate(df_positions.columns): t1.rows[0].cells[i].text=c
@@ -1002,6 +1030,8 @@ def main():
                 r=t1.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT); add_table_borders(t1, size=6)
+            
+            shade_header_row(t1)
             set_col_widths(t1, [0.70, 0.55, 0.85, 0.80, 0.80])
             # Left align ONLY the header cell of the last column (उप‑नक्षत्र / Sublord)
             for p in t1.rows[0].cells[-1].paragraphs:
@@ -1015,6 +1045,8 @@ def main():
                 r=t2.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t2); set_table_font(t2, pt=BASE_FONT_PT); add_table_borders(t2, size=6)
+            
+            shade_header_row(t2)
             set_col_widths(t2, [1.20, 1.50, 1.00])
 
             h3 = left.add_paragraph("महादशा / अंतरदशा (अगले 1 वर्ष)"); _apply_hindi_caption_style(h3, size_pt=11, underline=True, bold=True)
@@ -1024,6 +1056,8 @@ def main():
                 r=t3.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t3); set_table_font(t3, pt=BASE_FONT_PT); add_table_borders(t3, size=6)
+            
+            shade_header_row(t3)
             set_col_widths(t3, [1.20, 1.50, 1.10])
 
             # One-page: place Pramukh Bindu under tables (left column) to free right column for charts
