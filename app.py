@@ -29,36 +29,6 @@ HOUSE_NUM_SHADE = "#fff9d6"  # soft light-yellow
 
 
 
-# --- Phalit (notes) section builder ---
-def add_phalit_section(container_cell, width_inches=3.60, rows=25):
-    """Append a 'फलित' section with ruled lines to write notes."""
-    h_ph = container_cell.add_paragraph("फलित")
-    _apply_hindi_caption_style(h_ph, size_pt=11, underline=True, bold=True)
-    t_ph = container_cell.add_table(rows=rows, cols=1); t_ph.autofit = False
-    set_col_widths(t_ph, [Inches(width_inches)])
-    for r in t_ph.rows:
-        r.height = Pt(14)
-        c = r.cells[0]; c.text = ""
-        tcPr = c._tc.get_or_add_tcPr()
-        # remove existing border block if any
-        for el in list(tcPr):
-            if el.tag.endswith('tcBorders'):
-                tcPr.remove(el)
-        # create only a thin light bottom border so it looks like ruled lines
-        tcBorders = OxmlElement('w:tcBorders')
-        for edge in ('top','left','right'):
-            el = OxmlElement(f'w:{edge}')
-            el.set(DOCX_QN('w:val'), 'nil')
-            tcBorders.append(el)
-        el = OxmlElement('w:bottom')
-        el.set(DOCX_QN('w:val'), 'single')
-        el.set(DOCX_QN('w:sz'), '6')      # thin
-        el.set(DOCX_QN('w:space'), '0')
-        el.set(DOCX_QN('w:color'), 'D9D9D9')  # light grey
-        tcBorders.append(el)
-        tcPr.append(tcBorders)
-
-
 def _rects_overlap(a, b):
     return not (a['right'] <= b['left'] or a['left'] >= b['right'] or a['bottom'] <= b['top'] or a['top'] >= b['bottom'])
 
@@ -859,15 +829,14 @@ def compact_table_paragraphs(tbl):
         pass
 
 def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
-    # Spacer paragraphs to avoid shape overlap
+    # Single spacer before section: exactly 8pt
     sp = container_cell.add_paragraph("")
-    sp.paragraph_format.space_after = Pt(6)
-    container_cell.add_paragraph("")
+    sp.paragraph_format.space_after = Pt(8)
     # Title
     title = container_cell.add_paragraph("प्रमुख बिंदु")
     # Match other section titles
     _apply_hindi_caption_style(title, size_pt=11, underline=True, bold=True)
-    title.paragraph_format.space_before = Pt(6)
+    title.paragraph_format.space_before = Pt(0)
     title.paragraph_format.space_after = Pt(3)
 
     rows = []
@@ -1116,18 +1085,41 @@ def main():
             
             shade_header_row(t3)
             set_col_widths(t3, [1.20, 1.50, 1.10])
+            pad = left.add_paragraph("")
+            pad.paragraph_format.space_before = Pt(0)
+            pad.paragraph_format.space_after = Pt(0)
 
+            
             # One-page: place Pramukh Bindu under tables (left column) to free right column for charts
             try:
-                sp = left.add_paragraph("")
-
-                sp.paragraph_format.space_after = Pt(8)
-
                 add_pramukh_bindu_section(left, sidelons, lagna_sign, dt_utc)
 
-                add_phalit_section(left)
+                # --- फलित (Phalit) section: 25 ruled lines (light grey) ---
+                h_ph = left.add_paragraph("फलित")
+                _apply_hindi_caption_style(h_ph, size_pt=11, underline=True, bold=True)
+                t_ph = left.add_table(rows=25, cols=1); t_ph.autofit = False
+                set_col_widths(t_ph, [Inches(3.60)])
+                for r in t_ph.rows:
+                    r.height = Pt(14)
+                    c = r.cells[0]; c.text = ""
+                    # bottom-only thin border for ruled effect
+                    try:
+                        from docx.oxml import OxmlElement
+                        from docx.oxml.ns import qn
+                        tc = c._tc; tcPr = tc.get_or_add_tcPr()
+                        for el in list(tcPr):
+                            if el.tag.endswith('tcBorders'):
+                                tcPr.remove(el)
+                        tcBorders = OxmlElement('w:tcBorders')
+                        for edge in ('top','left','right'):
+                            el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'nil'); tcBorders.append(el)
+                        el = OxmlElement('w:bottom'); el.set(qn('w:val'),'single'); el.set(qn('w:sz'),'6'); el.set(qn('w:space'),'0'); el.set(qn('w:color'),'D9D9D9'); tcBorders.append(el)
+                        tcPr.append(tcBorders)
+                    except Exception:
+                        pass
             except Exception:
                 pass
+
             right = outer.rows[0].cells[1]
             kt = right.add_table(rows=2, cols=1)
             # Compact right-cell paragraph spacing
