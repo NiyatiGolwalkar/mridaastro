@@ -58,7 +58,6 @@ def add_phalit_section(container_cell, width_inches=3.60, rows=25):
     _apply_hindi_caption_style(head, size_pt=11, underline=True, bold=True)
 
     t = container_cell.add_table(rows=rows, cols=1); t.autofit = False
-    # Clear table borders so only bottom rules show
     try:
         tbl = t._tbl; tblPr = tbl.tblPr
         tblBorders = OxmlElement('w:tblBorders')
@@ -81,7 +80,7 @@ def add_phalit_section(container_cell, width_inches=3.60, rows=25):
         for edge in ('top','left','right'):
             el = OxmlElement(f'w:{edge}'); el.set(DOCX_QN('w:val'),'nil'); tcBorders.append(el)
         el = OxmlElement('w:bottom')
-        el.set(DOCX_QN('w:val'),'single'); el.set(DOCX_QN('w:sz'),'8'); el.set(DOCX_QN('w:space'),'0'); el.set(DOCX_QN('w:color'),'B6B6B6')
+        el.set(DOCX_QN('w:val'),'single'); el.set(DOCX_QN('w:sz'),'12'); el.set(DOCX_QN('w:space'),'0'); el.set(DOCX_QN('w:color'),'7F7F7F')
         tcBorders.append(el)
         tcPr.append(tcBorders)
 
@@ -883,7 +882,7 @@ def compact_table_paragraphs(tbl):
 
 def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
     spacer = container_cell.add_paragraph("")
-    spacer.paragraph_format.space_after = Pt(4)
+    spacer.paragraph_format.space_after = Pt(2)
     # Title
     title = container_cell.add_paragraph("प्रमुख बिंदु")
     # Match other section titles
