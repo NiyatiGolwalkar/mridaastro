@@ -10,6 +10,9 @@ import math
 import datetime, json, urllib.parse, urllib.request
 from io import BytesIO
 
+# --- One-page layout switch ---
+ONE_PAGE = True
+
 # --- Appearance configuration ---
 # Sizing (pt) — tuned smaller to reduce white space
 NUM_W_PT = 10       # house number box width (was 12)
@@ -74,8 +77,28 @@ from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
 from docx.shared import Inches, Mm, Pt
 
-# --- Page background helper (Word page color) ---
-def             set_page_background(doc, hex_color="E8FFF5"):
+# --- Table header shading helper (match kundali bg) ---
+def shade_header_row(table, fill_hex="F3E2C7"):
+    try:
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+
+
+        hdr = table.rows[0]
+        for cell in hdr.cells:
+            tc = cell._tc
+            tcPr = tc.get_or_add_tcPr()
+            shd = OxmlElement('w:shd')
+            shd.set(qn('w:val'), 'clear')
+            shd.set(qn('w:color'), 'auto')
+            shd.set(qn('w:fill'), fill_hex)
+            tcPr.append(shd)
+    except Exception:
+        pass
+
+# --- Page background helper ---
+def set_page_background(doc, hex_color="E8FFF5"):
+    """Set document page background color (Word 'Page Color')."""
     try:
         from docx.oxml import OxmlElement
         from docx.oxml.ns import qn
@@ -85,6 +108,39 @@ def             set_page_background(doc, hex_color="E8FFF5"):
         doc.element.insert(0, bg)
     except Exception:
         pass
+
+
+# ---- Dasha helpers (top-level; ORDER & YEARS must exist at call time) ----
+def antar_segments_in_md_utc(md_lord, md_start_utc, md_days):
+    res=[]; t=md_start_utc; start_idx=ORDER.index(md_lord)
+    for i in range(9):
+        L=ORDER[(start_idx+i)%9]; dur = YEARS[L]*(md_days/(120.0)); start = t; end = t + datetime.timedelta(days=dur)
+        res.append((L, start, end, dur)); t = end
+    return res
+
+def pratyantars_in_antar_utc(antar_lord, antar_start_utc, antar_days):
+    res=[]; t=antar_start_utc; start_idx=ORDER.index(antar_lord)
+    for i in range(9):
+        L=ORDER[(start_idx+i)%9]; dur = YEARS[L]*(antar_days/(120.0)); start = t; end = t + datetime.timedelta(days=dur)
+        res.append((L, start, end)); t = end
+    return res
+
+def next_antar_in_days_utc(now_utc, md_segments, days_window):
+    rows=[]; horizon=now_utc + datetime.timedelta(days=days_window)
+    for seg in md_segments:
+        MD = seg["planet"]; ms = seg["start"]; me = seg["end"]; md_days = seg["days"]
+        for AL, as_, ae, adays in antar_segments_in_md_utc(MD, ms, md_days):
+            if ae < now_utc or as_ > horizon: 
+                continue
+            end = min(ae, horizon)
+            rows.append({"major": MD, "antar": AL, "end": end})
+    rows.sort(key=lambda r:r["end"])
+    return rows
+# ---- End helpers ----
+
+
+# ---- Dasha helpers (top-level; use ORDER & YEARS defined before calls) ----
+# ---- End helpers ----
 
 
 APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
@@ -288,12 +344,21 @@ def geocode(place, api_key):
         res=j["results"][0]; return float(res["lat"]), float(res["lon"]), res.get("formatted", place)
     raise RuntimeError("Place not found.")
 
+
 def tz_from_latlon(lat, lon, dt_local):
     tf = TimezoneFinder(); tzname = tf.timezone_at(lat=lat, lng=lon) or "Etc/UTC"
-    tz = pytz.timezone(tzname); dt_local_aware = tz.localize(dt_local)
+    # Ensure naive before localize (pytz requires naive datetime)
+    if getattr(dt_local, "tzinfo", None) is not None:
+        dt_local = dt_local.replace(tzinfo=None)
+    tz = pytz.timezone(tzname)
+    try:
+        dt_local_aware = tz.localize(dt_local)
+    except Exception:
+        dt_local_aware = tz.localize(dt_local.replace(tzinfo=None))
     dt_utc_naive = dt_local_aware.astimezone(pytz.utc).replace(tzinfo=None)
     offset_hours = tz.utcoffset(dt_local_aware).total_seconds()/3600.0
     return tzname, offset_hours, dt_utc_naive
+
 
 def sidereal_positions(dt_utc):
     jd = swe.julday(dt_utc.year, dt_utc.month, dt_utc.day, dt_utc.hour + dt_utc.minute/60 + dt_utc.second/3600)
@@ -340,32 +405,6 @@ def build_mahadashas_days_utc(birth_utc_dt, moon_sid):
         L = ORDER[idx]; dur_days = YEARS[L]*YEAR_DAYS; end = min(t + datetime.timedelta(days=dur_days), end_limit)
         segments.append({"planet": L, "start": t, "end": end, "days": dur_days}); t = end; idx = (idx + 1) % 9
     return segments
-
-def antar_segments_in_md_utc(md_lord, md_start_utc, md_days):
-    res=[]; t=md_start_utc; start_idx=ORDER.index(md_lord)
-    for i in range(9):
-        L=ORDER[(start_idx+i)%9]; dur = YEARS[L]*(md_days/(120.0)); start = t; end = t + datetime.timedelta(days=dur)
-        res.append((L, start, end, dur)); t = end
-    return res
-
-def pratyantars_in_antar_utc(antar_lord, antar_start_utc, antar_days):
-    res=[]; t=antar_start_utc; start_idx=ORDER.index(antar_lord)
-    for i in range(9):
-        L=ORDER[(start_idx+i)%9]; dur = YEARS[L]*(antar_days/(120.0)); start = t; end = t + datetime.timedelta(days=dur)
-        res.append((L, start, end)); t = end
-    return res
-
-def next_ant_praty_in_days_utc(now_utc, md_segments, days_window):
-    rows=[]; horizon=now_utc + datetime.timedelta(days=days_window)
-    for seg in md_segments:
-        MD = seg["planet"]; ms = seg["start"]; me = seg["end"]; md_days = seg["days"]
-        for AL, as_, ae, adays in antar_segments_in_md_utc(MD, ms, md_days):
-            if ae < now_utc or as_ > horizon: continue
-            for PL, ps, pe in pratyantars_in_antar_utc(AL, as_, adays):
-                if pe < now_utc or ps > horizon: continue
-                rows.append({"major":MD,"antar":AL,"pratyantar":PL,"end":pe})
-    rows.sort(key=lambda r:r["end"]); return rows
-
 # --- FIXED: compact kundali rendering with zero padding ---
 def render_north_diamond(size_px=800, stroke=3):
     fig, ax = plt.subplots(figsize=(size_px/200, size_px/200), dpi=200)
@@ -390,7 +429,7 @@ def rotated_house_labels(lagna_sign):
     return {"1":order[0],"2":order[1],"3":order[2],"4":order[3],"5":order[4],"6":order[5],"7":order[6],"8":order[7],"9":order[8],"10":order[9],"11":order[10],"12":order[11]}
 
 
-def kundali_with_planets(size_pt=205, lagna_sign=1, house_planets=None):
+def kundali_with_planets(size_pt=190, lagna_sign=1, house_planets=None):
     # Like kundali_w_p_with_centroid_labels but adds small side-by-side planet boxes below the number
     if house_planets is None:
         house_planets = {i: [] for i in range(1, 13)}
@@ -790,15 +829,12 @@ def compact_table_paragraphs(tbl):
         pass
 
 def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
-    # Spacer paragraphs to avoid shape overlap
     sp = container_cell.add_paragraph("")
-    sp.paragraph_format.space_after = Pt(6)
-    container_cell.add_paragraph("")
-    # Title
+    sp.paragraph_format.space_after = Pt(8)
     title = container_cell.add_paragraph("प्रमुख बिंदु")
     # Match other section titles
     _apply_hindi_caption_style(title, size_pt=11, underline=True, bold=True)
-    title.paragraph_format.space_before = Pt(6)
+    title.paragraph_format.space_before = Pt(0)
     title.paragraph_format.space_after = Pt(3)
 
     rows = []
@@ -861,7 +897,7 @@ def main():
     if st.button("Generate DOCX"):
         try:
             lat, lon, disp = geocode(place, api_key)
-            dt_local = datetime.datetime.combine(dob, tob)
+            dt_local = datetime.datetime.combine(dob, tob).replace(tzinfo=None)
             used_manual = False
             if tz_override.strip():
                 tz_hours = float(tz_override)
@@ -894,32 +930,6 @@ def main():
                     L = ORDER[idx]; dur_days = YEARS[L]*YEAR_DAYS; end = min(t + datetime.timedelta(days=dur_days), end_limit)
                     segments.append({"planet": L, "start": t, "end": end, "days": dur_days}); t = end; idx = (idx + 1) % 9
                 return segments
-
-            def antar_segments_in_md_utc(md_lord, md_start_utc, md_days):
-                res=[]; t=md_start_utc; start_idx=ORDER.index(md_lord)
-                for i in range(9):
-                    L=ORDER[(start_idx+i)%9]; dur = YEARS[L]*(md_days/(120.0)); start = t; end = t + datetime.timedelta(days=dur)
-                    res.append((L, start, end, dur)); t = end
-                return res
-
-            def pratyantars_in_antar_utc(antar_lord, antar_start_utc, antar_days):
-                res=[]; t=antar_start_utc; start_idx=ORDER.index(antar_lord)
-                for i in range(9):
-                    L=ORDER[(start_idx+i)%9]; dur = YEARS[L]*(antar_days/(120.0)); start = t; end = t + datetime.timedelta(days=dur)
-                    res.append((L, start, end)); t = end
-                return res
-
-            def next_ant_praty_in_days_utc(now_utc, md_segments, days_window):
-                rows=[]; horizon=now_utc + datetime.timedelta(days=days_window)
-                for seg in md_segments:
-                    MD = seg["planet"]; ms = seg["start"]; me = seg["end"]; md_days = seg["days"]
-                    for AL, as_, ae, adays in antar_segments_in_md_utc(MD, ms, md_days):
-                        if ae < now_utc or as_ > horizon: continue
-                        for PL, ps, pe in pratyantars_in_antar_utc(AL, as_, adays):
-                            if pe < now_utc or ps > horizon: continue
-                            rows.append({"major":MD,"antar":AL,"pratyantar":PL,"end":pe})
-                rows.sort(key=lambda r:r["end"]); return rows
-
             md_segments_utc = build_mahadashas_days_utc(dt_utc, sidelons['Mo'])
 
             def age_years(birth_dt_local, end_utc):
@@ -935,13 +945,12 @@ def main():
             ])
 
             now_utc = datetime.datetime.utcnow()
-            rows_ap = next_ant_praty_in_days_utc(now_utc, md_segments_utc, days_window=2*365)
-            df_ap = pd.DataFrame([
+            rows_an = next_antar_in_days_utc(now_utc, md_segments_utc, days_window=365*10)
+            df_an = pd.DataFrame([
                 {"महादशा": HN[r["major"]], "अंतरदशा": HN[r["antar"]],
-                 "प्रत्यंतर दशा": HN[r["pratyantar"]],
                  "तिथि": _utc_to_local(r["end"], tzname, tz_hours, used_manual).strftime("%d-%m-%Y")}
-                for r in rows_ap
-            ])
+                for r in rows_an
+            ]).head(5)
 
             img_lagna = render_north_diamond(size_px=800, stroke=3)
             img_nav   = render_north_diamond(size_px=800, stroke=3)
@@ -950,7 +959,7 @@ def main():
             doc = Document()
             set_page_background(doc, hex_color="E8FFF5")
             sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
-            margin = Mm(12); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(10); sec.bottom_margin = Mm(10)
+            margin = Mm(12); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(8); sec.bottom_margin = Mm(8)
 
             style = doc.styles['Normal']; style.font.name = LATIN_FONT; style.font.size = Pt(BASE_FONT_PT)
             style._element.rPr.rFonts.set(qn('w:eastAsia'), HINDI_FONT); style._element.rPr.rFonts.set(qn('w:cs'), HINDI_FONT)
@@ -995,7 +1004,7 @@ def main():
 
 
             outer = doc.add_table(rows=1, cols=2); outer.autofit=False
-            right_width_in = 4.6; outer.columns[0].width = Inches(2.2); outer.columns[1].width = Inches(right_width_in)
+            right_width_in = 3.70; outer.columns[0].width = Inches(3.70); outer.columns[1].width = Inches(3.70)
             tbl = outer._tbl; tblPr = tbl.tblPr; tblBorders = OxmlElement('w:tblBorders')
             for edge in ('top','left','bottom','right','insideH','insideV'):
                 el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'single'); el.set(qn('w:sz'),'6'); tblBorders.append(el)
@@ -1009,23 +1018,35 @@ def main():
             r1 = pname.add_run('नाम: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             r2 = pname.add_run(str(name)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
             # DOB | TOB
-            pdob = left.add_paragraph();
-            r1 = pdob.add_run('जन्म तिथि: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
-            r2 = pdob.add_run(str(dob)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
-            r3 = pdob.add_run('  |  जन्म समय: '); r3.underline = True; r3.bold = True; r3.font.size = Pt(BASE_FONT_PT+3)
-            r4 = pdob.add_run(str(tob)); r4.bold = True; r4.font.size = Pt(BASE_FONT_PT+3)
-            # Place
-            pplace = left.add_paragraph();
-            r1 = pplace.add_run('स्थान: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
-            r2 = pplace.add_run(str(disp)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
-            # Time Zone
-            ptz = left.add_paragraph();
-            r1 = ptz.add_run('समय क्षेत्र: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
-            if used_manual:
-                r2 = ptz.add_run(str(tzname)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
-            else:
-                r2 = ptz.add_run(f'{tzname} (UTC{tz_hours:+.2f})'); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
-                        # ---- Hindi headings ----
+            pname.paragraph_format.space_after = Pt(1)
+            
+# Personal Details (spacing tuned)
+# Name already added above; add DOB, TOB, Place each on its own line
+            # Personal Details (spacing tuned)
+            # Name already added above; add DOB, TOB, Place each on its own line
+            
+            # Personal Details (compact spacing)
+            pdate = left.add_paragraph()
+            r1 = pdate.add_run('जन्म तिथि: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
+            r2 = pdate.add_run(str(dob)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
+            pdate.paragraph_format.space_before = Pt(0)
+            pdate.paragraph_format.space_after = Pt(1)
+
+            ptime = left.add_paragraph()
+            r3 = ptime.add_run('जन्म समय: '); r3.underline = True; r3.bold = True; r3.font.size = Pt(BASE_FONT_PT+3)
+            r4 = ptime.add_run(str(tob)); r4.bold = True; r4.font.size = Pt(BASE_FONT_PT+3)
+            ptime.paragraph_format.space_before = Pt(0)
+            ptime.paragraph_format.space_after = Pt(1)
+
+            pplace = left.add_paragraph()
+            try:
+                place_disp = disp
+            except Exception:
+                place_disp = place if 'place' in locals() else ''
+            r5 = pplace.add_run('स्थान: '); r5.underline = True; r5.bold = True; r5.font.size = Pt(BASE_FONT_PT+3)
+            r6 = pplace.add_run(str(place_disp)); r6.bold = True; r6.font.size = Pt(BASE_FONT_PT+3)
+            pplace.paragraph_format.space_before = Pt(0)
+            pplace.paragraph_format.space_after = Pt(8)
             h1 = left.add_paragraph("ग्रह स्थिति"); _apply_hindi_caption_style(h1, size_pt=11, underline=True, bold=True)
             t1 = left.add_table(rows=1, cols=len(df_positions.columns)); t1.autofit=False
             for i,c in enumerate(df_positions.columns): t1.rows[0].cells[i].text=c
@@ -1033,7 +1054,9 @@ def main():
                 r=t1.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT); add_table_borders(t1, size=6)
-            set_col_widths(t1, [0.7,0.5,0.9,0.8,1.05])
+            
+            shade_header_row(t1)
+            set_col_widths(t1, [0.70, 0.55, 0.85, 0.80, 0.80])
             # Left align ONLY the header cell of the last column (उप‑नक्षत्र / Sublord)
             for p in t1.rows[0].cells[-1].paragraphs:
                 p.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -1046,23 +1069,51 @@ def main():
                 r=t2.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t2); set_table_font(t2, pt=BASE_FONT_PT); add_table_borders(t2, size=6)
-            set_col_widths(t2, [0.9,0.95,0.9])
+            
+            shade_header_row(t2)
+            set_col_widths(t2, [1.20, 1.50, 1.00])
 
             h3 = left.add_paragraph("महादशा / अंतरदशा"); _apply_hindi_caption_style(h3, size_pt=11, underline=True, bold=True)
-            t3 = left.add_table(rows=1, cols=len(df_ap.columns)); t3.autofit=False
-            for i,c in enumerate(df_ap.columns): t3.rows[0].cells[i].text=c
-            for _,row in df_ap.iterrows():
+            t3 = left.add_table(rows=1, cols=len(df_an.columns)); t3.autofit=False
+            for i,c in enumerate(df_an.columns): t3.rows[0].cells[i].text=c
+            for _,row in df_an.iterrows():
                 r=t3.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t3); set_table_font(t3, pt=BASE_FONT_PT); add_table_borders(t3, size=6)
-            set_col_widths(t3, [0.85,0.9,1.05,0.7])
+            
+            shade_header_row(t3)
+            set_col_widths(t3, [1.20, 1.50, 1.10])
 
-            right = outer.rows[0].cells[1]
-            # Place Pramukh Bindu at the very top of the right column
+            # One-page: place Pramukh Bindu under tables (left column) to free right column for charts
             try:
-                add_pramukh_bindu_section(right, sidelons, lagna_sign, dt_utc)
+                add_pramukh_bindu_section(left, sidelons, lagna_sign, dt_utc)
+
+                # --- फलित (Phalit) section: 25 ruled lines (light grey) ---
+                h_ph = left.add_paragraph("फलित")
+                _apply_hindi_caption_style(h_ph, size_pt=11, underline=True, bold=True)
+                t_ph = left.add_table(rows=25, cols=1); t_ph.autofit = False
+                set_col_widths(t_ph, [Inches(3.60)])
+                for r in t_ph.rows:
+                    r.height = Pt(14)
+                    c = r.cells[0]; c.text = ""
+                    # Light bottom border only
+                    try:
+                        from docx.oxml import OxmlElement
+                        from docx.oxml.ns import qn
+                        tc = c._tc; tcPr = tc.get_or_add_tcPr()
+                        for el in list(tcPr):
+                            if el.tag.endswith('tcBorders'): tcPr.remove(el)
+                        tcBorders = OxmlElement('w:tcBorders')
+                        for edge in ('top','left','right'):
+                            el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'nil'); tcBorders.append(el)
+                        el = OxmlElement('w:bottom'); el.set(qn('w:val'),'single'); el.set(qn('w:sz'),'6'); el.set(qn('w:space'),'0'); el.set(qn('w:color'),'D9D9D9'); tcBorders.append(el)
+                        tcPr.append(tcBorders)
+                    except Exception:
+                        pass
+
             except Exception:
                 pass
+            right = outer.rows[0].cells[1]
             kt = right.add_table(rows=2, cols=1)
             # Compact right-cell paragraph spacing
             try:
@@ -1074,7 +1125,7 @@ def main():
             right.vertical_alignment = WD_ALIGN_VERTICAL.TOP
             kt.autofit = False
             kt.columns[0].width = Inches(right_width_in)
-            for row in kt.rows: row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY; row.height = Pt(288)
+            for row in kt.rows: row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY; row.height = Pt(240)
             
 
             cell1 = kt.rows[0].cells[0]; cap1 = cell1.add_paragraph("लग्न कुंडली")
@@ -1082,13 +1133,13 @@ def main():
             p1 = cell1.add_paragraph(); p1.paragraph_format.space_before = Pt(0); p1.paragraph_format.space_after = Pt(0)
             # Lagna chart with planets in single box per house
             rasi_house_planets = build_rasi_house_planets_marked(sidelons, lagna_sign)
-            p1._p.addnext(kundali_with_planets(size_pt=205, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
+            p1._p.addnext(kundali_with_planets(size_pt=190, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
 
             cell2 = kt.rows[1].cells[0]; cap2 = cell2.add_paragraph("नवांश कुंडली")
             cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap2, size_pt=11, underline=True, bold=True); cap2.paragraph_format.space_before = Pt(2); cap2.paragraph_format.space_after = Pt(2)
             p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0)
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
-            p2._p.addnext(kundali_with_planets(size_pt=205, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
+            p2._p.addnext(kundali_with_planets(size_pt=190, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
             # (प्रमुख बिंदु moved to row 2 of outer table)
             # Ensure content goes below chart shape
             cell2.add_paragraph("")
@@ -1106,7 +1157,7 @@ def main():
                 st.subheader("विंशोत्तरी महादशा")
                 st.dataframe(df_md.reset_index(drop=True), use_container_width=True, hide_index=True)
                 st.subheader("महादशा / अंतरदशा")
-                st.dataframe(df_ap.reset_index(drop=True), use_container_width=True, hide_index=True)
+                st.dataframe(df_an.reset_index(drop=True), use_container_width=True, hide_index=True)
             with rc:
                 st.subheader("Lagna Kundali (Preview)")
                 st.image(img_lagna, use_container_width=True)
