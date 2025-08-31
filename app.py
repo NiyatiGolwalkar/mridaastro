@@ -58,31 +58,40 @@ def add_phalit_section(container_cell, width_inches=3.60, rows=25):
     _apply_hindi_caption_style(head, size_pt=11, underline=True, bold=True)
 
     t = container_cell.add_table(rows=rows, cols=1); t.autofit = False
+    # Set table-level borders: only inner horizontal lines visible
     try:
         tbl = t._tbl; tblPr = tbl.tblPr
         tblBorders = OxmlElement('w:tblBorders')
-        for edge in ('top','left','bottom','right','insideH','insideV'):
+        # Outside borders nil
+        for edge in ('top','left','bottom','right'):
             el = OxmlElement(f'w:{edge}'); el.set(DOCX_QN('w:val'),'nil'); tblBorders.append(el)
+        # Vertical inner borders nil (single column table)
+        insideV = OxmlElement('w:insideV'); insideV.set(DOCX_QN('w:val'),'nil'); tblBorders.append(insideV)
+        # Horizontal inner borders thick & dark for visibility
+        insideH = OxmlElement('w:insideH')
+        insideH.set(DOCX_QN('w:val'),'single')
+        insideH.set(DOCX_QN('w:sz'),'16')   # ~2.0 pt
+        insideH.set(DOCX_QN('w:space'),'0')
+        insideH.set(DOCX_QN('w:color'),'444444')
+        tblBorders.append(insideH)
         tblPr.append(tblBorders)
     except Exception:
         pass
     set_col_widths(t, [Inches(width_inches)])
     for r in t.rows:
         r.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
-        r.height = Pt(14)
+        r.height = Pt(16)
         c = r.cells[0]
+        # Keep row from collapsing without showing text
         p = c.paragraphs[0]; run = p.add_run("\u00A0"); run.font.size = Pt(1)
-        tcPr = c._tc.get_or_add_tcPr()
-        for el in list(tcPr):
-            if el.tag.endswith('tcBorders'):
-                tcPr.remove(el)
-        tcBorders = OxmlElement('w:tcBorders')
-        for edge in ('top','left','right'):
-            el = OxmlElement(f'w:{edge}'); el.set(DOCX_QN('w:val'),'nil'); tcBorders.append(el)
-        el = OxmlElement('w:bottom')
-        el.set(DOCX_QN('w:val'),'single'); el.set(DOCX_QN('w:sz'),'12'); el.set(DOCX_QN('w:space'),'0'); el.set(DOCX_QN('w:color'),'7F7F7F')
-        tcBorders.append(el)
-        tcPr.append(tcBorders)
+        # Remove any cell-level borders so table-level 'insideH' governs
+        try:
+            tcPr = c._tc.get_or_add_tcPr()
+            for el in list(tcPr):
+                if el.tag.endswith('tcBorders'):
+                    tcPr.remove(el)
+        except Exception:
+            pass
 
 def _rects_overlap(a, b):
     return not (a['right'] <= b['left'] or a['left'] >= b['right'] or a['bottom'] <= b['top'] or a['top'] >= b['bottom'])
