@@ -127,7 +127,8 @@ from docx import Document
 from docx.enum.table import WD_ROW_HEIGHT_RULE, WD_ALIGN_VERTICAL
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
-from docx.oxml.ns import qn as DOCX_QN, parse_xml
+from docx.oxml import OxmlElement, parse_xml
+from docx.oxml.ns import qn as DOCX_QN
 from docx.shared import Inches, Mm, Pt
 
 # --- Table header shading helper (match kundali bg) ---
