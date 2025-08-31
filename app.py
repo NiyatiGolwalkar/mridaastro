@@ -906,7 +906,7 @@ def main():
             ])
 
             now_utc = datetime.datetime.utcnow()
-            rows_an = next_antar_in_days_utc(now_utc, md_segments_utc, days_window=2*365)
+            rows_an = next_antar_in_days_utc(now_utc, md_segments_utc, days_window=365)
             df_an = pd.DataFrame([
                 {"महादशा": HN[r["major"]], "अंतरदशा": HN[r["antar"]],
                  "तिथि": _utc_to_local(r["end"], tzname, tz_hours, used_manual).strftime("%d-%m-%Y")}
@@ -978,23 +978,17 @@ def main():
             r1 = pname.add_run('नाम: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
             r2 = pname.add_run(str(name)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
             # DOB | TOB
-            pdob = left.add_paragraph();
-            r1 = pdob.add_run('जन्म तिथि: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
-            r2 = pdob.add_run(str(dob)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
-            r3 = pdob.add_run('  |  जन्म समय: '); r3.underline = True; r3.bold = True; r3.font.size = Pt(BASE_FONT_PT+3)
-            r4 = pdob.add_run(str(tob)); r4.bold = True; r4.font.size = Pt(BASE_FONT_PT+3)
-            # Place
-            pplace = left.add_paragraph();
-            r1 = pplace.add_run('स्थान: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
-            r2 = pplace.add_run(str(disp)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
-            # Time Zone
-            ptz = left.add_paragraph();
-            r1 = ptz.add_run('समय क्षेत्र: '); r1.underline = True; r1.bold = True; r1.font.size = Pt(BASE_FONT_PT+3)
-            if used_manual:
-                r2 = ptz.add_run(str(tzname)); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
-            else:
-                r2 = ptz.add_run(f'{tzname} (UTC{tz_hours:+.2f})'); r2.bold = True; r2.font.size = Pt(BASE_FONT_PT+3)
-                        # ---- Hindi headings ----
+            
+            # Single-line Personal Details (DOB | TOB | Place)
+            pd = left.add_paragraph()
+            try:
+                place_disp = disp
+            except Exception:
+                place_disp = place if 'place' in locals() else ''
+            run = pd.add_run(f"जन्म तिथि: {dob}  |  जन्म समय: {tob}  |  स्थान: {place_disp}")
+            run.bold = True
+            run.font.size = Pt(BASE_FONT_PT+3)
+            pd.paragraph_format.space_after = Pt(2)
             h1 = left.add_paragraph("ग्रह स्थिति"); _apply_hindi_caption_style(h1, size_pt=11, underline=True, bold=True)
             t1 = left.add_table(rows=1, cols=len(df_positions.columns)); t1.autofit=False
             for i,c in enumerate(df_positions.columns): t1.rows[0].cells[i].text=c
@@ -1017,7 +1011,7 @@ def main():
             center_header_row(t2); set_table_font(t2, pt=BASE_FONT_PT); add_table_borders(t2, size=6)
             set_col_widths(t2, [1.20, 1.50, 1.00])
 
-            h3 = left.add_paragraph("महादशा / अंतरदशा (अगले 2 वर्ष)"); _apply_hindi_caption_style(h3, size_pt=11, underline=True, bold=True)
+            h3 = left.add_paragraph("महादशा / अंतरदशा (अगले 1 वर्ष)"); _apply_hindi_caption_style(h3, size_pt=11, underline=True, bold=True)
             t3 = left.add_table(rows=1, cols=len(df_an.columns)); t3.autofit=False
             for i,c in enumerate(df_an.columns): t3.rows[0].cells[i].text=c
             for _,row in df_an.iterrows():
@@ -1074,7 +1068,7 @@ def main():
                 st.dataframe(df_positions.reset_index(drop=True), use_container_width=True, hide_index=True)
                 st.subheader("विंशोत्तरी महादशा")
                 st.dataframe(df_md.reset_index(drop=True), use_container_width=True, hide_index=True)
-                st.subheader("महादशा / अंतरदशा (अगले 2 वर्ष)")
+                st.subheader("महादशा / अंतरदशा (अगले 1 वर्ष)")
                 st.dataframe(df_an.reset_index(drop=True), use_container_width=True, hide_index=True)
             with rc:
                 st.subheader("Lagna Kundali (Preview)")
