@@ -980,15 +980,15 @@ def main():
             # DOB | TOB
             
             # Single-line Personal Details (DOB | TOB | Place)
-            pd = left.add_paragraph()
+            pdet = left.add_paragraph()
             try:
                 place_disp = disp
             except Exception:
                 place_disp = place if 'place' in locals() else ''
-            run = pd.add_run(f"जन्म तिथि: {dob}  |  जन्म समय: {tob}  |  स्थान: {place_disp}")
+            run = pdet.add_run(f"जन्म तिथि: {dob}  |  जन्म समय: {tob}  |  स्थान: {place_disp}")
             run.bold = True
             run.font.size = Pt(BASE_FONT_PT+3)
-            pd.paragraph_format.space_after = Pt(2)
+            pdet.paragraph_format.space_after = Pt(2)
             h1 = left.add_paragraph("ग्रह स्थिति"); _apply_hindi_caption_style(h1, size_pt=11, underline=True, bold=True)
             t1 = left.add_table(rows=1, cols=len(df_positions.columns)); t1.autofit=False
             for i,c in enumerate(df_positions.columns): t1.rows[0].cells[i].text=c
