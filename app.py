@@ -58,27 +58,30 @@ def add_phalit_section(container_cell, width_inches=3.60, rows=25):
     _apply_hindi_caption_style(head, size_pt=11, underline=True, bold=True)
 
     t = container_cell.add_table(rows=rows, cols=1); t.autofit = False
+    # Clear table borders so only bottom rules show
+    try:
+        tbl = t._tbl; tblPr = tbl.tblPr
+        tblBorders = OxmlElement('w:tblBorders')
+        for edge in ('top','left','bottom','right','insideH','insideV'):
+            el = OxmlElement(f'w:{edge}'); el.set(DOCX_QN('w:val'),'nil'); tblBorders.append(el)
+        tblPr.append(tblBorders)
+    except Exception:
+        pass
     set_col_widths(t, [Inches(width_inches)])
     for r in t.rows:
         r.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
         r.height = Pt(14)
         c = r.cells[0]
-        # NBSP keeps the row from collapsing but looks visually empty
         p = c.paragraphs[0]; run = p.add_run("\u00A0"); run.font.size = Pt(1)
-
-        # bottom-only thin light-grey border (ruled line)
         tcPr = c._tc.get_or_add_tcPr()
         for el in list(tcPr):
             if el.tag.endswith('tcBorders'):
                 tcPr.remove(el)
         tcBorders = OxmlElement('w:tcBorders')
         for edge in ('top','left','right'):
-            el = OxmlElement(f'w:{edge}'); el.set(DOCX_QN('w:val'), 'nil'); tcBorders.append(el)
+            el = OxmlElement(f'w:{edge}'); el.set(DOCX_QN('w:val'),'nil'); tcBorders.append(el)
         el = OxmlElement('w:bottom')
-        el.set(DOCX_QN('w:val'), 'single')
-        el.set(DOCX_QN('w:sz'), '6')
-        el.set(DOCX_QN('w:space'), '0')
-        el.set(DOCX_QN('w:color'), 'D9D9D9')
+        el.set(DOCX_QN('w:val'),'single'); el.set(DOCX_QN('w:sz'),'8'); el.set(DOCX_QN('w:space'),'0'); el.set(DOCX_QN('w:color'),'B6B6B6')
         tcBorders.append(el)
         tcPr.append(tcBorders)
 
@@ -880,13 +883,13 @@ def compact_table_paragraphs(tbl):
 
 def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
     spacer = container_cell.add_paragraph("")
-    spacer.paragraph_format.space_after = Pt(8)
+    spacer.paragraph_format.space_after = Pt(4)
     # Title
     title = container_cell.add_paragraph("प्रमुख बिंदु")
     # Match other section titles
     _apply_hindi_caption_style(title, size_pt=11, underline=True, bold=True)
     title.paragraph_format.space_before = Pt(0)
-    title.paragraph_format.space_after = Pt(3)
+    title.paragraph_format.space_after = Pt(2)
     title.paragraph_format.space_before = Pt(6)
     title.paragraph_format.space_after = Pt(3)
 
@@ -1064,6 +1067,7 @@ def main():
             tblPr.append(tblBorders)
 
             left = outer.rows[0].cells[0]
+            shade_cell(left, "E8FFF5")
             # व्यक्तिगत विवरण styled: bold section, underlined labels, larger font
             p = left.add_paragraph('व्यक्तिगत विवरण'); p.runs[0].bold = True; p.runs[0].underline = True; p.runs[0].font.size = Pt(BASE_FONT_PT+5)
             # Name
@@ -1135,6 +1139,7 @@ def main():
             center_header_row(t3); set_table_font(t3, pt=BASE_FONT_PT); add_table_borders(t3, size=6)
             
             shade_header_row(t3)
+            compact_table_paragraphs(t3)
             set_col_widths(t3, [1.20, 1.50, 1.10])
 
             # One-page: place Pramukh Bindu under tables (left column) to free right column for charts
@@ -1144,6 +1149,7 @@ def main():
             except Exception:
                 pass
             right = outer.rows[0].cells[1]
+            shade_cell(right, "E8FFF5")
             kt = right.add_table(rows=2, cols=1)
             # Compact right-cell paragraph spacing
             try:
