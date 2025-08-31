@@ -345,6 +345,20 @@ def pratyantars_in_antar_utc(antar_lord, antar_start_utc, antar_days):
         res.append((L, start, end)); t = end
     return res
 
+
+def next_antar_in_days_utc(now_utc, md_segments, days_window):
+    """Return upcoming Antardasha rows (major, antar, end) within a horizon in days from now_utc."""
+    rows=[]; horizon=now_utc + datetime.timedelta(days=days_window)
+    for seg in md_segments:
+        MD = seg["planet"]; ms = seg["start"]; me = seg["end"]; md_days = seg["days"]
+        for AL, as_, ae, adays in antar_segments_in_md_utc(MD, ms, md_days):
+            if ae < now_utc or as_ > horizon: 
+                continue
+            end = min(ae, horizon)
+            rows.append({"major": MD, "antar": AL, "end": end})
+    rows.sort(key=lambda r:r["end"])
+    return rows
+
 def next_ant_praty_in_days_utc(now_utc, md_segments, days_window):
     rows=[]; horizon=now_utc + datetime.timedelta(days=days_window)
     for seg in md_segments:
@@ -899,7 +913,21 @@ def main():
                     res.append((L, start, end)); t = end
                 return res
 
-            def next_ant_praty_in_days_utc(now_utc, md_segments, days_window):
+            
+def next_antar_in_days_utc(now_utc, md_segments, days_window):
+    """Return upcoming Antardasha rows (major, antar, end) within a horizon in days from now_utc."""
+    rows=[]; horizon=now_utc + datetime.timedelta(days=days_window)
+    for seg in md_segments:
+        MD = seg["planet"]; ms = seg["start"]; me = seg["end"]; md_days = seg["days"]
+        for AL, as_, ae, adays in antar_segments_in_md_utc(MD, ms, md_days):
+            if ae < now_utc or as_ > horizon: 
+                continue
+            end = min(ae, horizon)
+            rows.append({"major": MD, "antar": AL, "end": end})
+    rows.sort(key=lambda r:r["end"])
+    return rows
+
+def next_ant_praty_in_days_utc(now_utc, md_segments, days_window):
                 rows=[]; horizon=now_utc + datetime.timedelta(days=days_window)
                 for seg in md_segments:
                     MD = seg["planet"]; ms = seg["start"]; me = seg["end"]; md_days = seg["days"]
@@ -925,12 +953,11 @@ def main():
             ])
 
             now_utc = datetime.datetime.utcnow()
-            rows_ap = next_ant_praty_in_days_utc(now_utc, md_segments_utc, days_window=2*365)
-            df_ap = pd.DataFrame([
+            rows_an = next_antar_in_days_utc(now_utc, md_segments_utc, days_window=2*365)
+            df_an = pd.DataFrame([
                 {"महादशा": HN[r["major"]], "अंतरदशा": HN[r["antar"]],
-                 "प्रत्यंतर दशा": HN[r["pratyantar"]],
                  "तिथि": _utc_to_local(r["end"], tzname, tz_hours, used_manual).strftime("%d-%m-%Y")}
-                for r in rows_ap
+                for r in rows_an
             ])
 
             img_lagna = render_north_diamond(size_px=800, stroke=3)
@@ -1037,14 +1064,14 @@ def main():
             center_header_row(t2); set_table_font(t2, pt=BASE_FONT_PT); add_table_borders(t2, size=6)
             set_col_widths(t2, [1.20, 1.50, 1.00])
 
-            h3 = left.add_paragraph("अंतर / प्रत्यंतर (अगले 2 वर्ष)"); _apply_hindi_caption_style(h3, size_pt=11, underline=True, bold=True)
-            t3 = left.add_table(rows=1, cols=len(df_ap.columns)); t3.autofit=False
-            for i,c in enumerate(df_ap.columns): t3.rows[0].cells[i].text=c
-            for _,row in df_ap.iterrows():
+            h3 = left.add_paragraph("महादशा / अंतरदशा (अगले 2 वर्ष)"); _apply_hindi_caption_style(h3, size_pt=11, underline=True, bold=True)
+            t3 = left.add_table(rows=1, cols=len(df_an.columns)); t3.autofit=False
+            for i,c in enumerate(df_an.columns): t3.rows[0].cells[i].text=c
+            for _,row in df_an.iterrows():
                 r=t3.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t3); set_table_font(t3, pt=BASE_FONT_PT); add_table_borders(t3, size=6)
-            set_col_widths(t3, [0.85,0.9,1.05,0.7])
+            set_col_widths(t3, [1.20, 1.50, 1.10])
 
             # One-page: place Pramukh Bindu under tables (left column) to free right column for charts
             try:
@@ -1094,8 +1121,8 @@ def main():
                 st.dataframe(df_positions.reset_index(drop=True), use_container_width=True, hide_index=True)
                 st.subheader("विंशोत्तरी महादशा")
                 st.dataframe(df_md.reset_index(drop=True), use_container_width=True, hide_index=True)
-                st.subheader("अंतर / प्रत्यंतर (अगले 2 वर्ष)")
-                st.dataframe(df_ap.reset_index(drop=True), use_container_width=True, hide_index=True)
+                st.subheader("महादशा / अंतरदशा (अगले 2 वर्ष)")
+                st.dataframe(df_an.reset_index(drop=True), use_container_width=True, hide_index=True)
             with rc:
                 st.subheader("Lagna Kundali (Preview)")
                 st.image(img_lagna, use_container_width=True)
