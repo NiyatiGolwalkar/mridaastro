@@ -31,127 +31,6 @@ HOUSE_NUM_SHADE = "#fff9d6"  # soft light-yellow
 
 
 # --- Reliable cell shading (works in all Word views) ---
-
-# ===== Mint Card Styling Helpers =====
-
-def add_mint_header(doc):
-    # Add a full-width banner header with brand, tagline, title, name, role/contact.
-    try:
-        tbl = doc.add_table(rows=1, cols=1)
-        cell = tbl.rows[0].cells[0]
-        # Banner background
-        tcPr = cell._tc.get_or_add_tcPr()
-        shd = OxmlElement('w:shd')
-        shd.set(DOCX_QN('w:val'), 'clear')
-        shd.set(DOCX_QN('w:color'), 'auto')
-        shd.set(DOCX_QN('w:fill'), 'CFEDE3')
-        tcPr.append(shd)
-
-        # Centered contents
-        p1 = cell.paragraphs[0]; p1.alignment = 1  # center
-        r1 = p1.add_run('MRIDAASTRO')
-        r1.bold = True
-        r1.font.size = Pt(16)
-
-        p2 = cell.add_paragraph(); p2.alignment = 1
-        r2 = p2.add_run('In the light of the divine, let your soul journey shine.')
-        r2.italic = True; r2.font.size = Pt(9)
-
-        p3 = cell.add_paragraph(); p3.alignment = 1
-        r3 = p3.add_run('PERSONAL HOROSCOPE (JANMA KUNDALI)')
-        r3.bold = True; r3.font.size = Pt(12)
-
-        # Name / Role / Contact (kept empty here to avoid duplication)
-        p4 = cell.add_paragraph(); p4.alignment = 1
-        r4 = p4.add_run('')
-    except Exception:
-        pass
-
-def _nil_table_borders(table):
-    # Clear all table borders at the table level (outside + inside).
-    try:
-        tbl = table._tbl; tblPr = tbl.tblPr
-        for el in list(tblPr):
-            if el.tag.endswith('tblBorders'):
-                tblPr.remove(el)
-        tblBorders = OxmlElement('w:tblBorders')
-        for edge in ('top','left','bottom','right','insideH','insideV'):
-            el = OxmlElement(f'w:{edge}')
-            el.set(DOCX_QN('w:val'), 'nil')
-            tblBorders.append(el)
-        tblPr.append(tblBorders)
-    except Exception:
-        pass
-
-def _outer_box_only(table, color='D9D9D9', size=6):
-    # Set only outside borders; inside borders nil.
-    try:
-        tbl = table._tbl; tblPr = tbl.tblPr
-        for el in list(tblPr):
-            if el.tag.endswith('tblBorders'):
-                tblPr.remove(el)
-        tblBorders = OxmlElement('w:tblBorders')
-        for edge in ('top','left','bottom','right'):
-            el = OxmlElement(f'w:{edge}')
-            el.set(DOCX_QN('w:val'), 'single')
-            el.set(DOCX_QN('w:sz'), str(size))
-            el.set(DOCX_QN('w:space'), '0')
-            el.set(DOCX_QN('w:color'), color)
-            tblBorders.append(el)
-        for edge in ('insideH','insideV'):
-            el = OxmlElement(f'w:{edge}')
-            el.set(DOCX_QN('w:val'), 'nil')
-            tblBorders.append(el)
-        tblPr.append(tblBorders)
-    except Exception:
-        pass
-
-def apply_mint_table_style(table, header_hex='F3E2C7', outer_color='D9D9D9', outer_size=6):
-    # Header shade + outer-only borders + compact paragraphs.
-    try:
-        hdr = table.rows[0]
-        for c in hdr.cells:
-            tcPr = c._tc.get_or_add_tcPr()
-            shd = OxmlElement('w:shd')
-            shd.set(DOCX_QN('w:val'), 'clear')
-            shd.set(DOCX_QN('w:color'), 'auto')
-            shd.set(DOCX_QN('w:fill'), header_hex)
-            tcPr.append(shd)
-            for p in c.paragraphs:
-                p.alignment = 1
-                pf = p.paragraph_format
-                pf.space_before = Pt(0); pf.space_after = Pt(2)
-                for r in p.runs: r.bold = True
-        for r in table.rows[1:]:
-            for c in r.cells:
-                for p in c.paragraphs:
-                    pf = p.paragraph_format
-                    pf.space_before = Pt(0); pf.space_after = Pt(2)
-    except Exception:
-        pass
-    _outer_box_only(table, color=outer_color, size=outer_size)
-
-def add_phalit_panel(container_cell, width_inches=3.60, height_rows=12):
-    # Pale mint panel with no lines (card-like area for notes).
-    try:
-        t = container_cell.add_table(rows=1, cols=1); t.autofit = False
-        set_col_widths(t, [Inches(width_inches)])
-        cell = t.rows[0].cells[0]
-        tcPr = cell._tc.get_or_add_tcPr()
-        shd = OxmlElement('w:shd')
-        shd.set(DOCX_QN('w:val'), 'clear')
-        shd.set(DOCX_QN('w:color'), 'auto')
-        shd.set(DOCX_QN('w:fill'), 'F8FFFB')
-        tcPr.append(shd)
-        _outer_box_only(t, color='E2DCC8', size=4)
-        for _ in range(height_rows):
-            p = cell.add_paragraph('')
-            p.paragraph_format.space_after = Pt(4)
-    except Exception:
-        pass
-
-# ===== End helpers =====
-
 def shade_cell(cell, fill_hex="E8FFF5"):
     try:
         tcPr = cell._tc.get_or_add_tcPr()
@@ -1133,7 +1012,6 @@ def main():
 
             # DOCX
             doc = Document()
-            add_mint_header(doc)
             set_page_background(doc, hex_color="E8FFF5")
             sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
             margin = Mm(12); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(8); sec.bottom_margin = Mm(8)
@@ -1231,10 +1109,9 @@ def main():
             for _,row in df_positions.iterrows():
                 r=t1.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
-            center_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT); _outer_box_only(t1, color='D9D9D9', size=6)
+            center_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT); add_table_borders(t1, size=6)
             
             shade_header_row(t1)
-            apply_mint_table_style(t1)
             set_col_widths(t1, [0.70, 0.55, 0.85, 0.80, 0.80])
             # Left align ONLY the header cell of the last column (उप‑नक्षत्र / Sublord)
             for p in t1.rows[0].cells[-1].paragraphs:
@@ -1247,10 +1124,9 @@ def main():
             for _,row in df_md.iterrows():
                 r=t2.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
-            center_header_row(t2); set_table_font(t2, pt=BASE_FONT_PT); _outer_box_only(t2, color='D9D9D9', size=6)
+            center_header_row(t2); set_table_font(t2, pt=BASE_FONT_PT); add_table_borders(t2, size=6)
             
             shade_header_row(t2)
-            apply_mint_table_style(t2)
             set_col_widths(t2, [1.20, 1.50, 1.00])
 
             h3 = left.add_paragraph("महादशा / अंतरदशा"); _apply_hindi_caption_style(h3, size_pt=11, underline=True, bold=True)
@@ -1259,7 +1135,7 @@ def main():
             for _,row in df_an.iterrows():
                 r=t3.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
-            center_header_row(t3); set_table_font(t3, pt=BASE_FONT_PT); _outer_box_only(t3, color='D9D9D9', size=6)
+            center_header_row(t3); set_table_font(t3, pt=BASE_FONT_PT); add_table_borders(t3, size=6)
             
             shade_header_row(t3)
             compact_table_paragraphs(t3)
@@ -1268,7 +1144,7 @@ def main():
             # One-page: place Pramukh Bindu under tables (left column) to free right column for charts
             try:
                 add_pramukh_bindu_section(left, sidelons, lagna_sign, dt_utc)
-                add_phalit_panel(left)
+                add_phalit_section(left)
             except Exception:
                 pass
             right = outer.rows[0].cells[1]
