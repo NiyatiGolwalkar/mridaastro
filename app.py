@@ -133,6 +133,50 @@ from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn as DOCX_QN
 from docx.shared import Inches, Mm, Pt
 
+# ===== Background Image Helper (full-page, all pages) =====
+def set_page_background_image(doc, image_path):
+    """Places a full-bleed image behind content by inserting a VML shape
+    into the section header that spans the page. Works for all pages."""
+    try:
+        section = doc.sections[0]
+        try:
+            section.header_distance = Mm(0)
+        except Exception:
+            pass
+        header = section.header
+        p = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
+        r = p.add_run()
+        r.add_picture(image_path, width=Inches(1))
+        blips = r._element.xpath('.//a:blip', namespaces={'a':'http://schemas.openxmlformats.org/drawingml/2006/main'})
+        if not blips:
+            return False
+        rId = blips[0].get(DOCX_QN('r:embed'))
+        for dr in r._element.findall('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing'):
+            r._element.remove(dr)
+        width_pt  = section.page_width.pt
+        height_pt = section.page_height.pt
+        vml_xml = f"""
+<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:r>
+    <w:pict xmlns:v="urn:schemas-microsoft-com:vml"
+            xmlns:o="urn:schemas-microsoft-com:office:office"
+            xmlns:w10="urn:schemas-microsoft-com:office:word"
+            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+      <v:rect style="position:absolute;left:0;top:0;width:{width_pt}pt;height:{height_pt}pt;z-index:0" stroked="f">
+        <v:imagedata r:id="{rId}" o:title="bg"/>
+      </v:rect>
+    </w:pict>
+  </w:r>
+</w:p>
+""".strip()
+        elem = parse_xml(vml_xml)
+        header._element.append(elem)
+        return True
+    except Exception:
+        return False
+# ===== End Helper =====
+
+
 # --- Table header shading helper (match kundali bg) ---
 def shade_header_row(table, fill_hex="F3E2C7"):
     try:
@@ -195,6 +239,7 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 # ---- End helpers ----
 
 
+BACKGROUND_IMAGE_PATH = 'Background Image.jpg'
 APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 
@@ -1012,7 +1057,18 @@ def main():
 
             # DOCX
             doc = Document()
-            set_page_background(doc, hex_color="E8FFF5")
+            ok_bg = False
+            try:
+                import os
+                if BACKGROUND_IMAGE_PATH and os.path.exists(BACKGROUND_IMAGE_PATH):
+                    ok_bg = set_page_background_image(doc, BACKGROUND_IMAGE_PATH)
+            except Exception:
+                ok_bg = False
+            if not ok_bg:
+                try:
+                    set_page_background(doc, hex_color="E8FFF5")
+                except Exception:
+                    pass
             sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
             margin = Mm(12); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(8); sec.bottom_margin = Mm(8)
 
