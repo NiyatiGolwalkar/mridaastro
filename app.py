@@ -48,18 +48,20 @@ HOUSE_NUM_SHADE = "#FFFFFF"  # soft light-yellow
 
 
 # --- Reliable cell shading (works in all Word views) ---
-def
-:
+def shade_cell(cell, fill_hex="FFFFFF"):
     return
 
-def
-:
+def shade_header_row(table, fill_hex="FFFFFF"):
+    return
+
+def set_page_background(doc, hex_color):
     try:
         bg = OxmlElement('w:background')
         bg.set(DOCX_QN('w:color'), hex_color)
         doc.element.insert(0, bg)
     except Exception:
         pass
+
 
 # --- Phalit ruled lines (25 rows) ---
 from docx.enum.table import WD_ROW_HEIGHT_RULE
