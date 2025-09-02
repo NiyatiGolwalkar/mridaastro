@@ -10,144 +10,6 @@ import math
 import datetime, json, urllib.parse, urllib.request
 from io import BytesIO
 
-# === Trendy Modernization Helpers (in-place) ===
-from docx.shared import Pt
-from docx.oxml import OxmlElement
-from docx.oxml.ns import qn
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.enum.table import WD_ALIGN_VERTICAL
-
-def _mrida_set_run_fonts(run, latin="Georgia", hindi="Mangal"):
-    run.font.name = latin
-    rPr = run._element.rPr
-    if rPr is None:
-        rPr = OxmlElement('w:rPr')
-        run._element.append(rPr)
-    rFonts = rPr.find(qn('w:rFonts'))
-    if rFonts is None:
-        rFonts = OxmlElement('w:rFonts')
-        rPr.append(rFonts)
-    rFonts.set(qn('w:ascii'), latin)
-    rFonts.set(qn('w:hAnsi'), latin)
-    rFonts.set(qn('w:eastAsia'), hindi)
-    rFonts.set(qn('w:cs'), hindi)
-
-def _mrida_shade_cell(cell, fill_hex="EFE8DC"):
-    tcPr = cell._tc.get_or_add_tcPr()
-    shd = OxmlElement('w:shd')
-    shd.set(qn('w:val'), 'clear')
-    shd.set(qn('w:color'), 'auto')
-    shd.set(qn('w:fill'), fill_hex)
-    tcPr.append(shd)
-
-def _mrida_set_cell_borders(cell, sz="6", color="C8C8C8"):
-    tc = cell._tc
-    tcPr = tc.get_or_add_tcPr()
-    tcBorders = OxmlElement('w:tcBorders')
-    for edge in ('top','left','bottom','right'):
-        el = OxmlElement(f'w:{edge}')
-        el.set(qn('w:val'), 'single')
-        el.set(qn('w:sz'), sz)
-        el.set(qn('w:space'), "0")
-        el.set(qn('w:color'), color)
-        tcBorders.append(el)
-    tcPr.append(tcBorders)
-
-def _mrida_soften_table_borders(table, sz="6", color="C8C8C8"):
-    tbl = table._tbl
-    tblPr = tbl.tblPr
-    tblBorders = OxmlElement('w:tblBorders')
-    for edge in ('top', 'left', 'bottom', 'right', 'insideH', 'insideV'):
-        el = OxmlElement(f'w:{edge}')
-        el.set(qn('w:val'), 'single')
-        el.set(qn('w:sz'), sz)
-        el.set(qn('w:space'), "0")
-        el.set(qn('w:color'), color)
-        tblBorders.append(el)
-    tblPr.append(tblBorders)
-
-def _mrida_style_table(table):
-    for r, row in enumerate(table.rows):
-        for cell in row.cells:
-            cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
-            for p in cell.paragraphs:
-                p.paragraph_format.space_before = Pt(0)
-                p.paragraph_format.space_after = Pt(0)
-                if r == 0:
-                    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                for run in p.runs:
-                    _mrida_set_run_fonts(run)
-                    run.font.size = Pt(9 if r == 0 else 8.5)
-                    if r == 0:
-                        run.bold = True
-    if len(table.rows) > 0:
-        for cell in table.rows[0].cells:
-            _mrida_shade_cell(cell, "EFE8DC")
-    _mrida_soften_table_borders(table, sz="6")
-
-def _mrida_set_header_bg_image(section, image_path):
-    try:
-        header = section.header
-        header.is_linked_to_previous = False
-        section.header_distance = Pt(0)
-        # clear header
-        for p in list(header.paragraphs):
-            p._element.getparent().remove(p._element)
-        p = header.add_paragraph()
-        run = p.add_run()
-        run.add_picture(image_path, width=section.page_width)
-    except Exception:
-        pass
-
-def _mrida_style_titles_and_body(doc):
-    # Base "Normal"
-    try:
-        base = doc.styles['Normal']
-        base.font.name = "Georgia"
-        base.font.size = Pt(10.5)
-        base._element.rPr.rFonts.set(qn('w:eastAsia'), "Mangal")
-        base._element.rPr.rFonts.set(qn('w:cs'), "Mangal")
-    except Exception:
-        pass
-    # Title area
-    for i, p in enumerate(doc.paragraphs[:12]):
-        txt = p.text.strip().upper()
-        if not txt: 
-            continue
-        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        for run in p.runs:
-            _mrida_set_run_fonts(run)
-        if "MRIDAASTRO" in txt:
-            for run in p.runs: run.font.size = Pt(18); run.bold = True
-        elif "IN THE LIGHT OF THE DIVINE" in txt:
-            for run in p.runs: run.italic = True; run.font.size = Pt(11)
-        elif "PERSONAL HOROSCOPE" in txt or "JANMA KUNDALI" in txt:
-            for run in p.runs: run.font.size = Pt(14); run.bold = True
-    # Body spacing + fonts
-    for p in doc.paragraphs:
-        p.paragraph_format.space_before = Pt(0)
-        p.paragraph_format.space_after = Pt(2)
-        for run in p.runs:
-            _mrida_set_run_fonts(run)
-
-def mrida_modernize_document_inplace(doc, bg_image_path=None):
-    # Background image for each section (if present)
-    if bg_image_path:
-        try:
-            import os
-            if os.path.exists(bg_image_path):
-                for section in doc.sections:
-                    _mrida_set_header_bg_image(section, bg_image_path)
-        except Exception:
-            pass
-    # Typography & tables
-    _mrida_style_titles_and_body(doc)
-    for t in doc.tables:
-        _mrida_style_table(t)
-    return doc
-# === End helpers ===
-
-
 # --- One-page layout switch ---
 ONE_PAGE = True
 
@@ -249,7 +111,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import pytz
 import streamlit as st
-MRIDA_BG_IMAGE_DEFAULT = "/mnt/data/Background Image.jpg"
 import swisseph as swe
 from timezonefinder import TimezoneFinder
 
@@ -271,6 +132,35 @@ from docx.oxml import OxmlElement
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn as DOCX_QN
 from docx.shared import Inches, Mm, Pt
+
+# === Trendy additions: background header image helper ===
+from docx.oxml.ns import qn as _qn_bg
+from docx.shared import Pt as _Pt_bg
+
+def _mrida_add_header_bg(section, image_path):
+    """
+    Adds a full-width header image so it behaves like a page background.
+    Word shows body text over header content, giving a 'watermark' feel.
+    """
+    try:
+        hdr = section.header
+        hdr.is_linked_to_previous = False
+        section.header_distance = _Pt_bg(0)
+        # Clear header
+        for p in list(hdr.paragraphs):
+            p._element.getparent().remove(p._element)
+        p = hdr.add_paragraph()
+        run = p.add_run()
+        # Fit image to page width
+        run.add_picture(image_path, width=section.page_width)
+    except Exception:
+        # fail-safe: ignore if image missing or library limitation
+        pass
+
+# Default background image path (override easily in code or UI later)
+MRIDA_BG_IMAGE_DEFAULT = "/mnt/data/Background Image.jpg"
+# === End: background helper ===
+
 
 # --- Table header shading helper (match kundali bg) ---
 def shade_header_row(table, fill_hex="F3E2C7"):
@@ -756,7 +646,7 @@ def kundali_with_planets(size_pt=190, lagna_sign=1, house_planets=None):
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
         <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
-          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
+          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#FAF3E0"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.5pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
           <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
@@ -830,7 +720,7 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
         <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
-          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
+          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#FAF3E0"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.5pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
           <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
@@ -871,7 +761,7 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
     xml = f'''<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
         <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
           <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
-            <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
+            <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#FAF3E0"/>
             <v:line style="position:absolute;z-index:2" from="0,0" to="{S},{S}" strokecolor="black" strokeweight="1.5pt"/>
             <v:line style="position:absolute;z-index:2" from="{S},0" to="0,{S}" strokecolor="black" strokeweight="1.5pt"/>
             <v:line style="position:absolute;z-index:2" from="{S/2},0" to="{S},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
@@ -1151,8 +1041,17 @@ def main():
 
             # DOCX
             doc = Document()
-            set_page_background(doc, hex_color="E8FFF5")
-            sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
+set_page_background(doc, hex_color="E8FFF5")
+sec = doc.sections[0]
+# Add header background image (if available)
+try:
+    import os
+    bgp = MRIDA_BG_IMAGE_DEFAULT
+    if os.path.exists(bgp):
+        for _sec in doc.sections:
+            _mrida_add_header_bg(_sec, bgp)
+except Exception:
+    pass; sec.page_width = Mm(210); sec.page_height = Mm(297)
             margin = Mm(12); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(8); sec.bottom_margin = Mm(8)
 
             style = doc.styles['Normal']; style.font.name = LATIN_FONT; style.font.size = Pt(BASE_FONT_PT)
@@ -1251,7 +1150,9 @@ def main():
             center_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT); add_table_borders(t1, size=6)
             
             shade_header_row(t1)
+            # modern header shade already applied
             set_col_widths(t1, [0.70, 0.55, 0.85, 0.80, 0.80])
+            compact_table_paragraphs(t1)
             # Left align ONLY the header cell of the last column (उप‑नक्षत्र / Sublord)
             for p in t1.rows[0].cells[-1].paragraphs:
                 p.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -1266,7 +1167,9 @@ def main():
             center_header_row(t2); set_table_font(t2, pt=BASE_FONT_PT); add_table_borders(t2, size=6)
             
             shade_header_row(t2)
+            # modern header shade already applied
             set_col_widths(t2, [1.20, 1.50, 1.00])
+            compact_table_paragraphs(t2)
 
             h3 = left.add_paragraph("महादशा / अंतरदशा"); _apply_hindi_caption_style(h3, size_pt=11, underline=True, bold=True)
             t3 = left.add_table(rows=1, cols=len(df_an.columns)); t3.autofit=False
@@ -1277,8 +1180,10 @@ def main():
             center_header_row(t3); set_table_font(t3, pt=BASE_FONT_PT); add_table_borders(t3, size=6)
             
             shade_header_row(t3)
+            # modern header shade already applied
             compact_table_paragraphs(t3)
             set_col_widths(t3, [1.20, 1.50, 1.10])
+            compact_table_paragraphs(t3)
 
             # One-page: place Pramukh Bindu under tables (left column) to free right column for charts
             try:
@@ -1320,16 +1225,7 @@ def main():
             cell2.add_paragraph("")
             # (Pramukh Bindu moved above charts)
 
-            
-# === Apply trendy styling + background just before saving ===
-try:
-    mrida_modernize_document_inplace(doc, bg_image_path=MRIDA_BG_IMAGE_DEFAULT)
-except Exception as _e:
-    # fail-safe: proceed without modernization if anything breaks
-    pass
-
-out = BytesIO(); doc.save(out); out.seek(0)
-
+            out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
 
             # ---- Previews with compact PNGs ----
