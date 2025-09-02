@@ -1300,7 +1300,7 @@ def main():
             # (Pramukh Bindu moved above charts)
 
             force_modernize_doc(doc)
-out = BytesIO(); doc.save(out); out.seek(0)
+            out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
 
             # ---- Previews with compact PNGs ----
