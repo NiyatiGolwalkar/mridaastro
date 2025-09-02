@@ -158,6 +158,75 @@ def _mrida_add_header_bg(section, image_path):
         pass
 
 # Default background image path (override easily in code or UI later)
+
+# === Force-modernizer (runs right before save) ===
+from docx.oxml import OxmlElement as _Ox
+from docx.oxml.ns import qn as _qn
+from docx.enum.text import WD_ALIGN_PARAGRAPH as _ALN
+from docx.enum.table import WD_ALIGN_VERTICAL as _VAL
+from docx.shared import Pt as _Pt
+
+def _force_shade_cell(cell, hex_fill="EFE8DC"):
+    tcPr = cell._tc.get_or_add_tcPr()
+    shd = _Ox('w:shd')
+    shd.set(_qn('w:val'), 'clear')
+    shd.set(_qn('w:color'), 'auto')
+    shd.set(_qn('w:fill'), hex_fill)
+    tcPr.append(shd)
+
+def _force_cell_border(cell, sz="6", color="C8C8C8"):
+    tcPr = cell._tc.get_or_add_tcPr()
+    tblBorders = _Ox('w:tcBorders')
+    for edge in ('top','left','bottom','right'):
+        el = _Ox(f'w:{edge}')
+        el.set(_qn('w:val'), 'single'); el.set(_qn('w:sz'), sz); el.set(_qn('w:space'), "0"); el.set(_qn('w:color'), color)
+        tblBorders.append(el)
+    tcPr.append(tblBorders)
+
+def _force_table_borders(table, sz="6", color="C8C8C8"):
+    tbl = table._tbl
+    tblPr = tbl.tblPr
+    borders = _Ox('w:tblBorders')
+    for edge in ('top','left','bottom','right','insideH','insideV'):
+        el = _Ox(f'w:{edge}')
+        el.set(_qn('w:val'), 'single'); el.set(_qn('w:sz'), sz); el.set(_qn('w:space'), "0"); el.set(_qn('w:color'), color)
+        borders.append(el)
+    tblPr.append(borders)
+
+def force_modernize_doc(doc):
+    # Fonts
+    try:
+        base = doc.styles['Normal']
+        base.font.name = "Georgia"
+        base.font.size = _Pt(10.5)
+        base._element.rPr.rFonts.set(_qn('w:eastAsia'), "Mangal")
+        base._element.rPr.rFonts.set(_qn('w:cs'), "Mangal")
+    except Exception:
+        pass
+
+    # Style all tables
+    for t in doc.tables:
+        # Header row shading + center
+        if len(t.rows) > 0:
+            for c in t.rows[0].cells:
+                _force_shade_cell(c, "EFE4D2")
+        _force_table_borders(t)
+        for r, row in enumerate(t.rows):
+            for c in row.cells:
+                c.vertical_alignment = _VAL.CENTER
+                for p in c.paragraphs:
+                    p.paragraph_format.space_before = _Pt(0)
+                    p.paragraph_format.space_after = _Pt(0)
+                    if r == 0:
+                        p.alignment = _ALN.CENTER
+                    for run in p.runs:
+                        run.font.name = "Georgia"
+                        run.font.size = _Pt(9 if r == 0 else 8.5)
+                        if r == 0:
+                            run.bold = True
+    return doc
+# === End: force-modernizer ===
+
 MRIDA_BG_IMAGE_DEFAULT = "assets/bg.jpg"
 MRIDA_BG_IMAGE_FALLBACK = "/mnt/data/Background Image.jpg"
 # === End: background helper ===
@@ -226,7 +295,7 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 
 
 APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
-APP_BUILD_VERSION = "Trendy v3"
+APP_BUILD_VERSION = "Trendy v4"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 st.caption(f"Build: {APP_BUILD_VERSION}")
 
@@ -1078,7 +1147,7 @@ def main():
 
                 # Title
                 hdr3 = doc.add_paragraph(); hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI) — Trendy v3"); r3.bold = True; r3.font.size = Pt(13)
+                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI) — Trendy v4"); r3.bold = True; r3.font.size = Pt(13)
 
                 # Blank separator (small)
                 # hdr3.paragraph_format.space_after = Pt(2)
@@ -1230,7 +1299,8 @@ def main():
             cell2.add_paragraph("")
             # (Pramukh Bindu moved above charts)
 
-            out = BytesIO(); doc.save(out); out.seek(0)
+            force_modernize_doc(doc)
+out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
 
             # ---- Previews with compact PNGs ----
