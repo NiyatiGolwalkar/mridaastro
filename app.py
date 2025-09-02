@@ -147,21 +147,21 @@ from docx.oxml.ns import qn as DOCX_QN
 from docx.shared import Inches, Mm, Pt
 
 # --- Table header shading helper (match kundali bg) ---
-def
-:
+def shade_cell(cell, fill_hex="FFFFFF"):
     return
 
-def
-:
-    """Set document page background color (Word 'Page Color')."""
+def shade_header_row(table, fill_hex="FFFFFF"):
+    return
+
+def set_page_background(doc, hex_color):
     try:
         from docx.oxml import OxmlElement
         bg = OxmlElement('w:background')
         bg.set(DOCX_QN('w:color'), hex_color)
-        # Insert as first child of the document root
         doc.element.insert(0, bg)
     except Exception:
         pass
+
 
 
 # ---- Dasha helpers (top-level; ORDER & YEARS must exist at call time) ----
@@ -1014,7 +1014,7 @@ def main():
 
             # DOCX
             doc = make_document()
-sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
+            sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
             margin = Mm(12); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(8); sec.bottom_margin = Mm(8)
 
             style = doc.styles['Normal']; style.font.name = LATIN_FONT; style.font.size = Pt(BASE_FONT_PT)
@@ -1110,7 +1110,7 @@ sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
                 r=t1.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT); add_table_borders(t1, size=6)
-set_col_widths(t1, [0.70, 0.55, 0.85, 0.80, 0.80])
+            set_col_widths(t1, [0.70, 0.55, 0.85, 0.80, 0.80])
             # Left align ONLY the header cell of the last column (उप‑नक्षत्र / Sublord)
             for p in t1.rows[0].cells[-1].paragraphs:
                 p.alignment = WD_ALIGN_PARAGRAPH.LEFT
