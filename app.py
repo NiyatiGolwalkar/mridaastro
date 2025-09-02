@@ -227,8 +227,27 @@ def force_modernize_doc(doc):
     return doc
 # === End: force-modernizer ===
 
-MRIDA_BG_IMAGE_DEFAULT = "assets/bg.jpg"
-MRIDA_BG_IMAGE_FALLBACK = "/mnt/data/Background Image.jpg"
+MRIDA_BG_IMAGE_DEFAULT = "bg.jpg"
+MRIDA_BG_IMAGE_FALLBACK = "bg.jpg"
+
+from docx.shared import Pt as _Pt_hdr
+def _apply_header_image(doc, image_path):
+    """Place a full-width header image so it appears as a page background."""
+    try:
+        import os
+        if not os.path.exists(image_path):
+            return
+        for section in doc.sections:
+            section.header_distance = _Pt_hdr(0)
+            hdr = section.header
+            hdr.is_linked_to_previous = False
+            # clear header
+            for p in list(hdr.paragraphs):
+                p._element.getparent().remove(p._element)
+            run = hdr.add_paragraph().add_run()
+            run.add_picture(image_path, width=section.page_width)
+    except Exception:
+        pass
 # === End: background helper ===
 
 
@@ -295,7 +314,7 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 
 
 APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
-APP_BUILD_VERSION = "Trendy v8"
+APP_BUILD_VERSION = "Trendy v9"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 import os
 st.caption(f"Build: {APP_BUILD_VERSION} | BG found: {os.path.exists('bg.jpg')} | CWD: {os.getcwd()}")
@@ -1115,7 +1134,8 @@ def main():
 
             # DOCX
             doc = Document()
-            # set_page_background(doc, hex_color="E8FFF5")  # disabled so header bg image is visible
+            # page color disabled
+            _apply_header_image(doc, MRIDA_BG_IMAGE_DEFAULT)
             sec = doc.sections[0]
             # Add header background image (if available)
             try:
@@ -1149,7 +1169,7 @@ def main():
 
                 # Title
                 hdr3 = doc.add_paragraph(); hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI) — Trendy v8"); r3.bold = True; r3.font.size = Pt(13)
+                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI) — Trendy v9"); r3.bold = True; r3.font.size = Pt(13)
 
                 # Blank separator (small)
                 # hdr3.paragraph_format.space_after = Pt(2)
