@@ -252,29 +252,31 @@ def _apply_header_image(doc, image_path):
 from docx.oxml import OxmlElement as _OX, parse_xml as _parse_xml
 from docx.shared import Length as _Len
 
+
 def _apply_header_image_absolute(doc, image_path):
-    """
-    Insert a background-like image anchored in the header as an ABSOLUTE VML shape,
-    so it does NOT increase header height and the body text can flow on top.
-    """
-    import os, base64
-    from pathlib import Path
-    if not os.path.exists(image_path):
-        return
-    data = Path(image_path).read_bytes()
-    b64 = base64.b64encode(data).decode('ascii')
-    for section in doc.sections:
-        section.header_distance = Pt(0)
-        hdr = section.header
-        hdr.is_linked_to_previous = False
-        # Clear header paragraphs
-        for p in list(hdr.paragraphs):
-            p._element.getparent().remove(p._element)
-        p = hdr.add_paragraph()
-        w_pt = section.page_width.pt
-        h_pt = section.page_height.pt
-        vml = f"""<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-     xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
+    """Place bg image behind text using absolute VML shape; never shifts layout."""
+    try:
+        import os, base64
+        from pathlib import Path as _P
+        from docx.oxml import parse_xml as _parse_xml
+        from docx.shared import Pt as _Pt
+        if not os.path.exists(image_path):
+            return False
+        data = _P(image_path).read_bytes()
+        b64 = base64.b64encode(data).decode('ascii')
+        ok = False
+        for section in doc.sections:
+            section.header_distance = _Pt(0)
+            hdr = section.header
+            hdr.is_linked_to_previous = False
+            # clear header
+            for p in list(hdr.paragraphs):
+                p._element.getparent().remove(p._element)
+            p = hdr.add_paragraph()
+            w_pt = section.page_width.pt
+            h_pt = section.page_height.pt
+            vml = f"""<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+     xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
   <w:pict>
     <v:shape id="bgVML" style="position:absolute;left:0pt;top:0pt;width:{w_pt}pt;height:{h_pt}pt;z-index:-1"
              stroked="f" filled="t" o:allowoverlap="t">
@@ -282,12 +284,16 @@ def _apply_header_image_absolute(doc, image_path):
     </v:shape>
   </w:pict>
 </w:r>"""
-        p._p.get_or_add_r()._r.append(_parse_xml(vml))
-
-# === End: background helper ===
-
-
-# --- Table header shading helper (match kundali bg) ---
+            p._p.get_or_add_r()._r.append(_parse_xml(vml))
+            ok = True
+        return ok
+    except Exception as _e:
+        try:
+            import streamlit as st
+            st.caption(f"[warn] header image failed: {_e}")
+        except Exception:
+            pass
+        return False
 def shade_header_row(table, fill_hex="F3E2C7"):
     try:
         from docx.oxml import OxmlElement
@@ -350,7 +356,7 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 
 
 APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
-APP_BUILD_VERSION = "Trendy v11"
+APP_BUILD_VERSION = "Trendy v12"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 import os
 st.caption(f"Build: {APP_BUILD_VERSION} | BG found: {os.path.exists('bg.jpg')} | CWD: {os.getcwd()}")
@@ -1205,7 +1211,7 @@ def main():
 
                 # Title
                 hdr3 = doc.add_paragraph(); hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI) — Trendy v11"); r3.bold = True; r3.font.size = Pt(13)
+                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI) — Trendy v12"); r3.bold = True; r3.font.size = Pt(13)
 
                 # Blank separator (small)
                 # hdr3.paragraph_format.space_after = Pt(2)
