@@ -1041,17 +1041,17 @@ def main():
 
             # DOCX
             doc = Document()
-set_page_background(doc, hex_color="E8FFF5")
-sec = doc.sections[0]
-# Add header background image (if available)
-try:
-    import os
-    bgp = MRIDA_BG_IMAGE_DEFAULT
-    if os.path.exists(bgp):
-        for _sec in doc.sections:
-            _mrida_add_header_bg(_sec, bgp)
-except Exception:
-    pass; sec.page_width = Mm(210); sec.page_height = Mm(297)
+            set_page_background(doc, hex_color="E8FFF5")
+            sec = doc.sections[0]
+            # Add header background image (if available)
+            try:
+                import os
+                bgp = MRIDA_BG_IMAGE_DEFAULT
+                if os.path.exists(bgp):
+                    for _sec in doc.sections:
+                        _mrida_add_header_bg(_sec, bgp)
+            except Exception:
+                pass; sec.page_width = Mm(210); sec.page_height = Mm(297)
             margin = Mm(12); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(8); sec.bottom_margin = Mm(8)
 
             style = doc.styles['Normal']; style.font.name = LATIN_FONT; style.font.size = Pt(BASE_FONT_PT)
