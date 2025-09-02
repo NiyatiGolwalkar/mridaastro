@@ -1116,7 +1116,7 @@ def main():
                 p.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
 
-            h2 = left.add_paragraph("विंशोत्तरी महादशा"); _apply_hindi_caption_style(h2, size_pt=11, underline=True, bold=True); h2.paragraph_format.keep_with_next = True
+            h2 = left.add_paragraph("विंशोत्तरी महादशा"); _apply_hindi_caption_style(h2, size_pt=11, underline=True, bold=True); h2.paragraph_format.keep_with_next = True; h2.paragraph_format.space_after = Pt(2)
             t2 = left.add_table(rows=1, cols=len(df_md.columns)); t2.autofit=False
             for i,c in enumerate(df_md.columns): t2.rows[0].cells[i].text=c
             for _,row in df_md.iterrows():
