@@ -43,7 +43,7 @@ def shade_cell(cell, fill_hex="E8FFF5"):
         pass
 
 # --- Page background helper (Word UI may hide it; cell shading above is more reliable) ---
-def # set_page_background(doc, hex_color="E8FFF5")  # disabled so header bg image is visible:
+# def # set_page_background(doc, hex_color="E8FFF5")  # disabled so header bg image is visible:  # disabled to allow header bg image
     try:
         bg = OxmlElement('w:background')
         bg.set(DOCX_QN('w:color'), hex_color)
@@ -249,7 +249,7 @@ def shade_header_row(table, fill_hex="F3E2C7"):
         pass
 
 # --- Page background helper ---
-def # set_page_background(doc, hex_color="E8FFF5")  # disabled so header bg image is visible:
+# def # set_page_background(doc, hex_color="E8FFF5")  # disabled so header bg image is visible:  # disabled to allow header bg image
     """Set document page background color (Word 'Page Color')."""
     try:
         from docx.oxml import OxmlElement
@@ -295,8 +295,10 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 
 
 APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
-APP_BUILD_VERSION = "Trendy v5"
+APP_BUILD_VERSION = "Trendy v8"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
+import os
+st.caption(f"Build: {APP_BUILD_VERSION} | BG found: {os.path.exists('bg.jpg')} | CWD: {os.getcwd()}")
 st.caption(f"Build: {APP_BUILD_VERSION}")
 
 AYANAMSHA_VAL = swe.SIDM_LAHIRI
@@ -1147,7 +1149,7 @@ def main():
 
                 # Title
                 hdr3 = doc.add_paragraph(); hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI) — Trendy v5"); r3.bold = True; r3.font.size = Pt(13)
+                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI) — Trendy v8"); r3.bold = True; r3.font.size = Pt(13)
 
                 # Blank separator (small)
                 # hdr3.paragraph_format.space_after = Pt(2)
