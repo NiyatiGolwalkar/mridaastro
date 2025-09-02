@@ -1,4 +1,67 @@
 
+# === Typography enhancer (fonts + personal details alignment) ===
+from docx.shared import Pt
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+def _iter_blocks(doc):
+    """Yield ('p', paragraph) or ('t', table) in document order."""
+    body = doc.element.body
+    # Build maps for id lookup
+    p_map = {id(p._p): p for p in doc.paragraphs}
+    t_map = {id(t._tbl): t for t in doc.tables}
+    for child in body.iterchildren():
+        if child.tag.endswith('}p') and id(child) in p_map:
+            yield ('p', p_map[id(child)])
+        elif child.tag.endswith('}tbl') and id(child) in t_map:
+            yield ('t', t_map[id(child)])
+
+def apply_pro_typography(doc, base_size_pt=12):
+    kundali_heads = {'लग्न कुंडली','नवांश कुंडली','नवमांश कुंडली','Navamsa','Navamsha','Lagna'}
+    skip_tables = set()
+    last_was_k_head = False
+    for kind, obj in _iter_blocks(doc):
+        if kind == 'p':
+            text = obj.text.strip()
+            last_was_k_head = text in kundali_heads
+        elif kind == 't':
+            if last_was_k_head:
+                skip_tables.add(obj)
+            last_was_k_head = False
+
+    in_details = False
+    for kind, obj in _iter_blocks(doc):
+        if kind == 'p':
+            txt = (obj.text or '').strip()
+            if txt == 'व्यक्तिगत विवरण' or txt.lower() == 'personal details':
+                in_details = True
+                obj.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                for r in obj.runs:
+                    r.bold = True; r.font.size = Pt(base_size_pt+1)
+                continue
+            if in_details and (txt in {'ग्रह स्थिति','विंशोत्तरी महादशा','महादशा / अंतरदशा','प्रमुख बिंदु','फलित'}):
+                in_details = False
+
+            for r in obj.runs:
+                r.bold = True
+                r.font.size = Pt(base_size_pt)
+            if in_details:
+                obj.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                fmt = obj.paragraph_format
+                fmt.space_after = Pt(3)
+
+    for t in doc.tables:
+        if t in skip_tables:
+            continue
+        for row in t.rows:
+            for cell in row.cells:
+                for p in cell.paragraphs:
+                    for r in p.runs:
+                        r.bold = True
+                        r.font.size = Pt(base_size_pt)
+    return doc
+# === End Typography enhancer ===
+
+
 # ===== Background Template Helper (stable) =====
 import os
 from io import BytesIO
@@ -1160,7 +1223,7 @@ def main():
 
                 # Title
                 hdr3 = doc.add_paragraph(); hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI) — Trendy TEMPLATE-FINAL"); r3.bold = True; r3.font.size = Pt(13)
+                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI) "); r3.bold = True; r3.font.size = Pt(13)
 
                 # Blank separator (small)
                 # hdr3.paragraph_format.space_after = Pt(2)
@@ -1171,7 +1234,7 @@ def main():
 
                 # Role line
                 hdr5 = doc.add_paragraph(); hdr5.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r5 = hdr5.add_run("Astrologer • Sound & Mantra Healer"); r5.font.size = Pt(9.5)
+                r5 = hdr5.add_run("Vedic Astrologer • Sound & Mantra Healer"); r5.font.size = Pt(9.5)
 
                 # Contact line
                 hdr6 = doc.add_paragraph(); hdr6.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -1313,6 +1376,7 @@ def main():
             # (Pramukh Bindu moved above charts)
 
             force_modernize_doc(doc)
+            apply_pro_typography(doc)
             out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
 
