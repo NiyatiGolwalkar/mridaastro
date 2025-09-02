@@ -1123,7 +1123,7 @@ def main():
                 r=t2.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t2); set_table_font(t2, pt=BASE_FONT_PT); add_table_borders(t2, size=6)
-set_col_widths(t2, [1.20, 1.50, 1.00])
+            set_col_widths(t2, [1.20, 1.50, 1.00])
 
             h3 = left.add_paragraph("महादशा / अंतरदशा"); _apply_hindi_caption_style(h3, size_pt=11, underline=True, bold=True)
             t3 = left.add_table(rows=1, cols=len(df_an.columns)); t3.autofit=False
@@ -1132,7 +1132,7 @@ set_col_widths(t2, [1.20, 1.50, 1.00])
                 r=t3.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t3); set_table_font(t3, pt=BASE_FONT_PT); add_table_borders(t3, size=6)
-compact_table_paragraphs(t3)
+            compact_table_paragraphs(t3)
             set_col_widths(t3, [1.20, 1.50, 1.10])
 
             # One-page: place Pramukh Bindu under tables (left column) to free right column for charts
@@ -1142,7 +1142,7 @@ compact_table_paragraphs(t3)
             except Exception:
                 pass
             right = outer.rows[0].cells[1]
-kt = right.add_table(rows=2, cols=1)
+            kt = right.add_table(rows=2, cols=1)
             # Compact right-cell paragraph spacing
             try:
                 for p in right.paragraphs:
