@@ -133,6 +133,138 @@ from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn as DOCX_QN
 from docx.shared import Inches, Mm, Pt
 
+
+# === Page Background Image using anchored shape behind text ===
+def _add_anchored_bg_to_header(section, image_path):
+    """
+    Insert an anchored image in the header that's positioned relative to the page,
+    sized to the full page, and set behind text.
+    """
+    try:
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn as DOCX_QN
+        from docx.shared import Pt
+        header = section.header
+        if not header.paragraphs:
+            p = header.add_paragraph()
+        else:
+            p = header.paragraphs[0]
+        r = p.add_run()
+        # Add as inline first to create the drawing payload
+        r.add_picture(image_path, width=section.page_width)
+        drawing = r._r.find(DOCX_QN("w:drawing"))
+        if drawing is None:
+            return False
+        inline = drawing.find(DOCX_QN("wp:inline"))
+        if inline is None:
+            return False
+
+        # Compute page size in EMUs
+        def emu(val):
+            # val is a Length (EMU-friendly via .emu) if available; else approximate
+            try:
+                return int(val.emu)
+            except Exception:
+                # fallback (pt to emu)
+                pt = getattr(val, "pt", 595)  # A4 width ≈ 595pt
+                return int(pt * 12700)  # 1pt = 12700 EMU
+
+        cx = emu(section.page_width)
+        cy = emu(section.page_height)
+
+        # Build anchor node
+        anchor = OxmlElement("wp:anchor")
+        anchor.set("distT", "0"); anchor.set("distB", "0")
+        anchor.set("distL", "0"); anchor.set("distR", "0")
+        anchor.set("simplePos", "0")
+        anchor.set("relativeHeight", "251658240")  # large z
+        anchor.set("behindDoc", "1")
+        anchor.set("locked", "0")
+        anchor.set("layoutInCell", "1")
+        anchor.set("allowOverlap", "1")
+
+        simplePos = OxmlElement("wp:simplePos")
+        simplePos.set("x", "0"); simplePos.set("y", "0")
+        anchor.append(simplePos)
+
+        positionH = OxmlElement("wp:positionH")
+        positionH.set("relativeFrom", "page")
+        posAlignH = OxmlElement("wp:align"); posAlignH.text = "left"
+        positionH.append(posAlignH); anchor.append(positionH)
+
+        positionV = OxmlElement("wp:positionV")
+        positionV.set("relativeFrom", "page")
+        posAlignV = OxmlElement("wp:align"); posAlignV.text = "top"
+        positionV.append(posAlignV); anchor.append(positionV)
+
+        extent = OxmlElement("wp:extent")
+        extent.set("cx", str(cx)); extent.set("cy", str(cy))
+        anchor.append(extent)
+
+        effectExtent = OxmlElement("wp:effectExtent")
+        for a in ("l","t","r","b"):
+            effectExtent.set(a, "0")
+        anchor.append(effectExtent)
+
+        wrapNone = OxmlElement("wp:wrapNone")
+        anchor.append(wrapNone)
+
+        docPr = OxmlElement("wp:docPr"); docPr.set("id", "5000"); docPr.set("name", "Background")
+        anchor.append(docPr)
+
+        cNv = OxmlElement("wp:cNvGraphicFramePr")
+        anchor.append(cNv)
+
+        graphic = inline.find(DOCX_QN("a:graphic"))
+        if graphic is None:
+            # different ns fallback
+            for child in inline:
+                if child.tag.endswith("graphic"):
+                    graphic = child
+                    break
+        if graphic is None:
+            return False
+
+        inline.remove(graphic)
+        anchor.append(graphic)
+        drawing.remove(inline)
+        drawing.append(anchor)
+
+        # Reduce header distance to make sure image hugs the top
+        try:
+            section.header_distance = Pt(0)
+        except Exception:
+            pass
+        return True
+    except Exception:
+        return False
+
+def apply_background_image_to_document(document, image_path_candidates=None):
+    import os
+    if image_path_candidates is None:
+        script_dir = os.path.dirname(__file__) if "__file__" in globals() else os.getcwd()
+        image_path_candidates = [
+            os.environ.get("MRIDAASTRO_BG", ""),
+            "Background Image.jpg",
+            "background.jpg",
+            os.path.join("assets", "Background Image.jpg"),
+            os.path.join(script_dir, "Background Image.jpg"),
+            os.path.join(script_dir, "background.jpg"),
+        ]
+    chosen = None
+    for p in image_path_candidates:
+        if p and os.path.exists(p):
+            chosen = p
+            break
+    if not chosen:
+        return False
+
+    ok = False
+    for section in getattr(document, "sections", []):
+        if _add_anchored_bg_to_header(section, chosen):
+            ok = True
+    return ok
+
 # --- Table header shading helper (match kundali bg) ---
 def shade_header_row(table, fill_hex="FFF3CF"):
     try:
