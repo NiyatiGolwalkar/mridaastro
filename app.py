@@ -1,4 +1,109 @@
 
+
+# === Typography + Layout Enhancer (v2) ===
+from docx.shared import Pt, Inches
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+
+def _iter_blocks(doc):
+    body = doc.element.body
+    p_map = {id(p._p): p for p in doc.paragraphs}
+    t_map = {id(t._tbl): t for t in doc.tables}
+    for child in body.iterchildren():
+        if child.tag.endswith('}p') and id(child) in p_map:
+            yield ('p', p_map[id(child)])
+        elif child.tag.endswith('}tbl') and id(child) in t_map:
+            yield ('t', t_map[id(child)])
+
+def _set_margins(doc, inches=0.5):
+    for sec in doc.sections:
+        sec.left_margin = Inches(inches)
+        sec.right_margin = Inches(inches)
+        sec.top_margin = Inches(0.6)
+        sec.bottom_margin = Inches(0.6)
+
+def apply_pro_typography(doc, base_size_pt=13):
+    # 0) Layout: tighten margins to reduce right-side whitespace perception
+    _set_margins(doc, inches=0.5)
+
+    # 1) Detect kundali tables (first table right after these headings) to keep them unchanged
+    kundali_heads = {'लग्न कुंडली', 'नवांश कुंडली', 'नवमांश कुंडली', 'Navamsa', 'Navamsha', 'Lagna'}
+    skip_tables = set()
+    last_was_k_head = False
+    details_table = None
+    last_details_heading = False
+    for kind, obj in _iter_blocks(doc):
+        if kind == 'p':
+            text = (obj.text or '').strip()
+            # Track kundali headings
+            last_was_k_head = text in kundali_heads
+            # Track start of Personal Details block
+            if text in {'व्यक्तिगत विवरण', 'Personal Details'}:
+                details_table = None
+                last_details_heading = True
+        elif kind == 't':
+            if last_was_k_head:
+                skip_tables.add(obj)
+                last_was_k_head = False
+            if last_details_heading and details_table is None:
+                details_table = obj
+                last_details_heading = False
+
+    # 2) Personal Details: left-align and add small spacing
+    if details_table is not None:
+        for row in details_table.rows:
+            for cell in row.cells:
+                for p in cell.paragraphs:
+                    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                    fmt = p.paragraph_format
+                    fmt.space_after = Pt(4)
+                    for r in p.runs:
+                        r.bold = True
+                        r.font.size = Pt(base_size_pt)
+
+    # 3) Paragraphs: bold + size (outside tables)
+    for kind, obj in _iter_blocks(doc):
+        if kind == 'p':
+            txt = (obj.text or '').strip()
+            for r in obj.runs:
+                r.bold = True
+                r.font.size = Pt(base_size_pt)
+
+    # 4) Tables: apply font + bold to all except kundali tables
+    for t in doc.tables:
+        if t in skip_tables:
+            continue
+        for row in t.rows:
+            for cell in row.cells:
+                for p in cell.paragraphs:
+                    for r in p.runs:
+                        r.bold = True
+                        r.font.size = Pt(base_size_pt)
+    return doc
+# === End Typography + Layout Enhancer (v2) ===
+
+
+
+# ===== Background Template Helper (stable) =====
+import os
+from io import BytesIO
+from docx import Document as _WordDocument
+
+TEMPLATE_DOCX = "bg_template.docx"
+
+def make_document():
+    """
+    Return a Document created from bg_template.docx if present,
+    otherwise fall back to a blank Document.
+    """
+    try:
+        if os.path.exists(TEMPLATE_DOCX):
+            return _WordDocument(TEMPLATE_DOCX)
+    except Exception:
+        pass
+    return _WordDocument()
+# ===== End Background Template Helper =====
+
+
 # app_docx_borders_85pt_editable_v6_8_8_locked.py
 # Changes from 6.8.7:
 # - Rename & style headings:
@@ -23,27 +128,19 @@ GAP_X_PT = 3        # horizontal gap between planet boxes (was 4)
 OFFSET_Y_PT = 10    # vertical offset below number box (was 12)
 
 # Options: "plain", "bordered", "shaded", "bordered_shaded"
-HOUSE_NUM_STYLE = "bordered_shaded"
+HOUSE_NUM_STYLE = "bordered_plain"
 HOUSE_NUM_BORDER_PT = 0.75
-HOUSE_NUM_SHADE = "#fff9d6"  # soft light-yellow
+HOUSE_NUM_SHADE = "#FFFFFF"  # soft light-yellow
 
 
 
 
 # --- Reliable cell shading (works in all Word views) ---
-def shade_cell(cell, fill_hex="E8FFF5"):
-    try:
-        tcPr = cell._tc.get_or_add_tcPr()
-        shd = OxmlElement('w:shd')
-        shd.set(DOCX_QN('w:val'), 'clear')
-        shd.set(DOCX_QN('w:color'), 'auto')
-        shd.set(DOCX_QN('w:fill'), fill_hex)
-        tcPr.append(shd)
-    except Exception:
-        pass
+def shade_cell(cell, fill_hex=None):
+    return
 
 # --- Page background helper (Word UI may hide it; cell shading above is more reliable) ---
-def set_page_background(doc, hex_color="E8FFF5"):
+# def # set_page_background(doc, hex_color="E8FFF5")  # disabled so header bg image is visible:  # disabled to allow header bg image
     try:
         bg = OxmlElement('w:background')
         bg.set(DOCX_QN('w:color'), hex_color)
@@ -58,7 +155,6 @@ def add_phalit_section(container_cell, width_inches=3.60, rows=25):
     _apply_hindi_caption_style(head, size_pt=11, underline=True, bold=True)
 
     t = container_cell.add_table(rows=rows, cols=1); t.autofit = False
-    # Clear table borders so only bottom rules show
     try:
         tbl = t._tbl; tblPr = tbl.tblPr
         tblBorders = OxmlElement('w:tblBorders')
@@ -81,7 +177,7 @@ def add_phalit_section(container_cell, width_inches=3.60, rows=25):
         for edge in ('top','left','right'):
             el = OxmlElement(f'w:{edge}'); el.set(DOCX_QN('w:val'),'nil'); tcBorders.append(el)
         el = OxmlElement('w:bottom')
-        el.set(DOCX_QN('w:val'),'single'); el.set(DOCX_QN('w:sz'),'8'); el.set(DOCX_QN('w:space'),'0'); el.set(DOCX_QN('w:color'),'B6B6B6')
+        el.set(DOCX_QN('w:val'),'single'); el.set(DOCX_QN('w:sz'),'12'); el.set(DOCX_QN('w:space'),'0'); el.set(DOCX_QN('w:color'),'7F7F7F')
         tcBorders.append(el)
         tcPr.append(tcBorders)
 
@@ -134,24 +230,130 @@ from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn as DOCX_QN
 from docx.shared import Inches, Mm, Pt
 
-# --- Table header shading helper (match kundali bg) ---
-def shade_header_row(table, fill_hex="F3E2C7"):
+# === Trendy additions: background header image helper ===
+from docx.oxml.ns import qn as _qn_bg
+from docx.shared import Pt as _Pt_bg
+
+def _mrida_add_header_bg(section, image_path):
+    """
+    Adds a full-width header image so it behaves like a page background.
+    Word shows body text over header content, giving a 'watermark' feel.
+    """
     try:
-        from docx.oxml import OxmlElement
-        hdr = table.rows[0]
-        for cell in hdr.cells:
-            tc = cell._tc
-            tcPr = tc.get_or_add_tcPr()
-            shd = OxmlElement('w:shd')
-            shd.set(DOCX_QN('w:val'), 'clear')
-            shd.set(DOCX_QN('w:color'), 'auto')
-            shd.set(DOCX_QN('w:fill'), fill_hex)
-            tcPr.append(shd)
+        hdr = section.header
+        hdr.is_linked_to_previous = False
+        section.header_distance = _Pt_bg(0)
+        # Clear header
+        for p in list(hdr.paragraphs):
+            p._element.getparent().remove(p._element)
+        p = hdr.add_paragraph()
+        run = p.add_run()
+        # Fit image to page width
+        run.add_picture(image_path, width=section.page_width)
+    except Exception:
+        # fail-safe: ignore if image missing or library limitation
+        pass
+
+# Default background image path (override easily in code or UI later)
+
+# === Force-modernizer (runs right before save) ===
+from docx.oxml import OxmlElement as _Ox
+from docx.oxml.ns import qn as _qn
+from docx.enum.text import WD_ALIGN_PARAGRAPH as _ALN
+from docx.enum.table import WD_ALIGN_VERTICAL as _VAL
+from docx.shared import Pt as _Pt
+
+def _force_shade_cell(cell, hex_fill="EFE8DC"):
+    tcPr = cell._tc.get_or_add_tcPr()
+    shd = _Ox('w:shd')
+    shd.set(_qn('w:val'), 'clear')
+    shd.set(_qn('w:color'), 'auto')
+    shd.set(_qn('w:fill'), hex_fill)
+    tcPr.append(shd)
+
+def _force_cell_border(cell, sz="6", color="C8C8C8"):
+    tcPr = cell._tc.get_or_add_tcPr()
+    tblBorders = _Ox('w:tcBorders')
+    for edge in ('top','left','bottom','right'):
+        el = _Ox(f'w:{edge}')
+        el.set(_qn('w:val'), 'single'); el.set(_qn('w:sz'), sz); el.set(_qn('w:space'), "0"); el.set(_qn('w:color'), color)
+        tblBorders.append(el)
+    tcPr.append(tblBorders)
+
+def _force_table_borders(table, sz="6", color="C8C8C8"):
+    tbl = table._tbl
+    tblPr = tbl.tblPr
+    borders = _Ox('w:tblBorders')
+    for edge in ('top','left','bottom','right','insideH','insideV'):
+        el = _Ox(f'w:{edge}')
+        el.set(_qn('w:val'), 'single'); el.set(_qn('w:sz'), sz); el.set(_qn('w:space'), "0"); el.set(_qn('w:color'), color)
+        borders.append(el)
+    tblPr.append(borders)
+
+def force_modernize_doc(doc):
+    # Fonts
+    try:
+        base = doc.styles['Normal']
+        base.font.name = "Georgia"
+        base.font.size = _Pt(10.5)
+        base._element.rPr.rFonts.set(_qn('w:eastAsia'), "Mangal")
+        base._element.rPr.rFonts.set(_qn('w:cs'), "Mangal")
     except Exception:
         pass
 
+    # Style all tables
+    for t in doc.tables:
+        # Header row shading + center
+        if len(t.rows) > 0:
+            for c in t.rows[0].cells:
+                pass  # no header shading
+        _force_table_borders(t)
+        for r, row in enumerate(t.rows):
+            for c in row.cells:
+                c.vertical_alignment = _VAL.CENTER
+                for p in c.paragraphs:
+                    p.paragraph_format.space_before = _Pt(0)
+                    p.paragraph_format.space_after = _Pt(0)
+                    if r == 0:
+                        p.alignment = _ALN.CENTER
+                    for run in p.runs:
+                        run.font.name = "Georgia"
+                        run.font.size = _Pt(9 if r == 0 else 8.5)
+                        if r == 0:
+                            run.bold = True
+    return doc
+# === End: force-modernizer ===
+
+MRIDA_BG_IMAGE_DEFAULT = "bg.jpg"
+MRIDA_BG_IMAGE_FALLBACK = "bg.jpg"
+
+from docx.shared import Pt as _Pt_hdr
+def _apply_header_image(doc, image_path):
+    """Place a full-width header image so it appears as a page background."""
+    try:
+        import os
+        if not os.path.exists(image_path):
+            return
+        for section in doc.sections:
+            section.header_distance = _Pt_hdr(0)
+            hdr = section.header
+            hdr.is_linked_to_previous = False
+            # clear header
+            for p in list(hdr.paragraphs):
+                p._element.getparent().remove(p._element)
+            run = hdr.add_paragraph().add_run()
+            run.add_picture(image_path, width=section.page_width)
+    except Exception:
+        pass
+# === End: background helper ===
+
+
+# --- Table header shading helper (match kundali bg) ---
+def shade_header_row(table, fill_hex=None):
+    return
+
 # --- Page background helper ---
-def set_page_background(doc, hex_color="E8FFF5"):
+# def # set_page_background(doc, hex_color="E8FFF5")  # disabled so header bg image is visible:  # disabled to allow header bg image
     """Set document page background color (Word 'Page Color')."""
     try:
         from docx.oxml import OxmlElement
@@ -197,7 +399,11 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 
 
 APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
+APP_BUILD_VERSION = ""
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
+import os
+st.caption(f"Build: {APP_BUILD_VERSION} | BG found: {os.path.exists('bg.jpg')} | CWD: {os.getcwd()}")
+st.caption(f"Build: {APP_BUILD_VERSION}")
 
 AYANAMSHA_VAL = swe.SIDM_LAHIRI
 YEAR_DAYS     = 365.2422
@@ -618,7 +824,7 @@ def kundali_with_planets(size_pt=190, lagna_sign=1, house_planets=None):
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
         <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
-          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
+          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#F2E9D8"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.5pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
           <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
@@ -692,7 +898,7 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
         <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
-          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
+          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#F2E9D8"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.5pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
           <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
@@ -733,7 +939,7 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
     xml = f'''<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
         <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
           <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
-            <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
+            <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#F2E9D8"/>
             <v:line style="position:absolute;z-index:2" from="0,0" to="{S},{S}" strokecolor="black" strokeweight="1.5pt"/>
             <v:line style="position:absolute;z-index:2" from="{S},0" to="0,{S}" strokecolor="black" strokeweight="1.5pt"/>
             <v:line style="position:absolute;z-index:2" from="{S/2},0" to="{S},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
@@ -883,7 +1089,7 @@ def compact_table_paragraphs(tbl):
 
 def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
     spacer = container_cell.add_paragraph("")
-    spacer.paragraph_format.space_after = Pt(4)
+    spacer.paragraph_format.space_after = Pt(2)
     # Title
     title = container_cell.add_paragraph("प्रमुख बिंदु")
     # Match other section titles
@@ -1012,9 +1218,11 @@ def main():
             img_nav   = render_north_diamond(size_px=800, stroke=3)
 
             # DOCX
-            doc = Document()
-            set_page_background(doc, hex_color="E8FFF5")
-            sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
+            doc = make_document()
+            # page color disabled
+
+            sec = doc.sections[0]
+# (disabled by template)             # Add header background image (if available)
             margin = Mm(12); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(8); sec.bottom_margin = Mm(8)
 
             style = doc.styles['Normal']; style.font.name = LATIN_FONT; style.font.size = Pt(BASE_FONT_PT)
@@ -1036,7 +1244,7 @@ def main():
 
                 # Title
                 hdr3 = doc.add_paragraph(); hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI)"); r3.bold = True; r3.font.size = Pt(13)
+                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI) "); r3.bold = True; r3.font.size = Pt(13)
 
                 # Blank separator (small)
                 # hdr3.paragraph_format.space_after = Pt(2)
@@ -1047,7 +1255,7 @@ def main():
 
                 # Role line
                 hdr5 = doc.add_paragraph(); hdr5.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r5 = hdr5.add_run("Astrologer • Sound & Mantra Healer"); r5.font.size = Pt(9.5)
+                r5 = hdr5.add_run("Vedic Astrologer • Sound & Mantra Healer"); r5.font.size = Pt(9.5)
 
                 # Contact line
                 hdr6 = doc.add_paragraph(); hdr6.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -1113,7 +1321,9 @@ def main():
             center_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT); add_table_borders(t1, size=6)
             
             shade_header_row(t1)
+            # modern header shade already applied
             set_col_widths(t1, [0.70, 0.55, 0.85, 0.80, 0.80])
+            compact_table_paragraphs(t1)
             # Left align ONLY the header cell of the last column (उप‑नक्षत्र / Sublord)
             for p in t1.rows[0].cells[-1].paragraphs:
                 p.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -1128,7 +1338,9 @@ def main():
             center_header_row(t2); set_table_font(t2, pt=BASE_FONT_PT); add_table_borders(t2, size=6)
             
             shade_header_row(t2)
+            # modern header shade already applied
             set_col_widths(t2, [1.20, 1.50, 1.00])
+            compact_table_paragraphs(t2)
 
             h3 = left.add_paragraph("महादशा / अंतरदशा"); _apply_hindi_caption_style(h3, size_pt=11, underline=True, bold=True)
             t3 = left.add_table(rows=1, cols=len(df_an.columns)); t3.autofit=False
@@ -1139,8 +1351,10 @@ def main():
             center_header_row(t3); set_table_font(t3, pt=BASE_FONT_PT); add_table_borders(t3, size=6)
             
             shade_header_row(t3)
+            # modern header shade already applied
             compact_table_paragraphs(t3)
             set_col_widths(t3, [1.20, 1.50, 1.10])
+            compact_table_paragraphs(t3)
 
             # One-page: place Pramukh Bindu under tables (left column) to free right column for charts
             try:
@@ -1182,6 +1396,8 @@ def main():
             cell2.add_paragraph("")
             # (Pramukh Bindu moved above charts)
 
+            force_modernize_doc(doc)
+            apply_pro_typography(doc)
             out = BytesIO(); doc.save(out); out.seek(0)
             st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
 
