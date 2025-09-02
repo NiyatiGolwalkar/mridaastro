@@ -425,7 +425,7 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 
 
 APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
-APP_BUILD_VERSION = "Trendy v15"
+APP_BUILD_VERSION = "Trendy v16"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 import os
 st.caption(f"Build: {APP_BUILD_VERSION} | BG found: {os.path.exists('bg.jpg')} | CWD: {os.getcwd()}")
@@ -1246,14 +1246,7 @@ def main():
             # DOCX
             doc = Document()
             # page color disabled
-            try:
-            _apply_header_image_anchor(doc, MRIDA_BG_IMAGE_DEFAULT)
-        except Exception as _e:
-            try:
-                import streamlit as st
-                st.caption(f"[warn] bg anchor failed: {_e}")
-            except Exception:
-                pass
+                        _apply_header_image_anchor(doc, MRIDA_BG_IMAGE_DEFAULT)
             sec = doc.sections[0]
             # Add header background image (if available)
             try:
@@ -1287,7 +1280,7 @@ def main():
 
                 # Title
                 hdr3 = doc.add_paragraph(); hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI) — Trendy v15"); r3.bold = True; r3.font.size = Pt(13)
+                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI) — Trendy v16"); r3.bold = True; r3.font.size = Pt(13)
 
                 # Blank separator (small)
                 # hdr3.paragraph_format.space_after = Pt(2)
