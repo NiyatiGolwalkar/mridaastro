@@ -483,8 +483,15 @@ def rotated_house_labels(lagna_sign):
     return {"1":order[0],"2":order[1],"3":order[2],"4":order[3],"5":order[4],"6":order[5],"7":order[6],"8":order[7],"9":order[8],"10":order[9],"11":order[10],"12":order[11]}
 
 
-def kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=1, house_planets=None):
-    # Like kundali_w_p_with_centroid_labels but adds small side-by-side planet boxes below the number
+def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
+    
+    # robust default for size_pt so definition never depends on globals
+    if size_pt is None:
+        try:
+            size_pt = CHART_W_PT
+        except Exception:
+            size_pt = 318  # safe fallback
+# Like kundali_w_p_with_centroid_labels but adds small side-by-side planet boxes below the number
     if house_planets is None:
         house_planets = {i: [] for i in range(1, 13)}
     S=size_pt; L,T,R,B=0,0,S,S
