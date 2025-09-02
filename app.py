@@ -1,12 +1,11 @@
 
-# === Typography enhancer (fonts + personal details alignment) ===
-from docx.shared import Pt
+
+# === Typography + Layout Enhancer (v2) ===
+from docx.shared import Pt, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 def _iter_blocks(doc):
-    """Yield ('p', paragraph) or ('t', table) in document order."""
     body = doc.element.body
-    # Build maps for id lookup
     p_map = {id(p._p): p for p in doc.paragraphs}
     t_map = {id(t._tbl): t for t in doc.tables}
     for child in body.iterchildren():
@@ -15,40 +14,61 @@ def _iter_blocks(doc):
         elif child.tag.endswith('}tbl') and id(child) in t_map:
             yield ('t', t_map[id(child)])
 
-def apply_pro_typography(doc, base_size_pt=12):
-    kundali_heads = {'लग्न कुंडली','नवांश कुंडली','नवमांश कुंडली','Navamsa','Navamsha','Lagna'}
+def _set_margins(doc, inches=0.5):
+    for sec in doc.sections:
+        sec.left_margin = Inches(inches)
+        sec.right_margin = Inches(inches)
+        sec.top_margin = Inches(0.6)
+        sec.bottom_margin = Inches(0.6)
+
+def apply_pro_typography(doc, base_size_pt=13):
+    # 0) Layout: tighten margins to reduce right-side whitespace perception
+    _set_margins(doc, inches=0.5)
+
+    # 1) Detect kundali tables (first table right after these headings) to keep them unchanged
+    kundali_heads = {'लग्न कुंडली', 'नवांश कुंडली', 'नवमांश कुंडली', 'Navamsa', 'Navamsha', 'Lagna'}
     skip_tables = set()
     last_was_k_head = False
+    details_table = None
+    last_details_heading = False
     for kind, obj in _iter_blocks(doc):
         if kind == 'p':
-            text = obj.text.strip()
+            text = (obj.text or '').strip()
+            # Track kundali headings
             last_was_k_head = text in kundali_heads
+            # Track start of Personal Details block
+            if text in {'व्यक्तिगत विवरण', 'Personal Details'}:
+                details_table = None
+                last_details_heading = True
         elif kind == 't':
             if last_was_k_head:
                 skip_tables.add(obj)
-            last_was_k_head = False
+                last_was_k_head = False
+            if last_details_heading and details_table is None:
+                details_table = obj
+                last_details_heading = False
 
-    in_details = False
+    # 2) Personal Details: left-align and add small spacing
+    if details_table is not None:
+        for row in details_table.rows:
+            for cell in row.cells:
+                for p in cell.paragraphs:
+                    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                    fmt = p.paragraph_format
+                    fmt.space_after = Pt(4)
+                    for r in p.runs:
+                        r.bold = True
+                        r.font.size = Pt(base_size_pt)
+
+    # 3) Paragraphs: bold + size (outside tables)
     for kind, obj in _iter_blocks(doc):
         if kind == 'p':
             txt = (obj.text or '').strip()
-            if txt == 'व्यक्तिगत विवरण' or txt.lower() == 'personal details':
-                in_details = True
-                obj.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                for r in obj.runs:
-                    r.bold = True; r.font.size = Pt(base_size_pt+1)
-                continue
-            if in_details and (txt in {'ग्रह स्थिति','विंशोत्तरी महादशा','महादशा / अंतरदशा','प्रमुख बिंदु','फलित'}):
-                in_details = False
-
             for r in obj.runs:
                 r.bold = True
                 r.font.size = Pt(base_size_pt)
-            if in_details:
-                obj.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                fmt = obj.paragraph_format
-                fmt.space_after = Pt(3)
 
+    # 4) Tables: apply font + bold to all except kundali tables
     for t in doc.tables:
         if t in skip_tables:
             continue
@@ -59,7 +79,8 @@ def apply_pro_typography(doc, base_size_pt=12):
                         r.bold = True
                         r.font.size = Pt(base_size_pt)
     return doc
-# === End Typography enhancer ===
+# === End Typography + Layout Enhancer (v2) ===
+
 
 
 # ===== Background Template Helper (stable) =====
@@ -378,7 +399,7 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 
 
 APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
-APP_BUILD_VERSION = "Trendy TEMPLATE-FINAL"
+APP_BUILD_VERSION = ""
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 import os
 st.caption(f"Build: {APP_BUILD_VERSION} | BG found: {os.path.exists('bg.jpg')} | CWD: {os.getcwd()}")
