@@ -43,7 +43,7 @@ def shade_cell(cell, fill_hex="E8FFF5"):
         pass
 
 # --- Page background helper (Word UI may hide it; cell shading above is more reliable) ---
-def set_page_background(doc, hex_color="E8FFF5"):
+def set_page_background(doc, hex_color="FFF8EF"):
     try:
         bg = OxmlElement('w:background')
         bg.set(DOCX_QN('w:color'), hex_color)
@@ -53,7 +53,7 @@ def set_page_background(doc, hex_color="E8FFF5"):
 
 # --- Phalit ruled lines (25 rows) ---
 from docx.enum.table import WD_ROW_HEIGHT_RULE
-def add_phalit_section(container_cell, width_inches=3.60, rows=25):
+def add_phalit_section(container_cell, width_inches=3.60, rows=0):
     head = container_cell.add_paragraph("फलित")
     _apply_hindi_caption_style(head, size_pt=11, underline=True, bold=True)
 
@@ -133,52 +133,8 @@ from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn as DOCX_QN
 from docx.shared import Inches, Mm, Pt
 
-# ===== Background Image Helper (full-page, all pages) =====
-def set_page_background_image(doc, image_path):
-    """Places a full-bleed image behind content by inserting a VML shape
-    into the section header that spans the page. Works for all pages."""
-    try:
-        section = doc.sections[0]
-        try:
-            section.header_distance = Mm(0)
-        except Exception:
-            pass
-        header = section.header
-        p = header.paragraphs[0] if header.paragraphs else header.add_paragraph()
-        r = p.add_run()
-        r.add_picture(image_path, width=Inches(1))
-        blips = r._element.xpath('.//a:blip', namespaces={'a':'http://schemas.openxmlformats.org/drawingml/2006/main'})
-        if not blips:
-            return False
-        rId = blips[0].get(DOCX_QN('r:embed'))
-        for dr in r._element.findall('{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing'):
-            r._element.remove(dr)
-        width_pt  = section.page_width.pt
-        height_pt = section.page_height.pt
-        vml_xml = f"""
-<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-  <w:r>
-    <w:pict xmlns:v="urn:schemas-microsoft-com:vml"
-            xmlns:o="urn:schemas-microsoft-com:office:office"
-            xmlns:w10="urn:schemas-microsoft-com:office:word"
-            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-      <v:rect style="position:absolute;left:0;top:0;width:{width_pt}pt;height:{height_pt}pt;z-index:0" stroked="f">
-        <v:imagedata r:id="{rId}" o:title="bg"/>
-      </v:rect>
-    </w:pict>
-  </w:r>
-</w:p>
-""".strip()
-        elem = parse_xml(vml_xml)
-        header._element.append(elem)
-        return True
-    except Exception:
-        return False
-# ===== End Helper =====
-
-
 # --- Table header shading helper (match kundali bg) ---
-def shade_header_row(table, fill_hex="F3E2C7"):
+def shade_header_row(table, fill_hex="FFF3CF"):
     try:
         from docx.oxml import OxmlElement
         hdr = table.rows[0]
@@ -194,7 +150,7 @@ def shade_header_row(table, fill_hex="F3E2C7"):
         pass
 
 # --- Page background helper ---
-def set_page_background(doc, hex_color="E8FFF5"):
+def set_page_background(doc, hex_color="FFF8EF"):
     """Set document page background color (Word 'Page Color')."""
     try:
         from docx.oxml import OxmlElement
@@ -239,14 +195,13 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 # ---- End helpers ----
 
 
-BACKGROUND_IMAGE_PATH = 'Background Image.jpg'
 APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 
 AYANAMSHA_VAL = swe.SIDM_LAHIRI
 YEAR_DAYS     = 365.2422
 
-BASE_FONT_PT = 7.0
+BASE_FONT_PT = 8.5
 LATIN_FONT = "Georgia"
 HINDI_FONT = "Mangal"
 
@@ -662,7 +617,7 @@ def kundali_with_planets(size_pt=190, lagna_sign=1, house_planets=None):
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
         <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
-          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
+          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="#C9A227" strokeweight="1.5pt" fillcolor="#FFF7E6"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.5pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
           <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
@@ -736,7 +691,7 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
         <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
-          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
+          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="#C9A227" strokeweight="1.5pt" fillcolor="#FFF7E6"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.5pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
           <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
@@ -777,7 +732,7 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
     xml = f'''<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
         <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
           <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
-            <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
+            <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="#C9A227" strokeweight="1.5pt" fillcolor="#FFF7E6"/>
             <v:line style="position:absolute;z-index:2" from="0,0" to="{S},{S}" strokecolor="black" strokeweight="1.5pt"/>
             <v:line style="position:absolute;z-index:2" from="{S},0" to="0,{S}" strokecolor="black" strokeweight="1.5pt"/>
             <v:line style="position:absolute;z-index:2" from="{S/2},0" to="{S},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
@@ -789,11 +744,38 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
         </w:pict></w:r></w:p>'''
     return parse_xml(xml)
 
-def add_table_borders(table, size=6):
+def set_outer_borders_only(table, size=6):
     tbl = table._tbl; tblPr = tbl.tblPr; tblBorders = OxmlElement('w:tblBorders')
     for edge in ('top','left','bottom','right','insideH','insideV'):
         el = OxmlElement(f'w:{edge}'); el.set(DOCX_QN('w:val'),'single'); el.set(DOCX_QN('w:sz'),str(size)); tblBorders.append(el)
     tblPr.append(tblBorders)
+
+# --- Modern table borders: outer only, no inner grid ---
+def set_outer_borders_only(table, size=6, color='auto'):
+    try:
+        tbl = table._tbl
+        tblPr = tbl.tblPr
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn as DOCX_QN
+        # wipe existing borders if present
+        for el in list(tblPr):
+            if el.tag.endswith('tblBorders'):
+                tblPr.remove(el)
+        tblBorders = OxmlElement('w:tblBorders')
+        for edge in ('top', 'left', 'bottom', 'right'):
+            el = OxmlElement(f'w:{edge}')
+            el.set(DOCX_QN('w:val'), 'single')
+            el.set(DOCX_QN('w:sz'), str(size))
+            el.set(DOCX_QN('w:color'), color)
+            tblBorders.append(el)
+        for edge in ('insideH', 'insideV'):
+            el = OxmlElement(f'w:{edge}')
+            el.set(DOCX_QN('w:val'), 'nil')
+            tblBorders.append(el)
+        tblPr.append(tblBorders)
+    except Exception:
+        pass
+
 
 def set_table_font(table, pt=8.0):
     for row in table.rows:
@@ -978,7 +960,7 @@ def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
         r[1].text = right_txt
 
     # Borders similar to other tables
-    add_table_borders(t, size=6)
+    set_outer_borders_only(t, size=6)
     compact_table_paragraphs(t)
 def main():
     st.title(APP_TITLE)
@@ -1057,18 +1039,7 @@ def main():
 
             # DOCX
             doc = Document()
-            ok_bg = False
-            try:
-                import os
-                if BACKGROUND_IMAGE_PATH and os.path.exists(BACKGROUND_IMAGE_PATH):
-                    ok_bg = set_page_background_image(doc, BACKGROUND_IMAGE_PATH)
-            except Exception:
-                ok_bg = False
-            if not ok_bg:
-                try:
-                    set_page_background(doc, hex_color="E8FFF5")
-                except Exception:
-                    pass
+            set_page_background(doc, hex_color="FFF8EF")
             sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
             margin = Mm(12); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(8); sec.bottom_margin = Mm(8)
 
@@ -1091,7 +1062,7 @@ def main():
 
                 # Title
                 hdr3 = doc.add_paragraph(); hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI)"); r3.bold = True; r3.font.size = Pt(13)
+                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI)"); r3.bold = True; r3.font.size = Pt(12.5)
 
                 # Blank separator (small)
                 # hdr3.paragraph_format.space_after = Pt(2)
@@ -1165,7 +1136,7 @@ def main():
             for _,row in df_positions.iterrows():
                 r=t1.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
-            center_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT); add_table_borders(t1, size=6)
+            center_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT); set_outer_borders_only(t1, size=6)
             
             shade_header_row(t1)
             set_col_widths(t1, [0.70, 0.55, 0.85, 0.80, 0.80])
@@ -1180,7 +1151,7 @@ def main():
             for _,row in df_md.iterrows():
                 r=t2.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
-            center_header_row(t2); set_table_font(t2, pt=BASE_FONT_PT); add_table_borders(t2, size=6)
+            center_header_row(t2); set_table_font(t2, pt=BASE_FONT_PT); set_outer_borders_only(t2, size=6)
             
             shade_header_row(t2)
             set_col_widths(t2, [1.20, 1.50, 1.00])
@@ -1191,7 +1162,7 @@ def main():
             for _,row in df_an.iterrows():
                 r=t3.add_row().cells
                 for i,c in enumerate(row): r[i].text=str(c)
-            center_header_row(t3); set_table_font(t3, pt=BASE_FONT_PT); add_table_borders(t3, size=6)
+            center_header_row(t3); set_table_font(t3, pt=BASE_FONT_PT); set_outer_borders_only(t3, size=6)
             
             shade_header_row(t3)
             compact_table_paragraphs(t3)
