@@ -1,4 +1,25 @@
 
+# ===== Background Template Helper (stable) =====
+import os
+from io import BytesIO
+from docx import Document as _WordDocument
+
+TEMPLATE_DOCX = "bg_template.docx"
+
+def make_document():
+    """
+    Return a Document created from bg_template.docx if present,
+    otherwise fall back to a blank Document.
+    """
+    try:
+        if os.path.exists(TEMPLATE_DOCX):
+            return _WordDocument(TEMPLATE_DOCX)
+    except Exception:
+        pass
+    return _WordDocument()
+# ===== End Background Template Helper =====
+
+
 # app_docx_borders_85pt_editable_v6_8_8_locked.py
 # Changes from 6.8.7:
 # - Rename & style headings:
@@ -248,121 +269,10 @@ def _apply_header_image(doc, image_path):
             run.add_picture(image_path, width=section.page_width)
     except Exception:
         pass
-
-from docx.oxml import OxmlElement as _OX, parse_xml as _parse_xml
-from docx.shared import Length as _Len
+# === End: background helper ===
 
 
-
-from docx.oxml.ns import qn as _qn
-from lxml import etree as _et
-
-def _apply_header_image_anchor(doc, image_path):
-    """
-    Insert bg image in header as a DrawingML ANCHOR with behindDoc=1, so it behaves like a true watermark
-    and does not push content down.
-    """
-    import os
-    if not os.path.exists(image_path):
-        return False
-    ok = False
-    for section in doc.sections:
-        header = section.header
-        header.is_linked_to_previous = False
-        section.header_distance = Pt(0)
-        # Clear header
-        for p in list(header.paragraphs):
-            p._element.getparent().remove(p._element)
-        # Add as inline, then convert to anchor
-        p = header.add_paragraph()
-        r = p.add_run()
-        r.add_picture(image_path, width=section.page_width, height=section.page_height)
-        # Convert inline to anchor with behindDoc=1
-        dr = r._r.findall('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing')
-        if not dr:
-            continue
-        drawing = dr[0]
-        inline = drawing.findall('.//{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}inline')
-        if not inline:
-            continue
-        inline = inline[0]
-        # Build anchor node
-        anchor = _et.Element('{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}anchor', nsmap=inline.nsmap)
-        # Required attributes
-        anchor.set('behindDoc', '1')
-        anchor.set('locked', '0')
-        anchor.set('layoutInCell', '1')
-        anchor.set('relativeHeight', '251658240')  # large z-order
-        anchor.set('simplePos', '0')
-        anchor.set('allowOverlap', '1')
-        # position: page top-left
-        # simplePos
-        sp = _et.SubElement(anchor, '{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}simplePos')
-        sp.set('x', '0'); sp.set('y', '0')
-        # positionH/V relative to page
-        posH = _et.SubElement(anchor, '{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}positionH')
-        posH.set('relativeFrom','page')
-        _et.SubElement(posH, '{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}posOffset').text = '0'
-        posV = _et.SubElement(anchor, '{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}positionV')
-        posV.set('relativeFrom','page')
-        _et.SubElement(posV, '{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}posOffset').text = '0'
-        # extent same as page
-        ext = _et.SubElement(anchor, '{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}extent')
-        ext.set('cx', str(int(section.page_width.emu)))
-        ext.set('cy', str(int(section.page_height.emu)))
-        _et.SubElement(anchor, '{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}wrapNone')
-        # Move inline's graphic into anchor
-        graphic = inline.findall('.//{http://schemas.openxmlformats.org/drawingml/2006/main}graphic')
-        if not graphic:
-            continue
-        drawing.remove(inline)
-        graphic = graphic[0]
-        anchor.append(graphic)
-        drawing.append(anchor)
-        ok = True
-    return ok
-
-def _apply_header_image_absolute(doc, image_path):
-    """Place bg image behind text using absolute VML shape; never shifts layout."""
-    try:
-        import os, base64
-        from pathlib import Path as _P
-        from docx.oxml import parse_xml as _parse_xml
-        from docx.shared import Pt as _Pt
-        if not os.path.exists(image_path):
-            return False
-        data = _P(image_path).read_bytes()
-        b64 = base64.b64encode(data).decode('ascii')
-        ok = False
-        for section in doc.sections:
-            section.header_distance = _Pt(0)
-            hdr = section.header
-            hdr.is_linked_to_previous = False
-            # clear header
-            for p in list(hdr.paragraphs):
-                p._element.getparent().remove(p._element)
-            p = hdr.add_paragraph()
-            w_pt = section.page_width.pt
-            h_pt = section.page_height.pt
-            vml = f"""<w:r xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
-     xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
-  <w:pict>
-    <v:shape id="bgVML" style="position:absolute;left:0pt;top:0pt;width:{w_pt}pt;height:{h_pt}pt;z-index:-1"
-             stroked="f" filled="t" o:allowoverlap="t">
-      <v:imagedata o:title="bg" src="data:image/jpeg;base64,{b64}"/>
-    </v:shape>
-  </w:pict>
-</w:r>"""
-            p._p.get_or_add_r()._r.append(_parse_xml(vml))
-            ok = True
-        return ok
-    except Exception as _e:
-        try:
-            import streamlit as st
-            st.caption(f"[warn] header image failed: {_e}")
-        except Exception:
-            pass
-        return False
+# --- Table header shading helper (match kundali bg) ---
 def shade_header_row(table, fill_hex="F3E2C7"):
     try:
         from docx.oxml import OxmlElement
@@ -425,7 +335,7 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 
 
 APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
-APP_BUILD_VERSION = "Trendy v17"
+APP_BUILD_VERSION = "Trendy TEMPLATE-FINAL"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 import os
 st.caption(f"Build: {APP_BUILD_VERSION} | BG found: {os.path.exists('bg.jpg')} | CWD: {os.getcwd()}")
@@ -1244,11 +1154,21 @@ def main():
             img_nav   = render_north_diamond(size_px=800, stroke=3)
 
             # DOCX
-            doc = Document()
+            doc = make_document()
             # page color disabled
-            _apply_header_image_anchor(doc, MRIDA_BG_IMAGE_DEFAULT)
+# (disabled by template)             _apply_header_image(doc, MRIDA_BG_IMAGE_DEFAULT)
             sec = doc.sections[0]
-            # header bg handled above; sec.page_width = Mm(210); sec.page_height = Mm(297)
+# (disabled by template)             # Add header background image (if available)
+            try:
+                import os
+                paths = [MRIDA_BG_IMAGE_DEFAULT, MRIDA_BG_IMAGE_FALLBACK]
+                for bgp in paths:
+                    if os.path.exists(bgp):
+                        for _sec in doc.sections:
+# (disabled by template)                             _mrida_add_header_bg(_sec, bgp)
+                        break
+            except Exception:
+                pass; sec.page_width = Mm(210); sec.page_height = Mm(297)
             margin = Mm(12); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(8); sec.bottom_margin = Mm(8)
 
             style = doc.styles['Normal']; style.font.name = LATIN_FONT; style.font.size = Pt(BASE_FONT_PT)
@@ -1270,7 +1190,7 @@ def main():
 
                 # Title
                 hdr3 = doc.add_paragraph(); hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI) — Trendy v17"); r3.bold = True; r3.font.size = Pt(13)
+                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI) — Trendy TEMPLATE-FINAL"); r3.bold = True; r3.font.size = Pt(13)
 
                 # Blank separator (small)
                 # hdr3.paragraph_format.space_after = Pt(2)
