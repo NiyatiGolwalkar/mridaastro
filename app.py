@@ -483,7 +483,7 @@ def rotated_house_labels(lagna_sign):
     return {"1":order[0],"2":order[1],"3":order[2],"4":order[3],"5":order[4],"6":order[5],"7":order[6],"8":order[7],"9":order[8],"10":order[9],"11":order[10],"12":order[11]}
 
 
-def kundali_with_planets(size_pt=190, lagna_sign=1, house_planets=None):
+def kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=1, house_planets=None):
     # Like kundali_w_p_with_centroid_labels but adds small side-by-side planet boxes below the number
     if house_planets is None:
         house_planets = {i: [] for i in range(1, 13)}
@@ -1061,6 +1061,10 @@ def main():
 
             outer = doc.add_table(rows=1, cols=2); outer.autofit=False
             right_width_in = 3.70; outer.columns[0].width = Inches(3.70); outer.columns[1].width = Inches(3.70)
+
+            CHART_W_PT = int(right_width_in * 72 - 4)
+            CHART_H_PT = int(CHART_W_PT * 0.80)
+            ROW_HEIGHT_PT = int(CHART_H_PT + 14)
             tbl = outer._tbl; tblPr = tbl.tblPr; tblBorders = OxmlElement('w:tblBorders')
             for edge in ('top','left','bottom','right','insideH','insideV'):
                 el = OxmlElement(f'w:{edge}'); el.set(DOCX_QN('w:val'),'single'); el.set(DOCX_QN('w:sz'),'6'); tblBorders.append(el)
@@ -1142,7 +1146,20 @@ def main():
             except Exception:
                 pass
             right = outer.rows[0].cells[1]
-            kt = right.add_table(rows=2, cols=1)
+            kt = right.add_table(rows=2, cols=1); kt.autofit=False; kt.columns[0].width = Inches(right_width_in)
+
+            # remove cell padding for chart table to let kundali touch the cell borders
+            try:
+                tcPr = kt._tbl.tblPr
+                tblCellMar = OxmlElement('w:tblCellMar')
+                for side in ('top','left','bottom','right'):
+                    el = OxmlElement(f'w:{side}')
+                    el.set(DOCX_QN('w:w'),'0')
+                    el.set(DOCX_QN('w:type'),'dxa')
+                    tblCellMar.append(el)
+                tcPr.append(tblCellMar)
+            except Exception:
+                pass
             # Compact right-cell paragraph spacing
             try:
                 for p in right.paragraphs:
@@ -1153,7 +1170,7 @@ def main():
             right.vertical_alignment = WD_ALIGN_VERTICAL.TOP
             kt.autofit = False
             kt.columns[0].width = Inches(right_width_in)
-            for row in kt.rows: row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY; row.height = Pt(240)
+            for row in kt.rows: row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY; row.height = Pt(ROW_HEIGHT_PT)
             
 
             cell1 = kt.rows[0].cells[0]; cap1 = cell1.add_paragraph("लग्न कुंडली")
@@ -1161,13 +1178,13 @@ def main():
             p1 = cell1.add_paragraph(); p1.paragraph_format.space_before = Pt(0); p1.paragraph_format.space_after = Pt(0)
             # Lagna chart with planets in single box per house
             rasi_house_planets = build_rasi_house_planets_marked(sidelons, lagna_sign)
-            p1._p.addnext(kundali_with_planets(size_pt=190, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
+            p1._p.addnext(kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
 
             cell2 = kt.rows[1].cells[0]; cap2 = cell2.add_paragraph("नवांश कुंडली")
             cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap2, size_pt=11, underline=True, bold=True); cap2.paragraph_format.space_before = Pt(2); cap2.paragraph_format.space_after = Pt(2)
             p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0)
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
-            p2._p.addnext(kundali_with_planets(size_pt=190, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
+            p2._p.addnext(kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
             # (प्रमुख बिंदु moved to row 2 of outer table)
             # Ensure content goes below chart shape
             cell2.add_paragraph("")
