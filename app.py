@@ -44,24 +44,16 @@ GAP_X_PT = 3        # horizontal gap between planet boxes (was 4)
 OFFSET_Y_PT = 10    # vertical offset below number box (was 12)
 
 # Options: "plain", "bordered", "shaded", "bordered_shaded"
-HOUSE_NUM_STYLE = "bordered_shaded"
+HOUSE_NUM_STYLE = "bordered_plain"
 HOUSE_NUM_BORDER_PT = 0.75
-HOUSE_NUM_SHADE = "#fff9d6"  # soft light-yellow
+HOUSE_NUM_SHADE = "#FFFFFF"  # soft light-yellow
 
 
 
 
 # --- Reliable cell shading (works in all Word views) ---
-def shade_cell(cell, fill_hex="E8FFF5"):
-    try:
-        tcPr = cell._tc.get_or_add_tcPr()
-        shd = OxmlElement('w:shd')
-        shd.set(DOCX_QN('w:val'), 'clear')
-        shd.set(DOCX_QN('w:color'), 'auto')
-        shd.set(DOCX_QN('w:fill'), fill_hex)
-        tcPr.append(shd)
-    except Exception:
-        pass
+def shade_cell(cell, fill_hex=None):
+    return
 
 # --- Page background helper (Word UI may hide it; cell shading above is more reliable) ---
 # def # set_page_background(doc, hex_color="E8FFF5")  # disabled so header bg image is visible:  # disabled to allow header bg image
@@ -230,7 +222,7 @@ def force_modernize_doc(doc):
         # Header row shading + center
         if len(t.rows) > 0:
             for c in t.rows[0].cells:
-                _force_shade_cell(c, "EFE4D2")
+                pass  # no header shading
         _force_table_borders(t)
         for r, row in enumerate(t.rows):
             for c in row.cells:
@@ -273,20 +265,8 @@ def _apply_header_image(doc, image_path):
 
 
 # --- Table header shading helper (match kundali bg) ---
-def shade_header_row(table, fill_hex="F3E2C7"):
-    try:
-        from docx.oxml import OxmlElement
-        hdr = table.rows[0]
-        for cell in hdr.cells:
-            tc = cell._tc
-            tcPr = tc.get_or_add_tcPr()
-            shd = OxmlElement('w:shd')
-            shd.set(DOCX_QN('w:val'), 'clear')
-            shd.set(DOCX_QN('w:color'), 'auto')
-            shd.set(DOCX_QN('w:fill'), fill_hex)
-            tcPr.append(shd)
-    except Exception:
-        pass
+def shade_header_row(table, fill_hex=None):
+    return
 
 # --- Page background helper ---
 # def # set_page_background(doc, hex_color="E8FFF5")  # disabled so header bg image is visible:  # disabled to allow header bg image
