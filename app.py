@@ -258,6 +258,7 @@ def _apply_header_image_absolute(doc, image_path):
     so it does NOT increase header height and the body text can flow on top.
     """
     import os, base64
+    from pathlib import Path
     if not os.path.exists(image_path):
         return
     data = Path(image_path).read_bytes()
@@ -349,7 +350,7 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 
 
 APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
-APP_BUILD_VERSION = "Trendy v10"
+APP_BUILD_VERSION = "Trendy v11"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 import os
 st.caption(f"Build: {APP_BUILD_VERSION} | BG found: {os.path.exists('bg.jpg')} | CWD: {os.getcwd()}")
@@ -1204,7 +1205,7 @@ def main():
 
                 # Title
                 hdr3 = doc.add_paragraph(); hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI) — Trendy v10"); r3.bold = True; r3.font.size = Pt(13)
+                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI) — Trendy v11"); r3.bold = True; r3.font.size = Pt(13)
 
                 # Blank separator (small)
                 # hdr3.paragraph_format.space_after = Pt(2)
