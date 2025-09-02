@@ -1156,19 +1156,9 @@ def main():
             # DOCX
             doc = make_document()
             # page color disabled
-# (disabled by template)             _apply_header_image(doc, MRIDA_BG_IMAGE_DEFAULT)
+
             sec = doc.sections[0]
 # (disabled by template)             # Add header background image (if available)
-            try:
-                import os
-                paths = [MRIDA_BG_IMAGE_DEFAULT, MRIDA_BG_IMAGE_FALLBACK]
-                for bgp in paths:
-                    if os.path.exists(bgp):
-                        for _sec in doc.sections:
-# (disabled by template)                             _mrida_add_header_bg(_sec, bgp)
-                        break
-            except Exception:
-                pass; sec.page_width = Mm(210); sec.page_height = Mm(297)
             margin = Mm(12); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(8); sec.bottom_margin = Mm(8)
 
             style = doc.styles['Normal']; style.font.name = LATIN_FONT; style.font.size = Pt(BASE_FONT_PT)
