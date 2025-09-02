@@ -278,11 +278,11 @@ def _apply_header_image_anchor(doc, image_path):
         r = p.add_run()
         r.add_picture(image_path, width=section.page_width, height=section.page_height)
         # Convert inline to anchor with behindDoc=1
-        dr = r._r.xpath('w:drawing', namespaces={'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main'})
+        dr = r._r.findall('.//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing')
         if not dr:
             continue
         drawing = dr[0]
-        inline = drawing.xpath('wp:inline', namespaces={'wp':'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing'})
+        inline = drawing.findall('.//{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}inline')
         if not inline:
             continue
         inline = inline[0]
@@ -310,7 +310,7 @@ def _apply_header_image_anchor(doc, image_path):
         _et.SubElement(anchor, '{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}extent').set('cx', str(int(section.page_width.emu))).set('cy', str(int(section.page_height.emu)))
         _et.SubElement(anchor, '{http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing}wrapNone')
         # Move inline's graphic into anchor
-        graphic = inline.xpath('a:graphic', namespaces={'a':'http://schemas.openxmlformats.org/drawingml/2006/main'})
+        graphic = inline.findall('.//{http://schemas.openxmlformats.org/drawingml/2006/main}graphic')
         if not graphic:
             continue
         drawing.remove(inline)
@@ -423,7 +423,7 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 
 
 APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
-APP_BUILD_VERSION = "Trendy v13"
+APP_BUILD_VERSION = "Trendy v14"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 import os
 st.caption(f"Build: {APP_BUILD_VERSION} | BG found: {os.path.exists('bg.jpg')} | CWD: {os.getcwd()}")
@@ -1278,7 +1278,7 @@ def main():
 
                 # Title
                 hdr3 = doc.add_paragraph(); hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI) — Trendy v13"); r3.bold = True; r3.font.size = Pt(13)
+                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI) — Trendy v14"); r3.bold = True; r3.font.size = Pt(13)
 
                 # Blank separator (small)
                 # hdr3.paragraph_format.space_after = Pt(2)
