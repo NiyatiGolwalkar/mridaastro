@@ -425,7 +425,7 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 
 
 APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
-APP_BUILD_VERSION = "Trendy v16"
+APP_BUILD_VERSION = "Trendy v17"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 import os
 st.caption(f"Build: {APP_BUILD_VERSION} | BG found: {os.path.exists('bg.jpg')} | CWD: {os.getcwd()}")
@@ -1246,19 +1246,9 @@ def main():
             # DOCX
             doc = Document()
             # page color disabled
-                        _apply_header_image_anchor(doc, MRIDA_BG_IMAGE_DEFAULT)
+            _apply_header_image_anchor(doc, MRIDA_BG_IMAGE_DEFAULT)
             sec = doc.sections[0]
-            # Add header background image (if available)
-            try:
-                import os
-                paths = [MRIDA_BG_IMAGE_DEFAULT, MRIDA_BG_IMAGE_FALLBACK]
-                for bgp in paths:
-                    if os.path.exists(bgp):
-                        for _sec in doc.sections:
-                            _apply_header_image_absolute(doc, bgp)  # replaced
-                        break
-            except Exception:
-                pass; sec.page_width = Mm(210); sec.page_height = Mm(297)
+            # header bg handled above; sec.page_width = Mm(210); sec.page_height = Mm(297)
             margin = Mm(12); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(8); sec.bottom_margin = Mm(8)
 
             style = doc.styles['Normal']; style.font.name = LATIN_FONT; style.font.size = Pt(BASE_FONT_PT)
@@ -1280,7 +1270,7 @@ def main():
 
                 # Title
                 hdr3 = doc.add_paragraph(); hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI) — Trendy v16"); r3.bold = True; r3.font.size = Pt(13)
+                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI) — Trendy v17"); r3.bold = True; r3.font.size = Pt(13)
 
                 # Blank separator (small)
                 # hdr3.paragraph_format.space_after = Pt(2)
