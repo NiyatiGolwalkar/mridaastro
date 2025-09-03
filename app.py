@@ -554,7 +554,7 @@ def kundali_with_planets(size_pt=None, height_pt=None, lagna_sign=1, house_plane
         left, top = nl, nt
         occupied_rects.append({'left': left, 'top': top, 'right': left + num_w, 'bottom': top + num_h});
         num_boxes.append(f'''
-        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:80" fillcolor="#ffffff" strokecolor="none" strokeweight="0pt">
+        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:80" strokecolor="none" strokeweight="0pt">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
@@ -597,7 +597,7 @@ def kundali_with_planets(size_pt=None, height_pt=None, lagna_sign=1, house_plane
                 ph = p_h - (1 if edge_touch else 0)
                 left_pl = row_left + c * (pw + gap_x)
                 box_xml = (
-                    f"<v:rect style=\"position:absolute;left:{left_pl}pt;top:{top_box}pt;width:{pw}pt;height:{ph}pt;z-index:6\" strokecolor=\"none\" fillcolor=\"#ffffff\">"
+                    f"<v:rect style=\"position:absolute;left:{left_pl}pt;top:{top_box}pt;width:{pw}pt;height:{ph}pt;z-index:6\" strokecolor=\"none\">"
                     + "<v:textbox inset=\"0,0,0,0\">"
                     + "<w:txbxContent xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
                     + f"<w:p><w:pPr><w:jc w:val=\"center\"/></w:pPr><w:r><w:t>{_xml_text(label)}</w:t></w:r></w:p>"
@@ -626,7 +626,7 @@ def kundali_with_planets(size_pt=None, height_pt=None, lagna_sign=1, house_plane
                     badge_left = left_pl + pw - badge_w + 0.5
                     badge_top  = top_box - 2
                     badge_xml = (
-                        f"<v:rect style=\"position:absolute;left:{badge_left}pt;top:{badge_top}pt;width:{badge_w}pt;height:{badge_h}pt;z-index:8\" fillcolor=\"#ffffff\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
+                        f"<v:rect style=\"position:absolute;left:{badge_left}pt;top:{badge_top}pt;width:{badge_w}pt;height:{badge_h}pt;z-index:8\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
                     )
                     planet_boxes.append(badge_xml)
     # Compose shapes after processing all houses
@@ -1080,7 +1080,7 @@ def main():
             right_width_in = 3.60; outer.columns[0].width = Inches(3.60); outer.columns[1].width = Inches(3.60)
 
             CHART_W_PT = int(right_width_in * 72 - 8)
-            CHART_H_PT = int(CHART_W_PT * 0.66)
+            CHART_H_PT = int(CHART_W_PT * 0.62)
             ROW_HEIGHT_PT = int(CHART_H_PT + 18)
             tbl = outer._tbl; tblPr = tbl.tblPr; tblBorders = OxmlElement('w:tblBorders')
             for edge in ('top','left','bottom','right','insideH','insideV'):
