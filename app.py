@@ -406,8 +406,8 @@ def kp_sublord(lon_sid):
 def geocode(place, api_key):
     if not api_key: raise RuntimeError("Geoapify key missing. Add GEOAPIFY_API_KEY in Secrets.")
     base="https://api.geoapify.com/v1/geocode/search?"
-    if not place.strip():
-        raise RuntimeError("Place is empty. Enter City, State, Country.")
+    if not _place_is_valid(place):
+        raise RuntimeError("Place format must be City, State, Country.")
     q = urllib.parse.urlencode({"text":place, "format":"json", "limit":1, "apiKey":api_key})
     with urllib.request.urlopen(base+q, timeout=15) as r: j = json.loads(r.read().decode())
     if j.get("results"):
@@ -983,6 +983,13 @@ def main():
         tob = st.time_input('Time of Birth', step=datetime.timedelta(minutes=1), help='24-hour format (HH:MM)')
         place = st.text_input("Place of Birth (City, State, Country)", help="Tip: City not found? Type manually — use 'City, State, Country'.")
         tz_override = st.text_input("UTC offset override (optional, e.g., 5.5)", "")
+    # Require City, State, Country
+    def _place_is_valid(s: str):
+        parts = [p.strip() for p in (s or '').split(',') if p.strip()]
+        return len(parts) >= 3
+    if not _place_is_valid(place):
+        st.warning("Please enter **City, State, Country**. Example: 'Raipur, Chhattisgarh, India'.")
+        st.stop()
     # Validation: require place before any API calls
     if not place.strip():
         st.info("Please enter **Place of Birth (City, State, Country)** to enable the download.")
