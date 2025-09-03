@@ -1267,10 +1267,5 @@ if True:
         except Exception:
             pass
         st.download_button("⬇️ Download Kundali (DOCX)", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
-
-            
-        except Exception as e:
-            st.error(str(e))
-
 if __name__=='__main__':
     main()
