@@ -127,6 +127,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import pytz
 import streamlit as st
+BG_IMAGE_URL = "https://raw.githubusercontent.com/NiyatiGolwalkar/kundali-streamlit/main/assets/ganesha_bg.png"
 import swisseph as swe
 from timezonefinder import TimezoneFinder
 
@@ -228,8 +229,10 @@ def inject_background(img_path: str, top_padding: int = 210):
             .block-container {{ padding-top: {top_padding}px !important; }}
             
 /* Make all field labels bold */
-[data-testid="stWidgetLabel"] { font-weight: 700 !important; }
-
+[data-testid="stWidgetLabel"] p,
+[data-testid="stWidgetLabel"],
+label,
+.stSelectbox label, .stTextInput label, .stDateInput label, .stTimeInput label { font-weight: 700 !important; }
 </style>
             """, unsafe_allow_html=True
         )
