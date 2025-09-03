@@ -978,7 +978,7 @@ def main():
     with col0:
         name = st.text_input("Name")
         dob = st.date_input("Date of Birth", min_value=datetime.date(1800,1,1), max_value=datetime.date(2100,12,31))
-        tob = st.time_input(\"Time of Birth\" , step=datetime.timedelta(minutes=1, help=\"24-hour format (HH:MM)\"))
+        tob = st.time_input('Time of Birth', step=datetime.timedelta(minutes=1), help='24-hour format (HH:MM)'), help='24-hour format (HH:MM)')\"))
         place = st.text_input("Place of Birth (City, State, Country)", help="Tip: City not found? Type manually — use 'City, State, Country'.")
         tz_override = st.text_input("UTC offset override (optional, e.g., 5.5)", "")
     with col1:
