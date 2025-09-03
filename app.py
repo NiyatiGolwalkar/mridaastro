@@ -198,15 +198,17 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 # ---- End helpers ----
 
 
-APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
+APP_TITLE = 'MRIDAASTRO'
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 
 # --- Background image single-source block ---
 BG_IMAGE = "assets/ganesha_bg.png"  # change this path to swap background
+CANDIDATE_BG = [BG_IMAGE, "bg1.jpg", "bg.png", "assets/bg1.jpg"]
 
 def inject_background(img_path: str, top_padding: int = 210):
     try:
-        data = Path(img_path).read_bytes()
+        path = next((Path(p) for p in CANDIDATE_BG if Path(p).exists()), Path(img_path))
+        data = path.read_bytes()
         b64 = base64.b64encode(data).decode()
         st.markdown(
             f"""
@@ -228,8 +230,28 @@ def inject_background(img_path: str, top_padding: int = 210):
         pass
 # --- End background block ---
 
-inject_background(BG_IMAGE)
+# --- Brand block below the shloka ---
+TAGLINE = "In the light of the divine, let your soul journey shine."
 
+def show_brand():
+    st.markdown(
+        """
+        <style>
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Crimson+Text:ital@1&display=swap');
+        .app-brand h1 { font-family: 'Playfair Display', serif; font-weight:700; font-size: 2rem; margin: 0 0 .1rem 0; letter-spacing:.5px; }
+        .app-brand h2 { font-family: 'Crimson Text', serif; font-style: italic; font-size: 1.1rem; margin:.25rem 0 1.0rem 0; }
+        </style>
+        <div class='app-brand'>
+          <h1>MRIDAASTRO</h1>
+          <h2>""" + TAGLINE + """</h2>
+        </div>
+        """, unsafe_allow_html=True
+    )
+# --- End brand block ---
+
+
+inject_background(BG_IMAGE)
+show_brand()
 AYANAMSHA_VAL = swe.SIDM_LAHIRI
 YEAR_DAYS     = 365.2422
 
