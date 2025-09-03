@@ -1077,36 +1077,26 @@ if True:
         
         
         # ===== Report Header Block (exact lines) =====
-        try:
-            # MRIDAASTRO
-            hdr1 = doc.add_paragraph(); hdr1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            r = hdr1.add_run("MRIDAASTRO"); r.font.bold = True; r.font.small_caps = True; r.font.size = Pt(16)
-    
-            # Tagline
-            hdr2 = doc.add_paragraph(); hdr2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            r2 = hdr2.add_run("In the light of the divine, let your soul journey shine."); r2.italic = True; r2.font.size = Pt(10)
-    
-            # Title
-            hdr3 = doc.add_paragraph(); hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI)"); r3.bold = True; r3.font.size = Pt(13)
-    
-            # Blank separator (small)
-            # hdr3.paragraph_format.space_after = Pt(2)
-    
-            # Name
-            hdr4 = doc.add_paragraph(); hdr4.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            r4 = hdr4.add_run("Niyati Niraj Golwalkar"); r4.font.size = Pt(10); r4.bold = True
-    
-            # Role line
-            hdr5 = doc.add_paragraph(); hdr5.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            r5 = hdr5.add_run("Astrologer • Sound & Mantra Healer"); r5.font.size = Pt(9.5)
-    
-            # Contact line
-            hdr6 = doc.add_paragraph(); hdr6.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            r6 = hdr6.add_run("Phone: +91 9302413816  |  Electronic City Phase 1, Bangalore, India"); r6.font.size = Pt(9.5)
-        except Exception:
-            pass
+        # (clean, properly indented — no nested try/except)
+        hdr1 = doc.add_paragraph(); hdr1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r = hdr1.add_run('MRIDAASTRO'); r.font.bold = True; r.font.small_caps = True; r.font.size = Pt(16)
+        
+        hdr2 = doc.add_paragraph(); hdr2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r2 = hdr2.add_run('In the light of the divine, let your soul journey shine.'); r2.italic = True; r2.font.size = Pt(10)
+        
+        hdr3 = doc.add_paragraph(); hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r3 = hdr3.add_run('PERSONAL HOROSCOPE (JANMA KUNDALI)'); r3.bold = True; r3.font.size = Pt(13)
+        
+        hdr4 = doc.add_paragraph(); hdr4.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r4 = hdr4.add_run('Niyati Niraj Golwalkar'); r4.font.size = Pt(10); r4.bold = True
+        
+        hdr5 = doc.add_paragraph(); hdr5.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r5 = hdr5.add_run('Astrologer • Sound & Mantra Healer'); r5.font.size = Pt(9.5)
+        
+        hdr6 = doc.add_paragraph(); hdr6.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r6 = hdr6.add_run('Phone: +91 9302413816  |  Electronic City Phase 1, Bangalore, India'); r6.font.size = Pt(9.5)
         # ===== End Header Block (exact lines) =====
+
     # ===== End Header Block (simplified & robust) =====
     # ===== End Header Block (safe) =====
     
@@ -1258,14 +1248,16 @@ if True:
         cell2.add_paragraph("")
         cell2.add_paragraph("")
         # (Pramukh Bindu moved above charts)
-    
         with st.spinner('Generating Kundali…'):
             out = BytesIO(); doc.save(out); out.seek(0)
+        st.success('Kundali ready ✓')
         try:
-            st.success('Kundali ready ✓')
             st.toast('Kundali ready ✓')
         except Exception:
             pass
         st.download_button("⬇️ Download Kundali (DOCX)", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
+
+    except Exception as e:
+        st.error(f'Error while generating Kundali: {e}')
 if __name__=='__main__':
     main()
