@@ -240,11 +240,6 @@ TAGLINE = "In the light of the divine, let your soul journey shine."
 def show_brand():
     st.markdown(
         """
-        <style>
-        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Crimson+Text:ital@1&display=swap');
-        .app-brand h1 { font-family: 'Playfair Display', serif; font-weight:700; font-size: 2rem; margin: 0 0 .1rem 0; letter-spacing:.5px; }
-        .app-brand h2 { font-family: 'Crimson Text', serif; font-style: italic; font-size: 1.1rem; margin:.25rem 0 1.0rem 0; }
-        </style>
         <div class='app-brand'>
           <h1>MRIDAASTRO</h1>
           <h2>""" + TAGLINE + """</h2>
