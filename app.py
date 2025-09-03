@@ -226,7 +226,11 @@ def inject_background(img_path: str, top_padding: int = 210):
                 pointer-events: none; opacity: 1;
             }}
             .block-container {{ padding-top: {top_padding}px !important; }}
-            </style>
+            
+/* Make all field labels bold */
+[data-testid="stWidgetLabel"] { font-weight: 700 !important; }
+
+</style>
             """, unsafe_allow_html=True
         )
     except Exception:
