@@ -34,10 +34,10 @@ ONE_PAGE = True
 # Sizing (pt) — tuned smaller to reduce white space
 NUM_W_PT = 10       # house number box width (was 12)
 NUM_H_PT = 12       # house number box height (was 14)
-PLANET_W_PT = 24    # planet label box width (was 16)
-PLANET_H_PT = 18    # planet label box height (was 14)
+PLANET_W_PT = 20    # planet label box width (was 16)
+PLANET_H_PT = 16    # planet label box height (was 14)
 GAP_X_PT = 3        # horizontal gap between planet boxes (was 4)
-OFFSET_Y_PT = 12    # vertical offset below number box (was 12)
+OFFSET_Y_PT = 10    # vertical offset below number box (was 12)
 
 # Options: "plain", "bordered", "shaded", "bordered_shaded"
 HOUSE_NUM_STYLE = "bordered"
@@ -544,7 +544,7 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
         left, top = nl, nt
         occupied_rects.append({'left': left, 'top': top, 'right': left + num_w, 'bottom': top + num_h});
         num_boxes.append(f'''
-        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:80" strokecolor="none" strokeweight="0pt">
+        <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:80" fillcolor="#ffffff" strokecolor="none" strokeweight="0pt">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
               <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
@@ -616,7 +616,7 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
                     badge_left = left_pl + pw - badge_w + 0.5
                     badge_top  = top_box - 2
                     badge_xml = (
-                        f"<v:rect style=\"position:absolute;left:{badge_left}pt;top:{badge_top}pt;width:{badge_w}pt;height:{badge_h}pt;z-index:8\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
+                        f"<v:rect style=\"position:absolute;left:{badge_left}pt;top:{badge_top}pt;width:{badge_w}pt;height:{badge_h}pt;z-index:8\" fillcolor=\"#ffffff\" strokecolor=\"black\" strokeweight=\"0.75pt\"/>"
                     )
                     planet_boxes.append(badge_xml)
     # Compose shapes after processing all houses
@@ -624,14 +624,15 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
 
     xml = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
-      <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
-          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
-          <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:2" from="{R},{S/2}" to="{S/2},{B}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:2" from="{S/2},{B}" to="{L},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:2" from="{L},{S/2}" to="{S/2},{T}" strokecolor="black" strokeweight="1.5pt"/>
+      <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
+        <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
+          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.25pt" fillcolor="#fff2cc"/>
+          <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.25pt"/>
+          <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.25pt"/>
+          <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.25pt"/>
+          <v:line style="position:absolute;z-index:2" from="{R},{S/2}" to="{S/2},{B}" strokecolor="black" strokeweight="1.25pt"/>
+          <v:line style="position:absolute;z-index:2" from="{S/2},{B}" to="{L},{S/2}" strokecolor="black" strokeweight="1.25pt"/>
+          <v:line style="position:absolute;z-index:2" from="{L},{S/2}" to="{S/2},{T}" strokecolor="black" strokeweight="1.25pt"/>
           {boxes_xml}
         </v:group>
       </w:pict>
@@ -697,14 +698,15 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
     boxes_xml = "\\n".join(text_boxes)
     xml = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
-      <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
-          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
-          <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:2" from="{R},{S/2}" to="{S/2},{B}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:2" from="{S/2},{B}" to="{L},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
-          <v:line style="position:absolute;z-index:2" from="{L},{S/2}" to="{S/2},{T}" strokecolor="black" strokeweight="1.5pt"/>
+      <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
+        <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
+          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.25pt" fillcolor="#fff2cc"/>
+          <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.25pt"/>
+          <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.25pt"/>
+          <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.25pt"/>
+          <v:line style="position:absolute;z-index:2" from="{R},{S/2}" to="{S/2},{B}" strokecolor="black" strokeweight="1.25pt"/>
+          <v:line style="position:absolute;z-index:2" from="{S/2},{B}" to="{L},{S/2}" strokecolor="black" strokeweight="1.25pt"/>
+          <v:line style="position:absolute;z-index:2" from="{L},{S/2}" to="{S/2},{T}" strokecolor="black" strokeweight="1.25pt"/>
           {boxes_xml}
         </v:group>
       </w:pict>
@@ -737,14 +739,15 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
         </v:rect>''')
     boxes_xml = "\\n".join(boxes)
     xml = f'''<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
-        <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
-            <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
-            <v:line style="position:absolute;z-index:2" from="0,0" to="{S},{S}" strokecolor="black" strokeweight="1.5pt"/>
-            <v:line style="position:absolute;z-index:2" from="{S},0" to="0,{S}" strokecolor="black" strokeweight="1.5pt"/>
-            <v:line style="position:absolute;z-index:2" from="{S/2},0" to="{S},{S/2}" strokecolor="black" strokeweight="1.5pt"/>
-            <v:line style="position:absolute;z-index:2" from="{S},{S/2}" to="{S/2},{S}" strokecolor="black" strokeweight="1.5pt"/>
-            <v:line style="position:absolute;z-index:2" from="{S/2},{S}" to="0,{S/2}" strokecolor="black" strokeweight="1.5pt"/>
-            <v:line style="position:absolute;z-index:2" from="0,{S/2}" to="{S/2},0" strokecolor="black" strokeweight="1.5pt"/>
+        <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
+          <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
+            <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.25pt" fillcolor="#fff2cc"/>
+            <v:line style="position:absolute;z-index:2" from="0,0" to="{S},{S}" strokecolor="black" strokeweight="1.25pt"/>
+            <v:line style="position:absolute;z-index:2" from="{S},0" to="0,{S}" strokecolor="black" strokeweight="1.25pt"/>
+            <v:line style="position:absolute;z-index:2" from="{S/2},0" to="{S},{S/2}" strokecolor="black" strokeweight="1.25pt"/>
+            <v:line style="position:absolute;z-index:2" from="{S},{S/2}" to="{S/2},{S}" strokecolor="black" strokeweight="1.25pt"/>
+            <v:line style="position:absolute;z-index:2" from="{S/2},{S}" to="0,{S/2}" strokecolor="black" strokeweight="1.25pt"/>
+            <v:line style="position:absolute;z-index:2" from="0,{S/2}" to="{S/2},0" strokecolor="black" strokeweight="1.25pt"/>
             {boxes_xml}
           </v:group>
         </w:pict></w:r></w:p>'''
@@ -1064,10 +1067,10 @@ def main():
 
 
             outer = doc.add_table(rows=1, cols=2); outer.autofit=False
-            right_width_in = 3.60; outer.columns[0].width = Inches(3.60); outer.columns[1].width = Inches(3.60)
+            right_width_in = 3.70; outer.columns[0].width = Inches(3.70); outer.columns[1].width = Inches(3.70)
 
-            CHART_W_PT = int(right_width_in * 72 - 8)
-            CHART_H_PT = int(CHART_W_PT * 0.62)
+            CHART_W_PT = int(right_width_in * 72 - 10)
+            CHART_H_PT = int(CHART_W_PT * 0.80)
             ROW_HEIGHT_PT = int(CHART_H_PT + 14)
             tbl = outer._tbl; tblPr = tbl.tblPr; tblBorders = OxmlElement('w:tblBorders')
             for edge in ('top','left','bottom','right','insideH','insideV'):
@@ -1119,27 +1122,6 @@ def main():
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT); add_table_borders(t1, size=6)
             set_col_widths(t1, [0.70, 0.55, 0.85, 0.80, 0.80])
-
-            # ===== Right column: Lagna & Navamsha charts (rectangular, non-overlapping) =====
-            right = outer.rows[0].cells[1]
-            # Build house->planet maps with status flags
-            rasi_house_pl = build_rasi_house_planets_marked(sidelons, lagna_sign)
-            nav_house_pl  = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
-
-            # Lagna title
-            p_lag = right.add_paragraph("लग्न कुंडली"); _apply_hindi_caption_style(p_lag, size_pt=11, underline=True, bold=True)
-            # Insert Lagna chart
-            p = right.add_paragraph()
-            p._p.append(kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=lagna_sign, house_planets=rasi_house_pl))
-            # Spacer
-            sp = right.add_paragraph(""); sp.paragraph_format.space_after = Pt(2)
-
-            # Navamsha title
-            p_nav = right.add_paragraph("नवांश कुंडली"); _apply_hindi_caption_style(p_nav, size_pt=11, underline=True, bold=True)
-            # Insert Navamsha chart
-            p2 = right.add_paragraph()
-            p2._p.append(kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=nav_lagna_sign, house_planets=nav_house_pl))
-            # ===== End right column charts =====
             # Left align ONLY the header cell of the last column (उप‑नक्षत्र / Sublord)
             for p in t1.rows[0].cells[-1].paragraphs:
                 p.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -1171,6 +1153,24 @@ def main():
             except Exception:
                 pass
             right = outer.rows[0].cells[1]
+
+            # Ensure the OUTER right cell has zero inner margins so the kundali touches the cell borders
+            try:
+                right_tcPr = right._tc.get_or_add_tcPr()
+                from docx.oxml import OxmlElement
+                from docx.oxml.ns import qn as DOCX_QN
+                right_tcMar = right_tcPr.find('./w:tcMar')
+                if right_tcMar is None:
+                    right_tcMar = OxmlElement('w:tcMar')
+                    right_tcPr.append(right_tcMar)
+                for side in ('top','left','bottom','right'):
+                    el = OxmlElement(f'w:{side}')
+                    el.set(DOCX_QN('w:w'),'0')
+                    el.set(DOCX_QN('w:type'),'dxa')
+                    right_tcMar.append(el)
+            except Exception:
+                pass
+
             kt = right.add_table(rows=2, cols=1); kt.autofit=False; kt.columns[0].width = Inches(right_width_in)
 
             # remove cell padding for chart table to let kundali touch the cell borders
