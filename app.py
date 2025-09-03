@@ -4,15 +4,16 @@ from datetime import time, date
 
 st.set_page_config(page_title="MRIDAASTRO", page_icon="🕉️", layout="wide")
 
-# ======= Slimmer inputs, centered button, italic tagline, no page scroll =======
+# ======= Slim inputs, centered button, italic tagline, no page scroll =======
 BG_IMAGE_URL = "https://raw.githubusercontent.com/NiyatiGolwalkar/kundali-streamlit/main/assets/ganesha_bg.png"
 
 # Layout knobs
-SAFE_TOP   = "0px"          # keep 0 to avoid page scroll
-MAX_WIDTH  = "940px"        # total content width (~about half screen on large displays)
-INPUT_FONT = "0.95rem"      # input font size
-INPUT_PAD_V = "6px"         # input vertical padding (height)
-INPUT_PAD_H = "10px"        # input horizontal padding
+SAFE_TOP     = "0px"          # keep 0 to avoid page scroll
+MAX_WIDTH    = "940px"        # total content width (~about half screen on large displays)
+INPUT_FONT   = "0.95rem"      # input font size
+LABEL_FONT   = "1.08rem"      # field label font size (bolder + larger)
+INPUT_PAD_V  = "6px"          # input vertical padding (height)
+INPUT_PAD_H  = "10px"         # input horizontal padding
 
 st.markdown(f"""
 <style>
@@ -35,14 +36,17 @@ html, body {{ height: 100%; overflow: hidden; }}
 [data-testid="stAppViewContainer"] {{ overflow: hidden; }}
 
 /* Content container: fixed top + centered with max width (reduces textbox width) */
-:root {{ --safe-top: {SAFE_TOP}; }}
+:root {{
+  --safe-top: {SAFE_TOP};
+  --label-font: {LABEL_FONT};
+}}
 .block-container {{
   margin-top: var(--safe-top) !important;
   height: calc(100vh - var(--safe-top));
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: .75rem;
+  gap: .65rem;
   padding: .5rem 1rem .5rem 1rem !important;
 
   max-width: {MAX_WIDTH};                     /* << controls overall width */
@@ -55,20 +59,20 @@ html, body {{ height: 100%; overflow: hidden; }}
 .app-brand {{ text-align:center; line-height: 1.1; }}
 .app-brand h1 {{
   font-family: "Playfair Display", serif;
-  font-weight: 800; font-size: 2.2rem; margin: .15rem 0 .15rem 0; letter-spacing:.4px;
+  font-weight: 800; font-size: 2.2rem; margin: .15rem 0 .05rem 0; letter-spacing:.4px;
   text-transform: uppercase;
 }}
 .app-brand h2 {{
   font-family: "Crimson Text", serif;
-  font-weight: 700; font-style: italic; font-size: 1.05rem; margin: .05rem 0 .5rem 0;
+  font-weight: 700; font-style: italic; font-size: 1.05rem; margin: 0 0 .35rem 0;
 }}
 
-/* Bold labels & compact spacing */
+/* Bold labels & bigger size */
 [data-testid="stWidgetLabel"] p,
 [data-testid="stWidgetLabel"],
-label {{ font-weight: 700 !important; margin-bottom: .25rem !important; }}
+label {{ font-weight: 700 !important; margin-bottom: .25rem !important; font-size: var(--label-font) !important; }}
 
-/* Make inputs slimmer (height) & slightly smaller text */
+/* Make inputs readable on bg (value not visible issue) */
 .stTextInput input,
 .stDateInput input,
 .stTimeInput input {{
@@ -77,7 +81,15 @@ label {{ font-weight: 700 !important; margin-bottom: .25rem !important; }}
   padding-left: {INPUT_PAD_H} !important;
   padding-right: {INPUT_PAD_H} !important;
   font-size: {INPUT_FONT} !important;
+  color: #111 !important;
+  background-color: rgba(255,255,255,0.95) !important;
+  border: 1px solid rgba(0,0,0,.08) !important;
+  border-radius: 10px !important;
 }}
+/* Placeholder color */
+.stTextInput input::placeholder,
+.stDateInput input::placeholder,
+.stTimeInput input::placeholder {{ color: #666 !important; }}
 
 /* Select box control (BaseWeb) */
 [data-baseweb="select"] > div {{
@@ -85,13 +97,15 @@ label {{ font-weight: 700 !important; margin-bottom: .25rem !important; }}
   padding-top: {INPUT_PAD_V} !important;
   padding-bottom: {INPUT_PAD_V} !important;
   font-size: {INPUT_FONT} !important;
+  color: #111 !important;
+  background-color: rgba(255,255,255,0.95) !important;
+  border: 1px solid rgba(0,0,0,.08) !important;
+  border-radius: 10px !important;
 }}
 [data-baseweb="select"] span {{ font-size: {INPUT_FONT} !important; }}
 
 /* Inputs spacing */
-.stTextInput, .stDateInput, .stTimeInput, .stSelectbox {{
-  margin-bottom: .55rem !important;
-}}
+.stTextInput, .stDateInput, .stTimeInput, .stSelectbox {{ margin-bottom: .55rem !important; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -116,7 +130,10 @@ with c3:
 with c4:
     pob = st.text_input("Place of Birth (City, State, Country)", "")
 
-utc = st.text_input("UTC offset override (optional, e.g., 5.5)", "")
+# UTC — half width (left column only)
+u1, u2 = st.columns(2)
+with u1:
+    utc = st.text_input("UTC offset override (optional, e.g., 5.5)", "")
 
 # ---- Centered Generate button ----
 left, mid, right = st.columns([1,1,1])
