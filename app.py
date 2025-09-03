@@ -1158,7 +1158,6 @@ def main():
             try:
                 right_tcPr = right._tc.get_or_add_tcPr()
                 from docx.oxml import OxmlElement
-                from docx.oxml.ns import qn
                 right_tcMar = right_tcPr.find('./w:tcMar')
                 if right_tcMar is None:
                     right_tcMar = OxmlElement('w:tcMar')
