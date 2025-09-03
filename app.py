@@ -126,39 +126,27 @@ import pytz
 import streamlit as st
 
 
-# ==== Background image (added; no other logic changed) ====
-def _apply_bg_image():
-    import os, base64, streamlit as st
-    candidates = [
-        "assets/ganesha_bg.png",
-        "assets/bg1.jpg",
-        "assets/bg.png",
-        "bg1.jpg",
-        "bg.png",
-    ]
-    img_path = next((p for p in candidates if os.path.exists(p)), None)
-    if not img_path:
-        return
+# === App background (minimal, no logic changes) ===
+def _apply_bg():
     try:
-        with open(img_path, "rb") as f:
-            b64 = base64.b64encode(f.read()).decode("utf-8")
-        ext = "png" if img_path.lower().endswith("png") else "jpg"
-        st.markdown(f\"\"\"
-        <style>
-        /* Ensure Streamlit containers are transparent so our bg shows */
-        .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"], [data-testid="stToolbar"] {{
-            background: transparent !important;
-        }}
-        /* Apply fixed full-page background */
-        html, body {{
-            height: 100%;
-            background: url("data:image/{ext};base64,{b64}") center top / cover no-repeat fixed !important;
-        }}
-        </style>
-        \"\"\", unsafe_allow_html=True)
-    except Exception as _bg_exc:
+        import streamlit as st, base64
+        from pathlib import Path
+        p = Path("assets/ganesha_bg.png")
+        if p.exists():
+            b64 = base64.b64encode(p.read_bytes()).decode()
+            css = f"""
+            <style>
+            [data-testid="stAppViewContainer"] {{
+                background: url('data:image/png;base64,{b64}') no-repeat center top fixed;
+                background-size: cover;
+            }}
+            </style>
+            """
+            st.markdown(css, unsafe_allow_html=True)
+    except Exception:
         pass
-# ==== End background image ====
+# === End App background ===
+
 
 import swisseph as swe
 from timezonefinder import TimezoneFinder
@@ -235,7 +223,7 @@ APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 
 
-_apply_bg_image()
+_apply_bg()
 AYANAMSHA_VAL = swe.SIDM_LAHIRI
 YEAR_DAYS     = 365.2422
 
