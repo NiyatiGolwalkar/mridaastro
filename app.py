@@ -141,7 +141,6 @@ def _clamp_in_bbox(left, top, w, h, bbox, pad):
 from docx import Document
 from docx.enum.table import WD_ROW_HEIGHT_RULE, WD_ALIGN_VERTICAL
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml import OxmlElement
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
 from docx.shared import Inches, Mm, Pt
@@ -155,7 +154,6 @@ def shade_header_row(table, fill_hex="FFFFFF"):
 
 def set_page_background(doc, hex_color):
     try:
-        from docx.oxml import OxmlElement
         bg = OxmlElement('w:background')
         bg.set(qn('w:color'), hex_color)
         doc.element.insert(0, bg)
@@ -1157,7 +1155,6 @@ def main():
             # Ensure the OUTER right cell has zero inner margins so the kundali touches the cell borders
             try:
                 right_tcPr = right._tc.get_or_add_tcPr()
-                from docx.oxml import OxmlElement
                 right_tcMar = right_tcPr.find('./w:tcMar')
                 if right_tcMar is None:
                     right_tcMar = OxmlElement('w:tcMar')
