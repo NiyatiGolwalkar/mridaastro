@@ -993,8 +993,14 @@ def main():
     col0, col1 = st.columns([1.2, 1])
     row1_col1, row1_col2 = st.columns(2)
 # Back-compat alias to avoid NameError if old code refers to 'rowl_col1/2'
+try:
+    row1_col1
+    row1_col2
+except NameError:
+    row1_col1, row1_col2 = st.columns(2)
 rowl_col1 = row1_col1
 rowl_col2 = row1_col2
+
 with row1_col1:
     name = st.text_input('Name')
 with row1_col2:
