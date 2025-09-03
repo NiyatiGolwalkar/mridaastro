@@ -6,6 +6,9 @@ from docx import Document as _WordDocument
 
 TEMPLATE_DOCX = "bg_template.docx"
 
+# UI: set to True to show on-screen tables/preview (dev only)
+PREVIEW_MODE = False
+
 def make_document():
     try:
         if os.path.exists(TEMPLATE_DOCX):
@@ -956,7 +959,7 @@ def main():
 
     api_key = st.secrets.get("GEOAPIFY_API_KEY","")
 
-    if st.button("Generate DOCX"):
+    if True:
         try:
             lat, lon, disp = geocode(place, api_key)
             dt_local = datetime.datetime.combine(dob, tob).replace(tzinfo=None)
@@ -1213,23 +1216,9 @@ def main():
             # (Pramukh Bindu moved above charts)
 
             out = BytesIO(); doc.save(out); out.seek(0)
-            st.download_button("⬇️ Download DOCX", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
+            st.download_button("⬇️ Download Kundali (DOCX)", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
 
-            # ---- Previews with compact PNGs ----
-            lc, rc = st.columns([1.2, 0.8])
-            with lc:
-                st.subheader("ग्रह स्थिति")
-                st.dataframe(df_positions.reset_index(drop=True), use_container_width=True, hide_index=True)
-                st.subheader("विंशोत्तरी महादशा")
-                st.dataframe(df_md.reset_index(drop=True), use_container_width=True, hide_index=True)
-                st.subheader("महादशा / अंतरदशा")
-                st.dataframe(df_an.reset_index(drop=True), use_container_width=True, hide_index=True)
-            with rc:
-                st.subheader("Lagna Kundali (Preview)")
-                st.image(img_lagna, use_container_width=True)
-                st.subheader("Navamsa Kundali (Preview)")
-                st.image(img_nav, use_container_width=True)
-
+            
         except Exception as e:
             st.error(str(e))
 
