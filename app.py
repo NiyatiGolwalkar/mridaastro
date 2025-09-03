@@ -216,25 +216,9 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 # ---- End helpers ----
 
 
+APP_TITLE = "MRIDAASTRO"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 
-
-
-
-# ---- Brand header (centered) ----
-st.markdown(
-    """
-    <div style="text-align:center; margin-top:0.25rem;">
-        <h1 style="margin:0 0 0.4rem 0; font-weight:800; letter-spacing:1px;">
-            MRIDAASTRO
-        </h1>
-        <div style="font-style:italic; font-size:1.1rem;">
-            In the light of the divine, let your soul journey shine
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
 
 _apply_bg()
 AYANAMSHA_VAL = swe.SIDM_LAHIRI
@@ -982,6 +966,7 @@ def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
     add_table_borders(t, size=6)
     compact_table_paragraphs(t)
 def main():
+    st.title(APP_TITLE)
     col0, col1 = st.columns([1.2, 1])
     with col0:
         name = st.text_input("Name")
