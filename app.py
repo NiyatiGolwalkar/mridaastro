@@ -198,7 +198,7 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 # ---- End helpers ----
 
 
-APP_TITLE = 'MRIDAASTRO'
+APP_TITLE = ''
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 
 # --- Background image single-source block ---
@@ -207,7 +207,11 @@ CANDIDATE_BG = [BG_IMAGE, "bg1.jpg", "bg.png", "assets/bg1.jpg"]
 
 def inject_background(img_path: str, top_padding: int = 210):
     try:
-        path = next((Path(p) for p in CANDIDATE_BG if Path(p).exists()), Path(img_path))
+        candidates = [Path(p) for p in CANDIDATE_BG if Path(p)]
+        path = next((p for p in candidates if p.exists()), Path(img_path))
+        if not path.exists():
+            st.warning("Background image not found. Add one of: " + ", ".join(CANDIDATE_BG))
+            return
         data = path.read_bytes()
         b64 = base64.b64encode(data).decode()
         st.markdown(
@@ -997,7 +1001,8 @@ def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
     add_table_borders(t, size=6)
     compact_table_paragraphs(t)
 def main():
-    st.title(APP_TITLE)
+    if APP_TITLE:
+        st.title(APP_TITLE)
 
     # --- Input grid: two fields per row ---
     r1c1, r1c2 = st.columns(2)
