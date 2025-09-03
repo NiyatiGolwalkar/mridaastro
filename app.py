@@ -57,7 +57,7 @@ def shade_header_row(table, fill_hex="FFFFFF"):
 def set_page_background(doc, hex_color):
     try:
         bg = OxmlElement('w:background')
-        bg.set(DOCX_QN('w:color'), hex_color)
+        bg.set(qn('w:color'), hex_color)
         doc.element.insert(0, bg)
     except Exception:
         pass
@@ -75,7 +75,7 @@ def add_phalit_section(container_cell, width_inches=3.60, rows=25):
         tbl = t._tbl; tblPr = tbl.tblPr
         tblBorders = OxmlElement('w:tblBorders')
         for edge in ('top','left','bottom','right','insideH','insideV'):
-            el = OxmlElement(f'w:{edge}'); el.set(DOCX_QN('w:val'),'nil'); tblBorders.append(el)
+            el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'nil'); tblBorders.append(el)
         tblPr.append(tblBorders)
     except Exception:
         pass
@@ -91,9 +91,9 @@ def add_phalit_section(container_cell, width_inches=3.60, rows=25):
                 tcPr.remove(el)
         tcBorders = OxmlElement('w:tcBorders')
         for edge in ('top','left','right'):
-            el = OxmlElement(f'w:{edge}'); el.set(DOCX_QN('w:val'),'nil'); tcBorders.append(el)
+            el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'nil'); tcBorders.append(el)
         el = OxmlElement('w:bottom')
-        el.set(DOCX_QN('w:val'),'single'); el.set(DOCX_QN('w:sz'),'8'); el.set(DOCX_QN('w:space'),'0'); el.set(DOCX_QN('w:color'),'B6B6B6')
+        el.set(qn('w:val'),'single'); el.set(qn('w:sz'),'8'); el.set(qn('w:space'),'0'); el.set(qn('w:color'),'B6B6B6')
         tcBorders.append(el)
         tcPr.append(tcBorders)
 
@@ -143,7 +143,7 @@ from docx.enum.table import WD_ROW_HEIGHT_RULE, WD_ALIGN_VERTICAL
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml import OxmlElement, parse_xml
-from docx.oxml.ns import qn as DOCX_QN
+from docx.oxml.ns import qn
 from docx.shared import Inches, Mm, Pt
 
 # --- Table header shading helper (match kundali bg) ---
@@ -157,7 +157,7 @@ def set_page_background(doc, hex_color):
     try:
         from docx.oxml import OxmlElement
         bg = OxmlElement('w:background')
-        bg.set(DOCX_QN('w:color'), hex_color)
+        bg.set(qn('w:color'), hex_color)
         doc.element.insert(0, bg)
     except Exception:
         pass
@@ -356,9 +356,9 @@ def _apply_hindi_caption_style(paragraph, size_pt=11, underline=True, bold=True)
     r.bold = bold; r.underline = underline; r.font.size = Pt(size_pt)
     rpr = r._element.rPr or OxmlElement('w:rPr')
     if r._element.rPr is None: r._element.append(rpr)
-    rfonts = rpr.find(DOCX_QN('w:rFonts')) or OxmlElement('w:rFonts')
-    if rpr.find(DOCX_QN('w:rFonts')) is None: rpr.append(rfonts)
-    rfonts.set(DOCX_QN('w:eastAsia'), HINDI_FONT)
+    rfonts = rpr.find(qn('w:rFonts')) or OxmlElement('w:rFonts')
+    if rpr.find(qn('w:rFonts')) is None: rpr.append(rfonts)
+    rfonts.set(qn('w:eastAsia'), HINDI_FONT)
 
 def set_sidereal_locked():
     swe.set_sid_mode(AYANAMSHA_VAL, 0, 0)
@@ -756,7 +756,7 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
 def add_table_borders(table, size=6):
     tbl = table._tbl; tblPr = tbl.tblPr; tblBorders = OxmlElement('w:tblBorders')
     for edge in ('top','left','bottom','right','insideH','insideV'):
-        el = OxmlElement(f'w:{edge}'); el.set(DOCX_QN('w:val'),'single'); el.set(DOCX_QN('w:sz'),str(size)); tblBorders.append(el)
+        el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'single'); el.set(qn('w:sz'),str(size)); tblBorders.append(el)
     tblPr.append(tblBorders)
 
 def set_table_font(table, pt=8.0):
@@ -1025,7 +1025,7 @@ def main():
             margin = Mm(12); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(8); sec.bottom_margin = Mm(8)
 
             style = doc.styles['Normal']; style.font.name = LATIN_FONT; style.font.size = Pt(BASE_FONT_PT)
-            style._element.rPr.rFonts.set(DOCX_QN('w:eastAsia'), HINDI_FONT); style._element.rPr.rFonts.set(DOCX_QN('w:cs'), HINDI_FONT)
+            style._element.rPr.rFonts.set(qn('w:eastAsia'), HINDI_FONT); style._element.rPr.rFonts.set(qn('w:cs'), HINDI_FONT)
 
             
             
@@ -1074,7 +1074,7 @@ def main():
             ROW_HEIGHT_PT = int(CHART_H_PT + 14)
             tbl = outer._tbl; tblPr = tbl.tblPr; tblBorders = OxmlElement('w:tblBorders')
             for edge in ('top','left','bottom','right','insideH','insideV'):
-                el = OxmlElement(f'w:{edge}'); el.set(DOCX_QN('w:val'),'single'); el.set(DOCX_QN('w:sz'),'6'); tblBorders.append(el)
+                el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'single'); el.set(qn('w:sz'),'6'); tblBorders.append(el)
             tblPr.append(tblBorders)
 
             left = outer.rows[0].cells[0]
@@ -1158,15 +1158,15 @@ def main():
             try:
                 right_tcPr = right._tc.get_or_add_tcPr()
                 from docx.oxml import OxmlElement
-                from docx.oxml.ns import qn as DOCX_QN
+                from docx.oxml.ns import qn
                 right_tcMar = right_tcPr.find('./w:tcMar')
                 if right_tcMar is None:
                     right_tcMar = OxmlElement('w:tcMar')
                     right_tcPr.append(right_tcMar)
                 for side in ('top','left','bottom','right'):
                     el = OxmlElement(f'w:{side}')
-                    el.set(DOCX_QN('w:w'),'0')
-                    el.set(DOCX_QN('w:type'),'dxa')
+                    el.set(qn('w:w'),'0')
+                    el.set(qn('w:type'),'dxa')
                     right_tcMar.append(el)
             except Exception:
                 pass
@@ -1179,8 +1179,8 @@ def main():
                 tblCellMar = OxmlElement('w:tblCellMar')
                 for side in ('top','left','bottom','right'):
                     el = OxmlElement(f'w:{side}')
-                    el.set(DOCX_QN('w:w'),'0')
-                    el.set(DOCX_QN('w:type'),'dxa')
+                    el.set(qn('w:w'),'0')
+                    el.set(qn('w:type'),'dxa')
                     tblCellMar.append(el)
                 tcPr.append(tblCellMar)
             except Exception:
