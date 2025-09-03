@@ -198,7 +198,7 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 # ---- End helpers ----
 
 
-APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
+APP_TITLE = "MRIDAASTRO"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 
 AYANAMSHA_VAL = swe.SIDM_LAHIRI
@@ -946,7 +946,8 @@ def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
     add_table_borders(t, size=6)
     compact_table_paragraphs(t)
 def main():
-    st.title(APP_TITLE)
+    st.title("**MRIDAASTRO**")
+    st.subheader("_In the light of the divine, let your soul journey shine._")
     col0, col1 = st.columns([1.2, 1])
     with col0:
         name = st.text_input("Name")
