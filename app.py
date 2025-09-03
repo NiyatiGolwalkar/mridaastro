@@ -129,21 +129,24 @@ import streamlit as st
 # === App background (minimal, no logic changes) ===
 def _apply_bg():
     try:
-        import streamlit as st
-        st.markdown(
-            """
+        import streamlit as st, base64
+        from pathlib import Path
+        p = Path("assets/ganesha_bg.png")
+        if p.exists():
+            b64 = base64.b64encode(p.read_bytes()).decode()
+            css = f"""
             <style>
-            .stApp {
-                background: url('assets/ganesha_bg.png') no-repeat center top fixed;
+            [data-testid="stAppViewContainer"] {{
+                background: url('data:image/png;base64,{b64}') no-repeat center top fixed;
                 background-size: cover;
-            }
+            }}
             </style>
-            """,
-            unsafe_allow_html=True,
-        )
+            """
+            st.markdown(css, unsafe_allow_html=True)
     except Exception:
         pass
 # === End App background ===
+
 
 import swisseph as swe
 from timezonefinder import TimezoneFinder
@@ -216,7 +219,7 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 # ---- End helpers ----
 
 
-APP_TITLE = "MRIDAASTRO"
+APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 
 
