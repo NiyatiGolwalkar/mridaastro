@@ -3,17 +3,20 @@ from datetime import time, date
 
 st.set_page_config(page_title="MRIDAASTRO", page_icon="🕉️", layout="wide")
 
-# ---- Styling & Brand (robust, self-contained) ----
+# ---- Styling & Brand (no-body-scroll version) ----
+# You can swap to a different RAW URL if you want another background.
 BG_IMAGE_URL = "https://raw.githubusercontent.com/NiyatiGolwalkar/kundali-streamlit/main/assets/ganesha_bg.png"
-SAFE_TOP = "clamp(420px, 52vw, 760px)"  # reserved area under Ganapati + shloka
+
+# Reserved area under Ganapati + shloka (adjust if needed)
+SAFE_TOP = "clamp(420px, 52vw, 760px)"
 
 st.markdown(f"""
 <style>
-/* Transparent surface */
+/* Transparent app surface */
 html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"],
 [data-testid="stToolbar"], .main, .block-container {{ background: transparent !important; }}
 
-/* Fixed background */
+/* Fixed, non-scrolling background */
 body::before, .stApp::before {{
   content: ""; position: fixed; inset: 0; z-index: -1;
   background-image: url('{BG_IMAGE_URL}');
@@ -22,15 +25,26 @@ body::before, .stApp::before {{
   pointer-events: none; opacity: 1;
 }}
 
-/* Safe area so content never overlaps Ganapati */
+/* Prevent browser scroll bar */
+html, body {{ height: 100%; overflow: hidden; }}
+.stApp {{ height: 100vh; overflow: hidden; }}
+[data-testid="stAppViewContainer"] {{ overflow: hidden; }}
+
+/* Use an inner scroll area for content (keeps it below Ganapati).
+   Scrollbar is hidden visually (wheel/trackpad still works). */
 :root {{ --safe-top: {SAFE_TOP}; }}
-.block-container {{ margin-top: var(--safe-top) !important; }}
+.block-container {{
+  margin-top: var(--safe-top) !important;
+  height: calc(100vh - var(--safe-top));
+  overflow: auto;
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+  -ms-overflow-style: none;       /* IE/Edge */
+  scrollbar-width: none;          /* Firefox */
+}}
+.block-container::-webkit-scrollbar {{ display: none; }}   /* Chrome/Safari */
 
 /* Center brand and make tagline bold */
-.block-container h1, .block-container h2 {{ text-align: center; }}
-.block-container h2 {{ font-weight: 800; }}
-
-/* If we render a custom brand block, style it nicely */
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Crimson+Text:wght@700&display=swap');
 .app-brand {{ text-align:center; }}
 .app-brand h1 {{
@@ -47,10 +61,11 @@ body::before, .stApp::before {{
 [data-testid="stWidgetLabel"],
 label,
 .stSelectbox label, .stTextInput label, .stDateInput label, .stTimeInput label {{ font-weight: 700 !important; }}
+
 </style>
 """, unsafe_allow_html=True)
 
-# ---- Brand (works even if app already prints h1/h2 elsewhere) ----
+# ---- Brand ----
 st.markdown("""
 <div class="app-brand">
   <h1>MRIDAASTRO</h1>
@@ -58,8 +73,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ---- Minimal demo form (safe placeholder if your original app isn't present) ----
-# Replace this block with your real form/generation logic if needed.
+# ---- Minimal demo form (replace with your full logic if needed) ----
 left, right = st.columns(2)
 with left:
     name = st.text_input("Name", "")
