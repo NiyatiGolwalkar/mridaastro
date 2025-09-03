@@ -34,10 +34,10 @@ ONE_PAGE = True
 # Sizing (pt) — tuned smaller to reduce white space
 NUM_W_PT = 10       # house number box width (was 12)
 NUM_H_PT = 12       # house number box height (was 14)
-PLANET_W_PT = 14    # planet label box width (was 16)
-PLANET_H_PT = 12    # planet label box height (was 14)
+PLANET_W_PT = 24    # planet label box width (was 16)
+PLANET_H_PT = 18    # planet label box height (was 14)
 GAP_X_PT = 3        # horizontal gap between planet boxes (was 4)
-OFFSET_Y_PT = 10    # vertical offset below number box (was 12)
+OFFSET_Y_PT = 12    # vertical offset below number box (was 12)
 
 # Options: "plain", "bordered", "shaded", "bordered_shaded"
 HOUSE_NUM_STYLE = "bordered"
@@ -483,18 +483,28 @@ def rotated_house_labels(lagna_sign):
     return {"1":order[0],"2":order[1],"3":order[2],"4":order[3],"5":order[4],"6":order[5],"7":order[6],"8":order[7],"9":order[8],"10":order[9],"11":order[10],"12":order[11]}
 
 
-def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
+def kundali_with_planets(size_pt=None, height_pt=None, lagna_sign=1, house_planets=None):
     
     # robust default for size_pt so definition never depends on globals
     if size_pt is None:
         try:
             size_pt = CHART_W_PT
         except Exception:
-            size_pt = 318  # safe fallback
+            size_pt = 318
+    if height_pt is None:
+        try:
+            height_pt = CHART_H_PT
+        except Exception:
+            height_pt = int(size_pt*0.66)
 # Like kundali_w_p_with_centroid_labels but adds small side-by-side planet boxes below the number
     if house_planets is None:
         house_planets = {i: [] for i in range(1, 13)}
     S=size_pt; L,T,R,B=0,0,S,S
+    if height_pt is None:
+        try:
+            height_pt = CHART_H_PT
+        except Exception:
+            height_pt = int(S*0.66)
     TM=(S/2,0); RM=(S,S/2); BM=(S/2,S); LM=(0,S/2)
     P_lt=(S/4,S/4); P_rt=(3*S/4,S/4); P_rb=(3*S/4,3*S/4); P_lb=(S/4,3*S/4); O=(S/2,S/2)
     labels = rotated_house_labels(lagna_sign)
@@ -579,7 +589,7 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
                 row_left = x - row_w / 2
                 top_box = grid_top + r * (p_h + gap_y) - p_h / 2
                 # keep within chart square bounds with margin and tiny shrink on edges
-                M = 5
+                M = 6
                 row_left = max(M, min(row_left, S - row_w - M))
                 top_box  = max(M, min(top_box,  S - p_h - M))
                 edge_touch = (row_left <= M + 0.05) or (row_left >= S - row_w - M - 0.05) or (top_box <= M + 0.05) or (top_box >= S - p_h - M - 0.05)
@@ -587,7 +597,7 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
                 ph = p_h - (1 if edge_touch else 0)
                 left_pl = row_left + c * (pw + gap_x)
                 box_xml = (
-                    f"<v:rect style=\"position:absolute;left:{left_pl}pt;top:{top_box}pt;width:{pw}pt;height:{ph}pt;z-index:6\" strokecolor=\"none\">"
+                    f"<v:rect style=\"position:absolute;left:{left_pl}pt;top:{top_box}pt;width:{pw}pt;height:{ph}pt;z-index:6\" strokecolor=\"none\" fillcolor=\"#ffffff\">"
                     + "<v:textbox inset=\"0,0,0,0\">"
                     + "<w:txbxContent xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\">"
                     + f"<w:p><w:pPr><w:jc w:val=\"center\"/></w:pPr><w:r><w:t>{_xml_text(label)}</w:t></w:r></w:p>"
@@ -625,7 +635,7 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
     xml = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-        <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
+        <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(height_pt or S)}pt" coordorigin="0,0" coordsize="{S},{S}">
           <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.5pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
@@ -642,7 +652,7 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
 
 
 
-def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
+def kundali_single_box(size_pt=220, height_pt=None, lagna_sign=1, house_planets=None):
     # One text box per house: first row = house number, second row = planets (centered)
     if house_planets is None:
         house_planets = {i: [] for i in range(1, 13)}
@@ -699,7 +709,7 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
     xml = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-        <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
+        <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(height_pt or S)}pt" coordorigin="0,0" coordsize="{S},{S}">
           <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.5pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.5pt"/>
@@ -740,7 +750,7 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
     boxes_xml = "\\n".join(boxes)
     xml = f'''<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
         <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-          <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
+          <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(height_pt or S)}pt" coordorigin="0,0" coordsize="{S},{S}">
             <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.5pt" fillcolor="#fff2cc"/>
             <v:line style="position:absolute;z-index:2" from="0,0" to="{S},{S}" strokecolor="black" strokeweight="1.5pt"/>
             <v:line style="position:absolute;z-index:2" from="{S},0" to="0,{S}" strokecolor="black" strokeweight="1.5pt"/>
@@ -1067,11 +1077,11 @@ def main():
 
 
             outer = doc.add_table(rows=1, cols=2); outer.autofit=False
-            right_width_in = 3.70; outer.columns[0].width = Inches(3.70); outer.columns[1].width = Inches(3.70)
+            right_width_in = 3.60; outer.columns[0].width = Inches(3.60); outer.columns[1].width = Inches(3.60)
 
-            CHART_W_PT = int(right_width_in * 72 - 4)
-            CHART_H_PT = int(CHART_W_PT * 0.80)
-            ROW_HEIGHT_PT = int(CHART_H_PT + 14)
+            CHART_W_PT = int(right_width_in * 72 - 8)
+            CHART_H_PT = int(CHART_W_PT * 0.66)
+            ROW_HEIGHT_PT = int(CHART_H_PT + 18)
             tbl = outer._tbl; tblPr = tbl.tblPr; tblBorders = OxmlElement('w:tblBorders')
             for edge in ('top','left','bottom','right','insideH','insideV'):
                 el = OxmlElement(f'w:{edge}'); el.set(DOCX_QN('w:val'),'single'); el.set(DOCX_QN('w:sz'),'6'); tblBorders.append(el)
@@ -1122,6 +1132,27 @@ def main():
                 for i,c in enumerate(row): r[i].text=str(c)
             center_header_row(t1); set_table_font(t1, pt=BASE_FONT_PT); add_table_borders(t1, size=6)
             set_col_widths(t1, [0.70, 0.55, 0.85, 0.80, 0.80])
+            # ===== Right column: Lagna & Navāṁśa charts (rectangular, non-overlapping) =====
+            right = outer.rows[0].cells[1]
+            # Build house->planet maps with status flags
+            rasi_house_pl = build_rasi_house_planets_marked(sidelons, lagna_sign)
+            nav_house_pl  = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
+
+            # Lagna title
+            p_lag = right.add_paragraph("लग्न कुंडली"); _apply_hindi_caption_style(p_lag, size_pt=11, underline=True, bold=True)
+            # Insert Lagna chart
+            p = right.add_paragraph()
+            p._p.append(kundali_with_planets(size_pt=CHART_W_PT, height_pt=CHART_H_PT, lagna_sign=lagna_sign, house_planets=rasi_house_pl))
+            # Spacer
+            sp = right.add_paragraph(""); sp.paragraph_format.space_after = Pt(2)
+
+            # Navāṁśa title
+            p_nav = right.add_paragraph("नवांश कुंडली"); _apply_hindi_caption_style(p_nav, size_pt=11, underline=True, bold=True)
+            # Insert Navāṁśa chart
+            p2 = right.add_paragraph()
+            p2._p.append(kundali_with_planets(size_pt=CHART_W_PT, height_pt=CHART_H_PT, lagna_sign=nav_lagna_sign, house_planets=nav_house_pl))
+            # ===== End right column charts =====
+
             # Left align ONLY the header cell of the last column (उप‑नक्षत्र / Sublord)
             for p in t1.rows[0].cells[-1].paragraphs:
                 p.alignment = WD_ALIGN_PARAGRAPH.LEFT
