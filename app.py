@@ -129,24 +129,21 @@ import streamlit as st
 # === App background (minimal, no logic changes) ===
 def _apply_bg():
     try:
-        import streamlit as st, base64
-        from pathlib import Path
-        p = Path("assets/ganesha_bg.png")
-        if p.exists():
-            b64 = base64.b64encode(p.read_bytes()).decode()
-            css = f"""
-            <style>
-            [data-testid="stAppViewContainer"] {{
-                background: url('data:image/png;base64,{b64}') no-repeat center top fixed;
-                background-size: cover;
-            }}
-            </style>
+        import streamlit as st
+        st.markdown(
             """
-            st.markdown(css, unsafe_allow_html=True)
+            <style>
+            .stApp {
+                background: url('assets/ganesha_bg.png') no-repeat center top fixed;
+                background-size: cover;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
     except Exception:
         pass
 # === End App background ===
-
 
 import swisseph as swe
 from timezonefinder import TimezoneFinder
@@ -219,9 +216,25 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 # ---- End helpers ----
 
 
-APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 
+
+
+
+# ---- Brand header (centered) ----
+st.markdown(
+    """
+    <div style="text-align:center; margin-top:0.25rem;">
+        <h1 style="margin:0 0 0.4rem 0; font-weight:800; letter-spacing:1px;">
+            MRIDAASTRO
+        </h1>
+        <div style="font-style:italic; font-size:1.1rem;">
+            In the light of the divine, let your soul journey shine
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 _apply_bg()
 AYANAMSHA_VAL = swe.SIDM_LAHIRI
@@ -969,7 +982,6 @@ def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
     add_table_borders(t, size=6)
     compact_table_paragraphs(t)
 def main():
-    st.title(APP_TITLE)
     col0, col1 = st.columns([1.2, 1])
     with col0:
         name = st.text_input("Name")
