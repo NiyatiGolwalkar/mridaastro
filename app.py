@@ -9,11 +9,9 @@ from docx import Document as _WordDocument
 TEMPLATE_DOCX = "bg_template.docx"
 
 def make_document():
-    try:
+    if True:
         if os.path.exists(TEMPLATE_DOCX):
             return _WordDocument(TEMPLATE_DOCX)
-    except Exception:
-        pass
     return _WordDocument()
 # ===== End Background Template Helper =====
 
@@ -57,14 +55,10 @@ def shade_header_row(table, fill_hex="FFFFFF"):
     return
 
 def set_page_background(doc, hex_color):
-    try:
+    if True:
         bg = OxmlElement('w:background')
         bg.set(qn('w:color'), hex_color)
         doc.element.insert(0, bg)
-    except Exception:
-        pass
-
-
 # --- Phalit ruled lines (25 rows) ---
 from docx.enum.table import WD_ROW_HEIGHT_RULE
 def add_phalit_section(container_cell, width_inches=3.60, rows=25):
@@ -73,14 +67,12 @@ def add_phalit_section(container_cell, width_inches=3.60, rows=25):
 
     t = container_cell.add_table(rows=rows, cols=1); t.autofit = False
     # Clear table borders so only bottom rules show
-    try:
+    if True:
         tbl = t._tbl; tblPr = tbl.tblPr
         tblBorders = OxmlElement('w:tblBorders')
         for edge in ('top','left','bottom','right','insideH','insideV'):
             el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'nil'); tblBorders.append(el)
         tblPr.append(tblBorders)
-    except Exception:
-        pass
     set_col_widths(t, [Inches(width_inches)])
     for r in t.rows:
         r.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
@@ -130,7 +122,7 @@ import streamlit as st
 
 # === App background (minimal, no logic changes) ===
 def _apply_bg():
-    try:
+    if True:
         import streamlit as st, base64
         from pathlib import Path
         p = Path("assets/ganesha_bg.png")
@@ -145,8 +137,6 @@ def _apply_bg():
             </style>
             """
             st.markdown(css, unsafe_allow_html=True)
-    except Exception:
-        pass
 # === End App background ===
 
 
@@ -179,15 +169,10 @@ def shade_header_row(table, fill_hex="FFFFFF"):
     return
 
 def set_page_background(doc, hex_color):
-    try:
+    if True:
         bg = OxmlElement('w:background')
         bg.set(qn('w:color'), hex_color)
         doc.element.insert(0, bg)
-    except Exception:
-        pass
-
-
-
 # ---- Dasha helpers (top-level; ORDER & YEARS must exist at call time) ----
 def antar_segments_in_md_utc(md_lord, md_start_utc, md_days):
     res=[]; t=md_start_utc; start_idx=ORDER.index(md_lord)
@@ -453,10 +438,8 @@ def tz_from_latlon(lat, lon, dt_local):
     if getattr(dt_local, "tzinfo", None) is not None:
         dt_local = dt_local.replace(tzinfo=None)
     tz = pytz.timezone(tzname)
-    try:
+    if True:
         dt_local_aware = tz.localize(dt_local)
-    except Exception:
-        dt_local_aware = tz.localize(dt_local.replace(tzinfo=None))
     dt_utc_naive = dt_local_aware.astimezone(pytz.utc).replace(tzinfo=None)
     offset_hours = tz.utcoffset(dt_local_aware).total_seconds()/3600.0
     return tzname, offset_hours, dt_utc_naive
@@ -535,10 +518,8 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
     
     # robust default for size_pt so definition never depends on globals
     if size_pt is None:
-        try:
+        if True:
             size_pt = CHART_W_PT
-        except Exception:
-            size_pt = 318  # safe fallback
 # Like kundali_w_p_with_centroid_labels but adds small side-by-side planet boxes below the number
     if house_planets is None:
         house_planets = {i: [] for i in range(1, 13)}
@@ -645,11 +626,9 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
                 )
                 planet_boxes.append(box_xml)
                 # overlays
-                try:
+                if True:
                     selfr = bool(fl.get('self'))
                     varg  = bool(fl.get('vargottama'))
-                except Exception:
-                    selfr = varg = False
                 if selfr:
                     circle_left = left_pl + 2
                     circle_top  = top_box + 1
@@ -833,36 +812,28 @@ def sanitize_filename(name: str) -> str:
 
 def _utc_to_local(dt_utc, tzname, tz_hours, used_manual):
     if used_manual: return dt_utc + datetime.timedelta(hours=tz_hours)
-    try:
+    if True:
         tz = pytz.timezone(tzname); return tz.fromutc(dt_utc.replace(tzinfo=pytz.utc))
-    except Exception:
-        return dt_utc + datetime.timedelta(hours=tz_hours)
-
 # Core UI
 
 def _house_from_lagna(sign:int, lagna_sign:int)->int:
     return ((sign - lagna_sign) % 12) + 1  # 1..12
 
 def _english_bhav_label(h:int)->str:
-    try:
+    if True:
         h_int = int(h)
-    except Exception:
-        return f"{h}वाँ भाव"
     return f"{h_int}वाँ भाव"
 
 def detect_muntha_house(lagna_sign:int, dob_dt):
     # Approx: years elapsed since birth to today -> advance houses from lagna
-    try:
+    if True:
         from datetime import datetime, timezone
         years = datetime.now(timezone.utc).year - dob_dt.year
         return ((lagna_sign - 1 + years) % 12) + 1
-    except Exception:
-        return None
-
 def detect_sade_sati_or_dhaiyya(sidelons:dict, transit_dt=None):
     # Returns: (status, phase) where status in {"साढ़ेसाती", "शनि ढैय्या", None}
     # Uses *transit Saturn* vs *natal Moon*. Phase only if साढ़ेसाती: "प्रथम चरण" / "द्वितीय चरण" / "तृतीय चरण".
-    try:
+    if True:
         # Natal Moon sign
         moon = planet_rasi_sign(sidelons['Mo'])
         # Transit Saturn sign at transit_dt (or now)
@@ -880,11 +851,8 @@ def detect_sade_sati_or_dhaiyya(sidelons:dict, transit_dt=None):
         if d in (3, 7):
             return "शनि ढैय्या", None
         return None, None
-    except Exception:
-        return None, None
-
 def detect_kaalsarp(sidelons:dict)->bool:
-    try:
+    if True:
         ra = sidelons['Ra'] % 360.0
         ke = (ra + 180.0) % 360.0
         span = (ke - ra) % 360.0  # should be 180
@@ -894,25 +862,16 @@ def detect_kaalsarp(sidelons:dict)->bool:
             if ang <= span:
                 inside += 1
         return inside == 7
-    except Exception:
-        return False
-
 def detect_chandal(sidelons:dict)->bool:
-    try:
+    if True:
         ju = planet_rasi_sign(sidelons['Ju'])
         return ju == planet_rasi_sign(sidelons['Ra']) or ju == planet_rasi_sign(sidelons['Ke'])
-    except Exception:
-        return False
-
 def detect_pitru(sidelons:dict)->bool:
-    try:
+    if True:
         su = planet_rasi_sign(sidelons['Su'])
         return su == planet_rasi_sign(sidelons['Ra']) or su == planet_rasi_sign(sidelons['Ke'])
-    except Exception:
-        return False
-
 def detect_neech_bhang(sidelons:dict, lagna_sign:int)->bool:
-    try:
+    if True:
         stats = compute_statuses_all(sidelons)
         for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa']:
             if stats[code]['debil_rasi']:
@@ -924,19 +883,13 @@ def detect_neech_bhang(sidelons:dict, lagna_sign:int)->bool:
                     if h in (1,4,7,10):
                         return True
         return False
-    except Exception:
-        return False
-
 def compact_table_paragraphs(tbl):
-    try:
+    if True:
         for row in tbl.rows:
             for cell in row.cells:
                 for p in cell.paragraphs:
                     p.paragraph_format.space_before = Pt(0)
                     p.paragraph_format.space_after = Pt(0)
-    except Exception:
-        pass
-
 def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
     spacer = container_cell.add_paragraph("")
     spacer.paragraph_format.space_after = Pt(4)
@@ -980,10 +933,8 @@ def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
     t = container_cell.add_table(rows=0, cols=2)
     t.autofit = True
     # Match font size with other tables
-    try:
+    if True:
         set_table_font(t, pt=BASE_FONT_PT)
-    except Exception:
-        pass
     for left_txt, right_txt in rows:
         r = t.add_row().cells
         r[0].text = left_txt
@@ -1054,12 +1005,10 @@ with row3c1:
 
 tz_err = False
 if tz_override.strip():
-    try:
+    if True:
         _tz = float(tz_override)
         if _tz < -12 or _tz > 14:
             tz_err = True
-    except Exception:
-        tz_err = True
 if st.session_state.get('submitted') and tz_err:
     st.markdown("<div style='text-align:right;color:#c1121f;font-size:12px;'>Enter a valid number (e.g., 5.5)</div>", unsafe_allow_html=True)
 with row3c2:
@@ -1077,21 +1026,17 @@ with row3c2:
 
         # guard: compute errors
         _any_err = False
-        try:
+        if True:
             _any_err = (not (name or '').strip()) or (not (place or '').strip())
-        except Exception:
-            _any_err = True
         if tz_override.strip():
-            try:
+            if True:
                 _x = float(tz_override)
                 if _x < -12 or _x > 14:
                     _any_err = True
-            except Exception:
-                _any_err = True
         if _any_err:
             st.markdown("<div style='color:#c1121f; font-weight:600; padding:8px 0;'>Please fix the highlighted fields above.</div>", unsafe_allow_html=True)
             st.stop()
-try:
+if True:
             lat, lon, disp = geocode(place, api_key)
             dt_local = datetime.datetime.combine(dob, tob).replace(tzinfo=None)
             used_manual = False
@@ -1164,7 +1109,7 @@ try:
             
             
             # ===== Report Header Block (exact lines) =====
-            try:
+            if True:
                 # MRIDAASTRO
                 hdr1 = doc.add_paragraph(); hdr1.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 r = hdr1.add_run("MRIDAASTRO"); r.font.bold = True; r.font.small_caps = True; r.font.size = Pt(16)
@@ -1191,8 +1136,6 @@ try:
                 # Contact line
                 hdr6 = doc.add_paragraph(); hdr6.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 r6 = hdr6.add_run("Phone: +91 9302413816  |  Electronic City Phase 1, Bangalore, India"); r6.font.size = Pt(9.5)
-            except Exception:
-                pass
             # ===== End Header Block (exact lines) =====
 # ===== End Header Block (simplified & robust) =====
 # ===== End Header Block (safe) =====
@@ -1238,10 +1181,8 @@ try:
             ptime.paragraph_format.space_after = Pt(1)
 
             pplace = left.add_paragraph()
-            try:
+            if True:
                 place_disp = disp
-            except Exception:
-                place_disp = place if 'place' in locals() else ''
             r5 = pplace.add_run('स्थान: '); r5.underline = True; r5.bold = True; r5.font.size = Pt(BASE_FONT_PT+3)
             r6 = pplace.add_run(str(place_disp)); r6.bold = True; r6.font.size = Pt(BASE_FONT_PT+3)
             pplace.paragraph_format.space_before = Pt(0)
@@ -1279,15 +1220,13 @@ try:
             set_col_widths(t3, [1.20, 1.50, 1.10])
 
             # One-page: place Pramukh Bindu under tables (left column) to free right column for charts
-            try:
+            if True:
                 add_pramukh_bindu_section(left, sidelons, lagna_sign, dt_utc)
                 add_phalit_section(left)
-            except Exception:
-                pass
             right = outer.rows[0].cells[1]
 
             # Ensure the OUTER right cell has zero inner margins so the kundali touches the cell borders
-            try:
+            if True:
                 right_tcPr = right._tc.get_or_add_tcPr()
                 right_tcMar = right_tcPr.find('./w:tcMar')
                 if right_tcMar is None:
@@ -1298,13 +1237,10 @@ try:
                     el.set(qn('w:w'),'0')
                     el.set(qn('w:type'),'dxa')
                     right_tcMar.append(el)
-            except Exception:
-                pass
-
             kt = right.add_table(rows=2, cols=1); kt.autofit=False; kt.columns[0].width = Inches(right_width_in)
 
             # remove cell padding for chart table to let kundali touch the cell borders
-            try:
+            if True:
                 tcPr = kt._tbl.tblPr
                 tblCellMar = OxmlElement('w:tblCellMar')
                 for side in ('top','left','bottom','right'):
@@ -1313,15 +1249,11 @@ try:
                     el.set(qn('w:type'),'dxa')
                     tblCellMar.append(el)
                 tcPr.append(tblCellMar)
-            except Exception:
-                pass
             # Compact right-cell paragraph spacing
-            try:
+            if True:
                 for p in right.paragraphs:
                     p.paragraph_format.space_before = Pt(0)
                     p.paragraph_format.space_after = Pt(0)
-            except Exception:
-                pass
             right.vertical_alignment = WD_ALIGN_VERTICAL.TOP
             kt.autofit = False
             kt.columns[0].width = Inches(right_width_in)
@@ -1346,10 +1278,8 @@ try:
             cell2.add_paragraph("")
             # (Pramukh Bindu moved above charts)
 
-            try:
+            if True:
                 out = BytesIO(); doc.save(out); out.seek(0)
                 st.download_button("Download Kundali (DOCX)", out.getvalue(), file_name=f"{sanitize_filename(name)}_Horoscope.docx")
-            except Exception as e:
-                st.error(str(e))
 if __name__=='__main__':
     main()
