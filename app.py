@@ -1068,8 +1068,8 @@ with row3c2:
             )
         else:
             st.error("Couldn't generate the DOCX. Please check the generator function or try again.")
-
-            jd, ay, sidelons = sidereal_positions(dt_utc)
+# 
+            jd, ay, sidelons = sidereal_positions(dt_utc)  # disabled at import; computed during generation
             lagna_sign, asc_sid = ascendant_sign(jd, lat, lon, ay)
             nav_lagna_sign = navamsa_sign_from_lon_sid(asc_sid)
 
