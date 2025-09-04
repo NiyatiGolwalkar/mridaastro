@@ -1086,17 +1086,14 @@ with row3c1:
 
     api_key = st.secrets.get("GEOAPIFY_API_KEY","")
 
-    if st.button("Generate Kundali"):
+    st.button("Generate Kundali", key="gen_btn", on_click=lambda: st.session_state.update({'submitted': True}))
 
-        
-        # --- First-click validation guard (single, authoritative) ---
-        st.session_state['submitted'] = True  # show inline 'Required' labels
-
+    # --- Validation gate computed on rerun after click ---
+    can_generate = False
+    if st.session_state.get('submitted'):
         _name = (st.session_state.get('name_input') or '').strip()
         _place = (st.session_state.get('place_input') or '').strip()
-        _tz    = (st.session_state.get('tz_input') or '').strip()
-
-        # Validate requireds
+        _tz = (st.session_state.get('tz_input') or '').strip()
         any_err = False
         if not _name or not _place or not _tz:
             any_err = True
@@ -1107,10 +1104,13 @@ with row3c1:
                     any_err = True
             except Exception:
                 any_err = True
-
         if any_err:
             st.markdown("<div style='color:#c1121f; font-weight:700; padding:8px 0;'>Please fix the highlighted fields above.</div>", unsafe_allow_html=True)
-            st.stop()
+        else:
+            can_generate = True
+
+    if can_generate:
+
 
 
         # key presence
