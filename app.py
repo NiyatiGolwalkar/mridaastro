@@ -969,6 +969,23 @@ def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
     add_table_borders(t, size=6)
     compact_table_paragraphs(t)
 def main():
+
+# === Brand Header ===
+st.markdown(
+    f\"\"\"
+    <div style='text-align: center; padding: 10px 0;'>
+        <h1 style='font-family: "Trebuchet MS", sans-serif; font-size: 46px; color: #2C3E50; text-shadow: 1px 1px 2px #ccc;'>
+            MRIDAASTRO
+        </h1>
+        <h3 style='font-family: "Brush Script MT", cursive; font-size: 24px; color: #34495E;'>
+            In the light of divine, let your soul journey shine
+        </h3>
+    </div>
+    \"\"\",
+    unsafe_allow_html=True
+)
+# === End Brand Header ===
+
     st.title(APP_TITLE)
     
 # === Two fields per row layout ===
