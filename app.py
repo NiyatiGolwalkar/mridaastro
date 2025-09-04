@@ -235,7 +235,7 @@ st.markdown(
       <div style='font-family:Georgia,serif; font-style:italic; font-size:20px; color:#34495E; margin-bottom:10px;'>
         In the light of divine, let your soul journey shine
       </div>
-      <div style='height:3px; width:160px; margin:0 auto 6px auto; background:#2CB67D; border-radius:2px;'></div>
+      <div style='height:3px; width:160px; margin:0 auto 6px auto; background:#000000; border-radius:2px;'></div>
     </div>
     """,
     unsafe_allow_html=True
@@ -1022,32 +1022,34 @@ with row3c2:
     api_key = st.secrets.get("GEOAPIFY_API_KEY","")
 
     
-# --- VALIDATION ---
-errors = []
-name_clean = (name or "").strip()
-if not name_clean:
-    errors.append("Please enter your **Name**.")
-elif not re.match(r"^[A-Za-z][A-Za-z\s.'-]{1,49}$", name_clean):
-    errors.append("Name looks invalid. Use letters/spaces only (2–50 chars).")
-if dob is None:
-    errors.append("Please select **Date of Birth**.")
-if tob is None:
-    errors.append("Please enter **Time of Birth**.")
-if not pob or not pob.strip():
-    errors.append("Please select **Place of Birth**.")
-# UTC override optional but if present must be numeric
-if (utc_override is not None) and (str(utc_override).strip() != ''):
-    try:
-        float(str(utc_override).strip())
-    except Exception:
-        errors.append("**UTC offset** must be a number like 5.5 or -4.")
-if errors:
-    for e in errors:
-        st.error(e)
-    st.stop()
-# --- END VALIDATION ---
-if st.button("Generate Kundali"):
+if st.button('Generate Kundali'):
+        # --- Basic validations ---
+        err = []
+        if not name or not name.strip():
+            err.append("Please enter your name.")
+        elif not re.match(r"^[A-Za-z][A-Za-z\s\.'-]+$", name.strip()):
+            err.append("Name should only contain letters and spaces.")
+        if not dob:
+            err.append("Please select your date of birth.")
+        if not tob or tob.strip()=="":
+            err.append("Please enter your time of birth (HH:mm).")
+        if not pob or not pob.strip():
+            err.append("Please enter your place of birth.")
+        # optional utc_offset: if filled, it must be a number between -14 and 14
+        if utc_offset_str:
+            try:
+                _u = float(utc_offset_str)
+                if _u < -14 or _u > 14:
+                    err.append("UTC offset must be between -14 and +14 hours.")
+            except Exception:
+                err.append("UTC offset must be a valid number (e.g., 5.5).")
+
+        if err:
+            for e in err:
+                st.error(e)
+            st.stop()
         try:
+
             lat, lon, disp = geocode(place, api_key)
             dt_local = datetime.datetime.combine(dob, tob).replace(tzinfo=None)
             used_manual = False
