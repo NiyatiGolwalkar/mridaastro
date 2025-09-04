@@ -1086,12 +1086,29 @@ with row3c1:
 
     api_key = st.secrets.get("GEOAPIFY_API_KEY","")
 
-    if st.button("Generate DOCX"):
-        
+    if st.button("Generate Kundali"):
 
-        
-        
-        # mark this as the first submit click (drives inline Required messages)
+        # --- First-click validation guard ---
+        st.session_state['submitted'] = True  # so inline 'Required' shows immediately
+
+        _name = (st.session_state.get('name_input') or '').strip()
+        _place = (st.session_state.get('place_input') or '').strip()
+        _tz    = (st.session_state.get('tz_input') or '').strip()
+
+        _any_err = (not _name) or (not _place)
+
+        # UTC offset must be a number in [-12, 14]
+        try:
+            _tzv = float(_tz)
+            if _tzv < -12 or _tzv > 14:
+                _any_err = True
+        except Exception:
+            _any_err = True
+
+        if _any_err:
+            st.markdown("<div style='color:#c1121f; font-weight:700; padding:8px 0;'>Please fix the highlighted fields above.</div>", unsafe_allow_html=True)
+            st.stop()
+# mark this as the first submit click (drives inline Required messages)
         st.session_state['submitted'] = True
 # first submit gate
         st.session_state['submitted'] = True
