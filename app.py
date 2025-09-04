@@ -126,7 +126,37 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import pytz
 import streamlit as st
-from login_branding_helper import show_login_screen
+# === App background helper (for authenticated pages) ===
+import base64, os, streamlit as st
+
+def set_app_background(image_path: str, size: str = "contain", position: str = "top center"):
+    """
+    Shows a page background image on *authenticated* pages.
+    Call this after login/whitelist check, before rendering the UI.
+    """
+    try:
+        if not os.path.exists(image_path):
+            return
+        with open(image_path, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode("utf-8")
+        st.markdown(f"""
+        <style>
+          [data-testid="stAppViewContainer"] {{
+            background-image: url("data:image/png;base64,{b64}");
+            background-size: {size};
+            background-position: {position};
+            background-repeat: no-repeat;
+            background-color: #f6ede6; /* fallback */
+          }}
+          [data-testid="stHeader"] {{
+            background: transparent;
+          }}
+        </style>
+        """, unsafe_allow_html=True)
+    except Exception:
+        pass
+# === End background helper ===
+
 
 # --- Google Search Console verification (inject into <head>) ---
 st.markdown("""
@@ -231,9 +261,13 @@ if code:
     except Exception:
         st.error("Login failed. Please try again.")
         st.stop()
-# --- If not signed in, show branded login and stop
+
+# --- If not signed in, show login and stop
 if "user" not in st.session_state:
-    show_login_screen()
+    st.title("🔐 Sign in")
+    st.session_state["oauth_state"] = str(time.time())
+    login_url = build_auth_url(st.session_state["oauth_state"])
+    st.link_button("Sign in with Google", login_url)
     st.stop()
 
 # --- Restrict who can access (pick ONE approach) ---
@@ -258,6 +292,10 @@ if not allowed_users:
 if email not in allowed_users:
     st.error("Access restricted to authorized users only.")
     st.stop()
+
+# Set background for authenticated app pages
+set_app_background("assets/login_bg.png", size="contain", position="top center")
+
 
 # Show identity & Sign out in sidebar
 st.sidebar.markdown(f"**Signed in:** {st.session_state['user'].get('name') or email} ({email})")
@@ -295,7 +333,7 @@ from PIL import Image
 # === App background (minimal, no logic changes) ===
 def _apply_bg():
     try:
-        import streamlit as st
+        import streamlit as st, base64
         from pathlib import Path
         p = Path("assets/ganesha_bg.png")
         if p.exists():
