@@ -194,7 +194,7 @@ def sign_out():
     st.rerun()
 
 # --- Handle Google redirect (works on /oauth2callback or any path with ?code=...)
-qs = st.experimental_get_query_params()
+qs = _get_query_params_as_legacy_dict()
 if "code" in qs:
     try:
         if "oauth_state" in st.session_state and qs.get("state", [""])[0] != st.session_state["oauth_state"]:
@@ -211,7 +211,7 @@ if "code" in qs:
         st.session_state["oauth"] = tokens
 
         # Clear query params and send user back to root path
-        st.experimental_set_query_params()
+        st.query_params.clear()
         st.markdown("<script>history.replaceState({}, '', '/');</script>", unsafe_allow_html=True)
 
         st.success(f"Signed in as {st.session_state['user']['email']}")
