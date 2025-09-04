@@ -282,7 +282,7 @@ def compute_statuses_all(sidelons):
     for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
         lon = sidelons[code]
         rasi = planet_rasi_sign(lon)
-        nav  = navamsa_sign_from_lon_sid(lon)
+#         nav  = navamsa_sign_from_lon_sid(lon)
         varg = (rasi == nav)
         # Combustion: Sun only, optional same-sign constraint
         combust = False
@@ -341,7 +341,7 @@ def fmt_planet_label(code, flags):
 
 def planet_navamsa_house(lon_sid, nav_lagna_sign):
     # Return 1..12 house index in Navamsa for a planet
-    nav_sign = navamsa_sign_from_lon_sid(lon_sid)  # 1..12
+#     nav_sign = navamsa_sign_from_lon_sid(lon_sid)  # 1..12
     return ((nav_sign - nav_lagna_sign) % 12) + 1
 
 def build_navamsa_house_planets(sidelons, nav_lagna_sign):
@@ -369,7 +369,7 @@ def build_navamsa_house_planets_marked(sidelons, nav_lagna_sign):
     stats = compute_statuses_all(sidelons)
     sun_nav = stats['Su']['nav']  # Sun's Navāṁśa sign
     for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
-        nav_sign = navamsa_sign_from_lon_sid(sidelons[code])
+#         nav_sign = navamsa_sign_from_lon_sid(sidelons[code])
         h = ((nav_sign - nav_lagna_sign) % 12) + 1
         fl = _make_flags('nav', stats[code])   # nav-based self/exalt/debil
         # Navāṁśa combust rule: planet combust iff shares Nav sign with Sun
@@ -467,10 +467,10 @@ def tz_from_latlon(lat, lon, dt_local):
     ay = swe.get_ayanamsa_ut(jd); return jd, ay, out
 
 # def ascendant_sign(jd, lat, lon, ay):
-    cusps, ascmc = swe.houses_ex(jd, lat, lon, b'P'); asc_trop = ascmc[0]; asc_sid = (asc_trop - ay) % 360.0
-    return int(asc_sid // 30) + 1, asc_sid
+#     cusps, ascmc = swe.houses_ex(jd, lat, lon, b'P'); asc_trop = ascmc[0]; asc_sid = (asc_trop - ay) % 360.0
+#     return int(asc_sid // 30) + 1, asc_sid
 
-def navamsa_sign_from_lon_sid(lon_sid):
+# def navamsa_sign_from_lon_sid(lon_sid):
     sign = int(lon_sid // 30) + 1; deg_in_sign = lon_sid % 30.0; pada = int(deg_in_sign // (30.0/9.0))
     if sign in (1,4,7,10): start = sign
     elif sign in (2,5,8,11): start = ((sign + 8 - 1) % 12) + 1
@@ -1071,7 +1071,7 @@ with row3c2:
 # 
 #             jd, ay, sidelons = sidereal_positions(dt_utc)  # disabled at import; computed during generation
 #             lagna_sign, asc_sid = ascendant_sign(jd, lat, lon, ay)
-            nav_lagna_sign = navamsa_sign_from_lon_sid(asc_sid)
+#             nav_lagna_sign = navamsa_sign_from_lon_sid(asc_sid)
 
             df_positions = positions_table_no_symbol(sidelons)
 
