@@ -1,3 +1,4 @@
+APP_TITLE = "MRIDAASTRO"
 APP_TAGLINE = "In the light of divine, let your soul journey shine"
 
 # ===== Background Template Helper (stable image) =====
@@ -220,7 +221,7 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 # ---- End helpers ----
 
 
-st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
+st.set_page_config(page_title="MRIDAASTRO", layout="wide", page_icon="🪔")
 
 
 _apply_bg()
