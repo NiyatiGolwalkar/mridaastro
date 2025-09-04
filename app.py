@@ -456,7 +456,7 @@ def tz_from_latlon(lat, lon, dt_local):
     return tzname, offset_hours, dt_utc_naive
 
 
-def sidereal_positions(dt_utc):
+# def sidereal_positions(dt_utc):
     jd = swe.julday(dt_utc.year, dt_utc.month, dt_utc.day, dt_utc.hour + dt_utc.minute/60 + dt_utc.second/3600)
     set_sidereal_locked(); flags = swe.FLG_SWIEPH | swe.FLG_SPEED | swe.FLG_SIDEREAL
     out = {}
@@ -865,7 +865,7 @@ def detect_sade_sati_or_dhaiyya(sidelons:dict, transit_dt=None):
             tdt = datetime.now(timezone.utc)
         else:
             tdt = transit_dt
-        _jd, _ay, trans = sidereal_positions(tdt.replace(tzinfo=None) if hasattr(tdt, 'tzinfo') else tdt)
+#         _jd, _ay, trans = sidereal_positions(tdt.replace(tzinfo=None) if hasattr(tdt, 'tzinfo') else tdt)
         sat = planet_rasi_sign(trans['Sa'])
         d = (sat - moon) % 12
         if d in (11, 0, 1):
@@ -1069,7 +1069,7 @@ with row3c2:
         else:
             st.error("Couldn't generate the DOCX. Please check the generator function or try again.")
 # 
-            jd, ay, sidelons = sidereal_positions(dt_utc)  # disabled at import; computed during generation
+#             jd, ay, sidelons = sidereal_positions(dt_utc)  # disabled at import; computed during generation
             lagna_sign, asc_sid = ascendant_sign(jd, lat, lon, ay)
             nav_lagna_sign = navamsa_sign_from_lon_sid(asc_sid)
 
