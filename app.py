@@ -1,3 +1,4 @@
+APP_TAGLINE = "In the light of divine, let your soul journey shine"
 
 # ===== Background Template Helper (stable image) =====
 import os
