@@ -142,6 +142,112 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+# ===================== Google OAuth2 Login Gate (with callback) =====================
+import time, requests
+from urllib.parse import urlencode
+from google.oauth2 import id_token
+from google.auth.transport import requests as g_requests
+import streamlit as st
+
+# Read secrets (supports both top-level and [google_oauth] section)
+_cfg = st.secrets.get("google_oauth", st.secrets)
+CLIENT_ID     = _cfg["client_id"]
+CLIENT_SECRET = _cfg["client_secret"]
+REDIRECT_URI  = _cfg["redirect_uri"]  # e.g. https://mridaastro.streamlit.app/oauth2callback
+
+AUTH_ENDPOINT  = "https://accounts.google.com/o/oauth2/v2/auth"
+TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
+SCOPES = "openid email profile"
+
+def build_auth_url(state: str) -> str:
+    params = {
+        "client_id": CLIENT_ID,
+        "redirect_uri": REDIRECT_URI,
+        "response_type": "code",
+        "scope": SCOPES,
+        "access_type": "online",
+        "include_granted_scopes": "true",
+        "prompt": "consent",
+        "state": state,
+    }
+    return f"{AUTH_ENDPOINT}?{urlencode(params)}"
+
+def exchange_code_for_tokens(code: str) -> dict:
+    data = {
+        "code": code,
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "redirect_uri": REDIRECT_URI,
+        "grant_type": "authorization_code",
+    }
+    resp = requests.post(TOKEN_ENDPOINT, data=data, timeout=15)
+    resp.raise_for_status()
+    return resp.json()
+
+def verify_id_token(idt: str) -> dict:
+    # Verifies signature & audience (CLIENT_ID)
+    return id_token.verify_oauth2_token(idt, g_requests.Request(), CLIENT_ID)
+
+def sign_out():
+    for k in ("user", "oauth", "oauth_state"):
+        st.session_state.pop(k, None)
+    st.rerun()
+
+# --- Handle Google redirect (works on /oauth2callback or any path with ?code=...)
+qs = st.experimental_get_query_params()
+if "code" in qs:
+    try:
+        if "oauth_state" in st.session_state and qs.get("state", [""])[0] != st.session_state["oauth_state"]:
+            st.error("State mismatch. Please try signing in again.")
+            st.stop()
+
+        tokens = exchange_code_for_tokens(qs["code"][0])
+        claims = verify_id_token(tokens["id_token"])
+        st.session_state["user"] = {
+            "email": claims.get("email"),
+            "name": claims.get("name") or claims.get("email"),
+            "picture": claims.get("picture", ""),
+        }
+        st.session_state["oauth"] = tokens
+
+        # Clear query params and send user back to root path
+        st.experimental_set_query_params()
+        st.markdown("<script>history.replaceState({}, '', '/');</script>", unsafe_allow_html=True)
+
+        st.success(f"Signed in as {st.session_state['user']['email']}")
+        time.sleep(0.5)
+        st.rerun()
+    except Exception:
+        st.error("Login failed. Please try again.")
+        st.stop()
+
+# --- If not signed in, show login and stop
+if "user" not in st.session_state:
+    st.title("🔐 Sign in")
+    st.session_state["oauth_state"] = str(time.time())
+    login_url = build_auth_url(st.session_state["oauth_state"])
+    st.link_button("Sign in with Google", login_url)
+    st.stop()
+
+# --- Restrict who can access (pick ONE approach) ---
+email = st.session_state["user"]["email"]
+
+# A) Allow only Gmail accounts:
+if not email.endswith("@gmail.com"):
+    st.error("Access restricted to Gmail accounts only.")
+    st.stop()
+
+# B) OR use a whitelist (uncomment to use)
+# allowed_users = {"youremail@gmail.com", "friend@gmail.com"}
+# if email not in allowed_users:
+#     st.error("Access restricted to authorized users only.")
+#     st.stop()
+
+# Show identity & Sign out in sidebar
+st.sidebar.markdown(f"**Signed in:** {st.session_state['user'].get('name') or email} ({email})")
+if st.sidebar.button("Sign out"):
+    sign_out()
+# =================== End Google OAuth2 Login Gate (with callback) ===================
 
 # --- Custom style for Generate & Download buttons ---
 st.markdown("""
