@@ -126,7 +126,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import pytz
 import streamlit as st
-from PIL import Image
 
 
 # === App background (minimal, no logic changes) ===
@@ -222,16 +221,10 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 # ---- End helpers ----
 
 
-st.set_page_config(page_title="MRIDAASTRO", layout="wide", page_icon=_load_page_icon())
+st.set_page_config(page_title="MRIDAASTRO", layout="wide", page_icon="🪔")
 
 
 
-
-def _load_page_icon():
-    try:
-        return Image.open("assets/fevicon_icon.png")
-    except Exception:
-        return "🪔"
 
 
 # --- show validation only after first submit ---
@@ -242,7 +235,7 @@ def render_label(text: str, show_required: bool = False):
     html = (
         "<div style='display:flex;justify-content:space-between;align-items:center;'>"
         f"<span style='font-weight:700; font-size:18px;'>{text}</span>"
-        + ("<span style='color:#c1121f; font-size:14px; font-weight:700;'>Required</span>" if show_required else "")
+        + ("<span style='color:#c1121f; font-size:12px;'>Required</span>" if show_required else "")
         + "</div>"
     )
     st.markdown(html, unsafe_allow_html=True)
@@ -1041,17 +1034,7 @@ with row2c2:
 
 row3c1, row3c2 = st.columns(2)
 with row3c1:
-    tz_val = (st.session_state.get('tz_input','') or '').strip()
-    tz_invalid = False
-    if st.session_state.get('submitted') and tz_val:
-        try:
-            _tzv = float(tz_val)
-            if _tzv < -12 or _tzv > 14:
-                tz_invalid = True
-        except Exception:
-            tz_invalid = True
-    tz_err = st.session_state.get('submitted') and ((not tz_val) or tz_invalid)
-    render_label('UTC offset override (e.g., 5.5) <span style="color:red">*</span>', tz_err)
+    st.markdown("<div style='font-weight:700; font-size:18px;'>UTC offset override (optional, e.g., 5.5)</div>", unsafe_allow_html=True)
     tz_override = st.text_input("", key="tz_input", label_visibility="collapsed", value="")
 with row3c2:
     st.write("")
@@ -1072,13 +1055,14 @@ with row3c2:
         _place = (st.session_state.get('place_input') or '').strip()
         _any_err = (not _name) or (not _place)
 
-        _tz = (st.session_state.get('tz_input') or '').strip()
-        try:
-            _tzv = float(_tz)
-            if _tzv < -12 or _tzv > 14:
+        _tz = (st.session_state.get('tz_input') or '').strip() if 'tz_input' in st.session_state else ''
+        if _tz:
+            try:
+                _tzv = float(_tz)
+                if _tzv < -12 or _tzv > 14:
+                    _any_err = True
+            except Exception:
                 _any_err = True
-        except Exception:
-            _any_err = True
 
         if _any_err:
             st.markdown("<div style='color:#c1121f; font-weight:600; padding:8px 0;'>Please fix the highlighted fields above.</div>", unsafe_allow_html=True)
