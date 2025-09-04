@@ -1,3 +1,5 @@
+> Free Janma Kundali Generator – Create, view & download your Vedic Birth Chart instantly (MRIDAASTRO).
+
 # MRIDAASTRO – Kundali Generator
 
 🔮 **MRIDAASTRO** is a free online **Kundali Generator App**.  
