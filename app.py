@@ -126,6 +126,28 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import pytz
 import streamlit as st
+
+# --- Custom style for Generate button ---
+st.markdown("""
+    <style>
+    div.stButton > button:first-child {
+        background-color: black;         /* default */
+        color: white;
+        font-weight: 600;
+        border-radius: 8px;
+        border: 1px solid #2e8b57;
+    }
+    div.stButton > button:first-child:hover {
+        background-color: #2e8b57 !important;  /* sea green hover */
+        color: white !important;
+    }
+    div.stButton > button:first-child:active {
+        background-color: #2e8b57 !important;  /* sea green click */
+        color: white !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 from PIL import Image
 
 
