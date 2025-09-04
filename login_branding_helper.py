@@ -80,9 +80,17 @@ def show_login_screen():
     background-size: cover; background-position: center; background-repeat: no-repeat;
   }}
   [data-testid="stHeader"] {{ background: transparent; }}
-  .login-card {{ max-width:560px; margin:12vh auto; padding:32px; border-radius:16px;
-                 background:rgba(255,255,255,0.85); box-shadow:0 12px 30px rgba(0,0,0,0.3);
-                 text-align:center; backdrop-filter:blur(4px); }}
+  .login-card {{  position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);  /* centers both vertically and horizontally */
+    width: min(92vw, 640px);
+    padding: 32px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.95);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.28);
+    text-align: center;
+    backdrop-filter: blur(4px); }}
   .brand {{ font-family:'Cinzel Decorative', cursive; font-size:58px; font-weight:700;
             color:#000; margin-bottom:8px; text-shadow:2px 2px 4px rgba(0,0,0,0.2); }}
   .tagline {{ font-family:Georgia, serif; font-style:italic; font-size:24px; color:#000; margin-bottom:18px; }}
