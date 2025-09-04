@@ -226,20 +226,6 @@ st.set_page_config(page_title="MRIDAASTRO", layout="wide", page_icon="🪔")
 
 
 # === MRIDAASTRO Brand Header (Top) ===
-st.markdown(
-    """
-    <div style='text-align:center; padding: 14px 0 4px 0;'>
-      <div style='font-size:46px; font-weight:800; letter-spacing:1px; color:#2C3E50; text-shadow:1px 1px 2px #ccc; margin-bottom:6px;'>
-        MRIDAASTRO
-      </div>
-      <div style='font-family:Georgia,serif; font-style:italic; font-size:20px; color:#34495E; margin-bottom:10px;'>
-        In the light of divine, let your soul journey shine
-      </div>
-      <div style='height:3px; width:160px; margin:0 auto 6px auto; background:#2CB67D; border-radius:2px;'></div>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
 # === End MRIDAASTRO Header ===
 _apply_bg()
 AYANAMSHA_VAL = swe.SIDM_LAHIRI
