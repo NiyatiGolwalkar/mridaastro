@@ -1074,10 +1074,10 @@ with row3c2:
         # ---- End Validation guard ----
 
             try:
-            lat, lon, disp = geocode(place, api_key)
-        except Exception as e:
-            st.error(f"Location error: {e}")
-            st.stop()
+                lat, lon, disp = geocode(place, api_key)
+            except Exception as e:
+                st.error("Location error: {}".format(e))
+                st.stop()
             dt_local = datetime.datetime.combine(dob, tob).replace(tzinfo=None)
             used_manual = False
             if tz_override.strip():
