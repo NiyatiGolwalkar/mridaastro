@@ -34,12 +34,12 @@ ONE_PAGE = True
 
 # --- Appearance configuration ---
 # Sizing (pt) — tuned smaller to reduce white space
-NUM_W_PT = 10       # house number box width (was 12)
-NUM_H_PT = 12       # house number box height (was 14)
-PLANET_W_PT = 20    # planet label box width (was 16)
-PLANET_H_PT = 16    # planet label box height (was 14)
-GAP_X_PT = 3        # horizontal gap between planet boxes (was 4)
-OFFSET_Y_PT = 10    # vertical offset below number box (was 12)
+# NUM_W_PT = 10       # house number box width (was 12)  # neutralized at import
+# NUM_H_PT = 12       # house number box height (was 14)  # neutralized at import
+# PLANET_W_PT = 20    # planet label box width (was 16)  # neutralized at import
+# PLANET_H_PT = 16    # planet label box height (was 14)  # neutralized at import
+# GAP_X_PT = 3        # horizontal gap between planet boxes (was 4)  # neutralized at import
+# OFFSET_Y_PT = 10    # vertical offset below number box (was 12)  # neutralized at import
 
 # Options: "plain", "bordered", "shaded", "bordered_shaded"
 HOUSE_NUM_STYLE = "bordered"
@@ -241,7 +241,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 # === End MRIDAASTRO Header ===
-_apply_bg()
+# _apply_bg()  # neutralized at import
 AYANAMSHA_VAL = swe.SIDM_LAHIRI
 YEAR_DAYS     = 365.2422
 
