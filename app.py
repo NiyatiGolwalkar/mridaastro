@@ -991,20 +991,20 @@ def main():
     # === Brand Header ===
     # === End Brand Header ===
 
-    # st.title(APP_TITLE)  # removed to avoid duplicate brand name# === Two fields per row layout ===
-row1c1, row1c2 = # === Inputs: stacked bold labels, half-width ===
+    # st.title(APP_TITLE)  # removed to avoid duplicate brand name# === Two fields per row layout (stacked labels, half-width) ===
 row1c1, row1c2 = st.columns(2)
 with row1c1:
     st.markdown("<div style='font-weight:700; font-size:18px;'>Name</div>", unsafe_allow_html=True)
     name = st.text_input("", key="name_input", label_visibility="collapsed")
 with row1c2:
     st.markdown("<div style='font-weight:700; font-size:18px;'>Date of Birth</div>", unsafe_allow_html=True)
-    dob = st.date_input("", key="dob_input", label_visibility="collapsed")
+    dob = st.date_input("", key="dob_input", label_visibility="collapsed",
+                        min_value=datetime.date(1800,1,1), max_value=datetime.date(2100,12,31))
 
 row2c1, row2c2 = st.columns(2)
 with row2c1:
     st.markdown("<div style='font-weight:700; font-size:18px;'>Time of Birth</div>", unsafe_allow_html=True)
-    tob = st.time_input("", key="tob_input", label_visibility="collapsed")
+    tob = st.time_input("", key="tob_input", label_visibility="collapsed", step=datetime.timedelta(minutes=1))
 with row2c2:
     st.markdown("<div style='font-weight:700; font-size:18px;'>Place of Birth (City, State, Country)</div>", unsafe_allow_html=True)
     place = st.text_input("", key="place_input", label_visibility="collapsed")
@@ -1014,9 +1014,8 @@ with row3c1:
     st.markdown("<div style='font-weight:700; font-size:18px;'>UTC offset override (optional, e.g., 5.5)</div>", unsafe_allow_html=True)
     tz_override = st.text_input("", key="tz_input", label_visibility="collapsed", value="")
 with row3c2:
-    st.write("")  # spacer
+    st.write("")
 # === End two-per-row ===
-
 
 
 
