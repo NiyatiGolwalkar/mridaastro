@@ -1,23 +1,48 @@
-# login_branding_helper.py
-# Drop-in helper to show a branded Google OAuth login screen in Streamlit.
-# Usage in app.py:
-#   from login_branding_helper import show_login_screen
-#   if "user" not in st.session_state:
-#       show_login_screen(); st.stop()
+# login_branding_helper.py (hardened)
+# Renders a branded login screen and builds Google OAuth URL.
+# Handles missing secrets gracefully (shows a clear message instead of crashing).
 
-import base64, time
-from pathlib import Path
+import base64, os, time
 from urllib.parse import urlencode
+from pathlib import Path
 import streamlit as st
 
+
+def _read_google_oauth_from_secrets():
+    """Return (client_id, redirect_uri); None if missing."""
+    cfg = {}
+    try:
+        # Streamlit Secrets behaves like a Mapping
+        cfg = st.secrets.get("google_oauth", {})  # {} if key not present
+    except Exception:
+        cfg = {}
+    client_id = os.getenv("GOOGLE_OAUTH_CLIENT_ID", cfg.get("client_id"))
+    redirect_uri = os.getenv("GOOGLE_OAUTH_REDIRECT_URI", cfg.get("redirect_uri"))
+    return client_id, redirect_uri
+
+
 def build_auth_url(state: str) -> str:
-    CLIENT_ID     = st.secrets['google_oauth']['client_id']
-    REDIRECT_URI  = st.secrets['google_oauth']['redirect_uri']
+    client_id, redirect_uri = _read_google_oauth_from_secrets()
+    if not client_id or not redirect_uri:
+        # Show an inline configuration error and stop building URL
+        st.error(
+            "Google OAuth is not configured. Please add `google_oauth.client_id` and "
+            "`google_oauth.redirect_uri` in **Secrets** (or set env vars "
+            "`GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_REDIRECT_URI`)."
+        )
+        st.info(
+            "Example secrets:\n\n"
+            "[google_oauth]\n"
+            "client_id = \"YOUR_CLIENT_ID.apps.googleusercontent.com\"\n"
+            "redirect_uri = \"https://mridaastro.streamlit.app/~/+/oauth2callback\""
+        )
+        return ""
+
     AUTH_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
     SCOPES = "openid email profile"
     params = {
-        "client_id": CLIENT_ID,
-        "redirect_uri": REDIRECT_URI,
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
         "response_type": "code",
         "scope": SCOPES,
         "access_type": "online",
@@ -27,16 +52,25 @@ def build_auth_url(state: str) -> str:
     }
     return f"{AUTH_ENDPOINT}?{urlencode(params)}"
 
+
 def show_login_screen():
+    """Render the branded login page. Requires google_oauth secrets/env to be set."""
     st.session_state["oauth_state"] = str(time.time())
     login_url = build_auth_url(st.session_state["oauth_state"])
+
+    # If config missing, we already showed an error; avoid rendering a broken button
+    if not login_url:
+        return
 
     # Background image
     bg_path = Path("assets/login_bg.png")
     bg_data_url = ""
     if bg_path.exists():
-        b64 = base64.b64encode(bg_path.read_bytes()).decode("utf-8")
-        bg_data_url = f"data:image/png;base64,{b64}"
+        try:
+            b64 = base64.b64encode(bg_path.read_bytes()).decode("utf-8")
+            bg_data_url = f"data:image/png;base64,{b64}"
+        except Exception:
+            bg_data_url = ""
 
     st.markdown(f"""
 <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&display=swap" rel="stylesheet">
