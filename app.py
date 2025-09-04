@@ -1066,7 +1066,6 @@ with row3c2:
             st.markdown("<div style='color:#c1121f; font-weight:600; padding:8px 0;'>Please fix the highlighted fields above.</div>", unsafe_allow_html=True)
             st.stop()
         # ---- End Validation guard ----
-try:
             lat, lon, disp = geocode(place, api_key)
             dt_local = datetime.datetime.combine(dob, tob).replace(tzinfo=None)
             used_manual = False
