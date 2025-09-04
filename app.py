@@ -34,12 +34,12 @@ ONE_PAGE = True
 
 # --- Appearance configuration ---
 # Sizing (pt) — tuned smaller to reduce white space
-NUM_W_PT = 10       # house number box width (was 12)
-NUM_H_PT = 12       # house number box height (was 14)
-PLANET_W_PT = 20    # planet label box width (was 16)
-PLANET_H_PT = 16    # planet label box height (was 14)
-GAP_X_PT = 3        # horizontal gap between planet boxes (was 4)
-OFFSET_Y_PT = 10    # vertical offset below number box (was 12)
+# NUM_W_PT = 10       # house number box width (was 12)  # neutralized at import
+# NUM_H_PT = 12       # house number box height (was 14)  # neutralized at import
+# PLANET_W_PT = 20    # planet label box width (was 16)  # neutralized at import
+# PLANET_H_PT = 16    # planet label box height (was 14)  # neutralized at import
+# GAP_X_PT = 3        # horizontal gap between planet boxes (was 4)  # neutralized at import
+# OFFSET_Y_PT = 10    # vertical offset below number box (was 12)  # neutralized at import
 
 # Options: "plain", "bordered", "shaded", "bordered_shaded"
 HOUSE_NUM_STYLE = "bordered"
@@ -126,33 +126,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import pytz
 import streamlit as st
-
-# === Download helper (packs doc to bytes) ===
-def _to_docx_bytes(doc_or_bytes_or_path):
-    try:
-        from docx import Document as _Doc
-    except Exception:
-        _Doc = None
-    # If bytes already:
-    if isinstance(doc_or_bytes_or_path, (bytes, bytearray)):
-        return bytes(doc_or_bytes_or_path)
-    # If path-like string:
-    if isinstance(doc_or_bytes_or_path, str):
-        try:
-            with open(doc_or_bytes_or_path, "rb") as f:
-                return f.read()
-        except Exception:
-            return None
-    # If python-docx Document:
-    if _Doc is not None and isinstance(doc_or_bytes_or_path, _Doc):
-        bio = BytesIO()
-        doc_or_bytes_or_path.save(bio)
-        bio.seek(0)
-        return bio.getvalue()
-    # Unknown
-    return None
-# === End helper ===
-
 
 
 # === App background (minimal, no logic changes) ===
@@ -268,7 +241,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 # === End MRIDAASTRO Header ===
-_apply_bg()
+# _apply_bg()  # neutralized at import
 AYANAMSHA_VAL = swe.SIDM_LAHIRI
 YEAR_DAYS     = 365.2422
 
@@ -1013,6 +986,43 @@ def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
     # Borders similar to other tables
     add_table_borders(t, size=6)
     compact_table_paragraphs(t)
+# === Helpers: bytes packer and unified build entry ===
+def _to_docx_bytes(doc_or_bytes_or_path):
+    try:
+        from docx import Document as _Doc
+    except Exception:
+        _Doc = None
+    if isinstance(doc_or_bytes_or_path, (bytes, bytearray)):
+        return bytes(doc_or_bytes_or_path)
+    if isinstance(doc_or_bytes_or_path, str) and doc_or_bytes_or_path.lower().endswith(".docx"):
+        try:
+            with open(doc_or_bytes_or_path, "rb") as f:
+                return f.read()
+        except Exception:
+            return None
+    if _Doc is not None and isinstance(doc_or_bytes_or_path, _Doc):
+        bio = BytesIO()
+        doc_or_bytes_or_path.save(bio)
+        return bio.getvalue()
+    return None
+
+def build_kundali_docx(name, dob, tob, place, tz_override):
+    """
+    Unified entry point that reuses user's existing generator function if present.
+    This function MUST NOT touch Streamlit UI. It returns a python-docx Document,
+    bytes, or a .docx path.
+    """
+    # Prefer explicit full generator if defined by user:
+    for fn in ("generate_kundali_docx_full", "generate_kundali_docx", "create_docx"):
+        if fn in globals() and callable(globals()[fn]):
+            return globals()[fn](name, dob, tob, place, tz_override)
+    # As a fallback, if the module defines a function named `main_build_doc`:
+    if "main_build_doc" in globals() and callable(globals()["main_build_doc"]):
+        return globals()["main_build_doc"](name, dob, tob, place, tz_override)
+    # No known generator found
+    return None
+# === End helpers ===
+
 def main():
     pass
     # === Brand Header ===
@@ -1041,28 +1051,115 @@ with row3c2:
 
     api_key = st.secrets.get("GEOAPIFY_API_KEY","")
 
-if st.button("Generate DOCX"):
-    # Run your existing generation logic (reusing the same variables in scope)
-    # Expect a python-docx Document in variable `doc` at the end, or return value from your own function.
-    generated = None
-    try:
-        # If the current script builds a `doc` object inline, we keep that code minimal here:
+    if st.button("Generate DOCX"):
+        # Generate silently and present only a download button
         try:
-            generated = doc  # if your code populates `doc`
+            built = build_kundali_docx(name, dob, tob, place, tz_override)
+            doc_bytes = _to_docx_bytes(built) if built is not None else None
         except Exception:
-            generated = None
-    except Exception:
-        generated = None
+            doc_bytes = None
+        if doc_bytes:
+            safe = (name or "Kundali").strip().replace(" ", "_")
+            st.download_button(
+                "Download Kundali (DOCX)",
+                data=doc_bytes,
+                file_name=f"{safe}_kundali.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
+        else:
+            st.error("Couldn't generate the DOCX. Please check the generator function.")
 
-    data = _to_docx_bytes(generated) if generated is not None else None
-    if data:
-        safe_name = (name or "Kundali").strip().replace(" ", "_")
-        st.success("Kundali is ready.")
-        st.download_button("Download Kundali (DOCX)", data=data,
-                           file_name=f"{safe_name}_kundali.docx",
-                           mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-    else:
-        st.error("Couldn't generate the DOCX. Please check the generator function.")
+            jd, ay, sidelons = sidereal_positions(dt_utc)
+            lagna_sign, asc_sid = ascendant_sign(jd, lat, lon, ay)
+            nav_lagna_sign = navamsa_sign_from_lon_sid(asc_sid)
+
+            df_positions = positions_table_no_symbol(sidelons)
+
+            ORDER = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
+            YEARS = {'Ke':7,'Ve':20,'Su':6,'Mo':10,'Ma':7,'Ra':18,'Ju':16,'Sa':19,'Me':17}
+
+            def moon_balance_days(moon_sid):
+                NAK=360.0/27.0; part = moon_sid % 360.0; ni = int(part // NAK); pos = part - ni*NAK
+                md_lord = ORDER[ni % 9]; frac = pos/NAK; remaining_days = YEARS[md_lord]*(1 - frac)*YEAR_DAYS
+                return md_lord, remaining_days
+
+            def build_mahadashas_days_utc(birth_utc_dt, moon_sid):
+                md_lord, rem_days = moon_balance_days(moon_sid); end_limit = birth_utc_dt + datetime.timedelta(days=100*YEAR_DAYS)
+                segments=[]; birth_md_start = birth_utc_dt; birth_md_end = min(birth_md_start + datetime.timedelta(days=rem_days), end_limit)
+                segments.append({"planet": md_lord, "start": birth_md_start, "end": birth_md_end, "days": rem_days})
+                idx = (ORDER.index(md_lord) + 1) % 9; t = birth_md_end
+                while t < end_limit:
+                    L = ORDER[idx]; dur_days = YEARS[L]*YEAR_DAYS; end = min(t + datetime.timedelta(days=dur_days), end_limit)
+                    segments.append({"planet": L, "start": t, "end": end, "days": dur_days}); t = end; idx = (idx + 1) % 9
+                return segments
+            md_segments_utc = build_mahadashas_days_utc(dt_utc, sidelons['Mo'])
+
+            def age_years(birth_dt_local, end_utc):
+                local_end = _utc_to_local(end_utc, tzname, tz_hours, used_manual)
+                days = (local_end.date() - birth_dt_local.date()).days
+                return int(days // YEAR_DAYS)
+
+            df_md = pd.DataFrame([
+                {"ग्रह": HN[s["planet"]],
+                 "समाप्ति तिथि": _utc_to_local(s["end"], tzname, tz_hours, used_manual).strftime("%d-%m-%Y"),
+                 "आयु (वर्ष)": age_years(dt_local, s["end"])}
+                for s in md_segments_utc
+            ])
+
+            now_utc = datetime.datetime.utcnow()
+            rows_an = next_antar_in_days_utc(now_utc, md_segments_utc, days_window=365*10)
+            df_an = pd.DataFrame([
+                {"महादशा": HN[r["major"]], "अंतरदशा": HN[r["antar"]],
+                 "तिथि": _utc_to_local(r["end"], tzname, tz_hours, used_manual).strftime("%d-%m-%Y")}
+                for r in rows_an
+            ]).head(5)
+
+            img_lagna = render_north_diamond(size_px=800, stroke=3)
+            img_nav   = render_north_diamond(size_px=800, stroke=3)
+
+            # DOCX
+            doc = make_document()
+            sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
+            margin = Mm(12); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(8); sec.bottom_margin = Mm(8)
+
+            style = doc.styles['Normal']; style.font.name = LATIN_FONT; style.font.size = Pt(BASE_FONT_PT)
+            style._element.rPr.rFonts.set(qn('w:eastAsia'), HINDI_FONT); style._element.rPr.rFonts.set(qn('w:cs'), HINDI_FONT)
+
+            
+            
+            
+            
+            # ===== Report Header Block (exact lines) =====
+            try:
+                # MRIDAASTRO
+                hdr1 = doc.add_paragraph(); hdr1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r = hdr1.add_run("MRIDAASTRO"); r.font.bold = True; r.font.small_caps = True; r.font.size = Pt(16)
+
+                # Tagline
+                hdr2 = doc.add_paragraph(); hdr2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r2 = hdr2.add_run("In the light of the divine, let your soul journey shine."); r2.italic = True; r2.font.size = Pt(10)
+
+                # Title
+                hdr3 = doc.add_paragraph(); hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI)"); r3.bold = True; r3.font.size = Pt(13)
+
+                # Blank separator (small)
+                # hdr3.paragraph_format.space_after = Pt(2)
+
+                # Name
+                hdr4 = doc.add_paragraph(); hdr4.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r4 = hdr4.add_run("Niyati Niraj Golwalkar"); r4.font.size = Pt(10); r4.bold = True
+
+                # Role line
+                hdr5 = doc.add_paragraph(); hdr5.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r5 = hdr5.add_run("Astrologer • Sound & Mantra Healer"); r5.font.size = Pt(9.5)
+
+                # Contact line
+                hdr6 = doc.add_paragraph(); hdr6.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r6 = hdr6.add_run("Phone: +91 9302413816  |  Electronic City Phase 1, Bangalore, India"); r6.font.size = Pt(9.5)
+            except Exception:
+                pass
+            # ===== End Header Block (exact lines) =====
 # ===== End Header Block (simplified & robust) =====
 # ===== End Header Block (safe) =====
 
