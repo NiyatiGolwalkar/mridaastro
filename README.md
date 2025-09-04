@@ -1,35 +1,47 @@
-> Free Janma Kundali Generator – Create, view & download your Vedic Birth Chart instantly (MRIDAASTRO).
+# MRIDAASTRO – Free Kundali Generator Online  
 
-# MRIDAASTRO – Kundali Generator
+🔮 **MRIDAASTRO** is a **free Kundali Generator App** that lets you create and download your **Janma Kundali (Vedic Birth Chart)** instantly.  
+Get accurate **Lagna chart, Navamsa chart, and planetary positions** based on your date, time, and place of birth.  
 
-🔮 **MRIDAASTRO** is a free online **Kundali Generator App**.  
-Create and download your **Janma Kundali (Vedic Birth Chart)** instantly, with accurate planetary positions and horoscope charts.
-
-👉 [Click here to open the app](https://mridaastro.streamlit.app)
+👉 [Click here to open the app](https://mridaastro.streamlit.app)  
 
 ---
 
-## Features
-- Generate **Janma Kundali** instantly from your birth details.  
-- Accurate **Lagna, Navamsa and planetary positions**.  
-- Download your Kundali in **DOCX format** for offline use.  
-- Simple, fast, and easy-to-use interface.  
+## ✨ Features
+- Generate **Janma Kundali Online** in seconds.  
+- Accurate **Vedic horoscope with Lagna and Navamsa charts**.  
+- Download your **Kundali in DOCX format** (easy to save & share).  
+- Clean and user-friendly interface built with Streamlit.  
+- 100% free **Kundali calculator** – no hidden charges.  
 
 ---
 
-## How it works
-1. Enter your **Name, Date of Birth, Time, and Place**.  
-2. The app calculates your **Vedic astrology chart** using accurate algorithms.  
-3. You can **view and download** the Kundali document.  
+## 🛠 How it Works
+1. Enter your **Name, Date of Birth, Time, and Place of Birth**.  
+2. The app calculates your **Vedic astrology birth chart** with planetary positions.  
+3. Instantly **view and download** your Kundali in DOCX format.  
 
 ---
 
-## Why MRIDAASTRO?
-- 100% free Kundali generator.  
-- Easy download in DOCX format (share with astrologers or keep for yourself).  
-- Runs on [Streamlit](https://streamlit.io) for a smooth and fast experience.  
+## 🌟 Why Choose MRIDAASTRO?
+- **Free online Kundali calculator** with no restrictions.  
+- Supports **Vedic astrology** principles (Lagna, Navamsa, Dasha).  
+- Easy to download and share charts with astrologers or friends.  
+- Accessible from anywhere – no software installation needed.  
 
 ---
 
-## Try it now  
+## 📖 Keywords (for discovery)
+- Free Kundali Generator Online  
+- Janma Kundali by Date of Birth & Time  
+- Vedic Birth Chart Calculator  
+- Free Horoscope Chart Online  
+- Kundali with Lagna and Navamsa charts  
+- Kundali Download in DOCX  
+
+---
+
+## 🚀 Try It Now
 👉 [Generate your Janma Kundali online](https://mridaastro.streamlit.app)  
+
+Generate, download, and explore your **Vedic astrology Kundali** instantly with MRIDAASTRO.  
