@@ -56,14 +56,14 @@ tz_override = st.text_input("UTC offset override (optional, e.g., 5.5)")
 
 # ------------------ Helpers ------------------
 def _to_docx_bytes(doc_or_bytes_or_path):
-    try:
-        from docx import Document as _Doc
-    except Exception:
-        _Doc = None
-
+    """Return raw .docx bytes from a python-docx Document-like object, bytes, or a file path.
+    Uses duck-typing so it works across python-docx versions.
+    """
+    # Already bytes-like
     if isinstance(doc_or_bytes_or_path, (bytes, bytearray)):
         return bytes(doc_or_bytes_or_path)
 
+    # String path
     if isinstance(doc_or_bytes_or_path, str) and doc_or_bytes_or_path.lower().endswith(".docx"):
         try:
             with open(doc_or_bytes_or_path, "rb") as f:
@@ -71,29 +71,35 @@ def _to_docx_bytes(doc_or_bytes_or_path):
         except Exception:
             return None
 
-    if _Doc is not None and isinstance(doc_or_bytes_or_path, _Doc):
-        bio = BytesIO()
-        doc_or_bytes_or_path.save(bio)
-        return bio.getvalue()
+    # python-docx Document or any object with .save(file_like)
+    if hasattr(doc_or_bytes_or_path, "save"):
+        try:
+            bio = BytesIO()
+            doc_or_bytes_or_path.save(bio)
+            return bio.getvalue()
+        except Exception:
+            return None
 
     return None
 
 def _build_fallback_doc(name, dob, tob, place, tz_override):
     """Always produces a valid .docx using python-docx."""
-    from docx import Document
-    from docx.shared import Pt
-    doc = Document()
-    doc.add_heading("MRIDAASTRO", level=1)
-    p = doc.add_paragraph("In the light of divine, let your soul journey shine")
-    p.runs[0].italic = True
-    doc.add_paragraph("This placeholder DOCX is generated because the kundali generator wasn't found or failed.")
-    doc.add_paragraph(f"Name: {name or ''}")
-    doc.add_paragraph(f"Date of Birth: {dob}")
-    doc.add_paragraph(f"Time of Birth: {tob}")
-    doc.add_paragraph(f"Place of Birth: {place or ''}")
-    if tz_override:
-        doc.add_paragraph(f"UTC override: {tz_override}")
-    return doc
+    try:
+        from docx import Document
+        doc = Document()
+        doc.add_heading("MRIDAASTRO", level=1)
+        p = doc.add_paragraph("In the light of divine, let your soul journey shine")
+        p.runs[0].italic = True
+        doc.add_paragraph("This placeholder DOCX is generated because the kundali generator wasn't found or failed.")
+        doc.add_paragraph(f"Name: {name or ''}")
+        doc.add_paragraph(f"Date of Birth: {dob}")
+        doc.add_paragraph(f"Time of Birth: {tob}")
+        doc.add_paragraph(f"Place of Birth: {place or ''}")
+        if tz_override:
+            doc.add_paragraph(f"UTC override: {tz_override}")
+        return doc
+    except Exception:
+        return None
 
 def _try_call(fn, *args):
     try:
@@ -102,7 +108,7 @@ def _try_call(fn, *args):
         return None
 
 def _build_kundali_docx_entry(name, dob, tob, place, tz_override):
-    # Try a set of likely generator names; if any exist and succeed, use it.
+    # Try likely generator names; if any exist and succeed, use it.
     for fn_name in ("generate_kundali_docx_full", "generate_kundali_docx", "create_docx", "main_build_doc"):
         fn = globals().get(fn_name)
         if callable(fn):
