@@ -1014,16 +1014,14 @@ with row3c1:
     st.markdown("<div style='font-weight:700; font-size:18px;'>UTC offset override (optional, e.g., 5.5)</div>", unsafe_allow_html=True)
     tz_override = st.text_input("", key="tz_input", label_visibility="collapsed", value="")
 with row3c2:
-    st.markdown("<div style='height:36px'></div>", unsafe_allow_html=True)
-    clicked = st.button("Generate Kundali")
-
+    st.write("")
 # === End two-per-row ===
 
 
 
     api_key = st.secrets.get("GEOAPIFY_API_KEY","")
 
-    if clicked:
+    if st.button("Generate DOCX"):
         try:
             lat, lon, disp = geocode(place, api_key)
             dt_local = datetime.datetime.combine(dob, tob).replace(tzinfo=None)
