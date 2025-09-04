@@ -1005,8 +1005,8 @@ with row1c1:
     st.markdown("<div style='font-weight:700; font-size:18px;'>Name <span style='color:red'>*</span></div>", unsafe_allow_html=True)
     name = st.text_input("", key="name_input", label_visibility="collapsed")
 
-    name_err = not (name or "").strip()
-    if name_err:
+    name_err = (not (name or '').strip())
+    if st.session_state.get('submitted') and name_err:
         st.markdown("<div style='color:#c1121f; font-size:12px; margin-top:4px;'>Required</div>", unsafe_allow_html=True)
 with row1c2:
     st.markdown("<div style='font-weight:700; font-size:18px;'>Date of Birth <span style='color:red'>*</span></div>", unsafe_allow_html=True)
@@ -1022,8 +1022,8 @@ with row2c2:
     place = st.text_input("", key="place_input", label_visibility="collapsed")
 
 
-    place_err = not (place or "").strip()
-    if place_err:
+    place_err = (not (place or '').strip())
+    if st.session_state.get('submitted') and place_err:
         st.markdown("<div style='color:#c1121f; font-size:12px; margin-top:4px;'>Required</div>", unsafe_allow_html=True)
 row3c1, row3c2 = st.columns(2)
 with row3c1:
@@ -1038,7 +1038,7 @@ with row3c1:
                 tz_err = True
         except Exception:
             tz_err = True
-    if tz_err:
+    if st.session_state.get('submitted') and tz_err:
         st.markdown("<div style='color:#c1121f; font-size:12px; margin-top:4px;'>Enter a valid number (e.g., 5.5)</div>", unsafe_allow_html=True)
 with row3c2:
     st.write("")
@@ -1050,6 +1050,7 @@ with row3c2:
 
     if st.button("Generate DOCX"):
         # ---- Validation guard before any processing ----
+        st.session_state['submitted'] = True
         _any_err = False
         if not (name or '').strip():
             _any_err = True
@@ -1065,8 +1066,18 @@ with row3c2:
         if _any_err:
             st.markdown("<div style='color:#c1121f; font-weight:600; padding:8px 0;'>Please fix the highlighted fields above.</div>", unsafe_allow_html=True)
             st.stop()
+        # Additional guard: API key present
+        api_key = st.secrets.get("GEOAPIFY_API_KEY","")
+        if not api_key:
+            st.error("Geoapify key missing. Add GEOAPIFY_API_KEY in Secrets.")
+            st.stop()
         # ---- End Validation guard ----
+
+            try:
             lat, lon, disp = geocode(place, api_key)
+        except Exception as e:
+            st.error(f"Location error: {e}")
+            st.stop()
             dt_local = datetime.datetime.combine(dob, tob).replace(tzinfo=None)
             used_manual = False
             if tz_override.strip():
