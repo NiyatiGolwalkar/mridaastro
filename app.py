@@ -127,6 +127,12 @@ import pandas as pd
 import pytz
 import streamlit as st
 
+# --- Google Search Console verification ---
+st.markdown("""
+<meta name="google-site-verification" content="01pSw-vPDjcZLjPluDXzbWvMR-YxFjh3w3T94nMxsVU" />
+""", unsafe_allow_html=True)
+
+
 # --- Custom style for Generate & Download buttons ---
 st.markdown("""
     <style>
