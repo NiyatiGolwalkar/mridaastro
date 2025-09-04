@@ -127,10 +127,20 @@ import pandas as pd
 import pytz
 import streamlit as st
 
-# --- Google Search Console verification ---
+# --- Google Search Console verification (inject into <head>) ---
 st.markdown("""
-<meta name="google-site-verification" content="01pSw-vPDjcZLjPluDXzbWvMR-YxFjh3w3T94nMxsVU" />
+<script>
+(function() {
+  try {
+    var meta = document.createElement('meta');
+    meta.name = 'google-site-verification';
+    meta.content = '01pSw-vPDjcZLjPluDXzbWvMR-YxFjh3w3T94nMxsVU';
+    document.getElementsByTagName('head')[0].appendChild(meta);
+  } catch (e) { console.log('GSC meta inject error', e); }
+})();
+</script>
 """, unsafe_allow_html=True)
+
 
 
 # --- Custom style for Generate & Download buttons ---
