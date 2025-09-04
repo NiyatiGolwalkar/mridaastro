@@ -173,6 +173,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+from login_branding_helper import show_login_screen
+
 # ===================== Google OAuth2 Login Gate (with callback) =====================
 import time, requests
 from urllib.parse import urlencode
@@ -264,10 +266,8 @@ if code:
 
 # --- If not signed in, show login and stop
 if "user" not in st.session_state:
-    st.title("🔐 Sign in")
-    st.session_state["oauth_state"] = str(time.time())
-    login_url = build_auth_url(st.session_state["oauth_state"])
-    st.link_button("Sign in with Google", login_url)
+    # Render the fully branded login screen (background + hero + gold button)
+    show_login_screen()
     st.stop()
 
 # --- Restrict who can access (pick ONE approach) ---
