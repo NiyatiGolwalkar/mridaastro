@@ -240,18 +240,27 @@ if "user" not in st.session_state:
     st.stop()
 
 # --- Restrict who can access (pick ONE approach) ---
-email = st.session_state["user"]["email"]
 
-# A) Allow only Gmail accounts:
-if not email.endswith("@gmail.com"):
-    st.error("Access restricted to Gmail accounts only.")
+# --- Restrict who can access (STRICT WHITELIST) ---
+email = (st.session_state["user"].get("email") or "").lower()
+
+# Read allowed users from Streamlit secrets. Supports either a list or a comma-separated string.
+_allowed_raw = st.secrets.get("allowed_users", [])
+if isinstance(_allowed_raw, str):
+    allowed_users = {u.strip().lower() for u in _allowed_raw.split(",") if u.strip()}
+elif isinstance(_allowed_raw, (list, tuple, set)):
+    allowed_users = {str(u).strip().lower() for u in _allowed_raw if str(u).strip()}
+else:
+    allowed_users = set()
+
+# Enforce: if whitelist is empty -> deny by default to avoid accidental exposure.
+if not allowed_users:
+    st.error("Access restricted. No allowed users configured. Add 'allowed_users' in Streamlit Secrets.")
     st.stop()
 
-# B) OR use a whitelist (uncomment to use)
-# allowed_users = {"youremail@gmail.com", "friend@gmail.com"}
-# if email not in allowed_users:
-#     st.error("Access restricted to authorized users only.")
-#     st.stop()
+if email not in allowed_users:
+    st.error("Access restricted to authorized users only.")
+    st.stop()
 
 # Show identity & Sign out in sidebar
 st.sidebar.markdown(f"**Signed in:** {st.session_state['user'].get('name') or email} ({email})")
