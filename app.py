@@ -219,7 +219,6 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 # ---- End helpers ----
 
 
-APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 
 
