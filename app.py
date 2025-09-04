@@ -992,29 +992,42 @@ def main():
     # === End Brand Header ===
 
     # st.title(APP_TITLE)  # removed to avoid duplicate brand name# === Two fields per row layout ===
-row1c1, row1c2 = st.columns(2)
-with row1c1:
-    name = st.text_input("Name")
-with row1c2:
-    dob = st.date_input("Date of Birth", min_value=datetime.date(1800,1,1), max_value=datetime.date(2100,12,31))
+row1c1, row1c2 = 
+# ------------------ Inputs (half-width with big bold labels) ------------------
+c1, c2 = st.columns(2)
 
-row2c1, row2c2 = st.columns(2)
-with row2c1:
-    tob = st.time_input("Time of Birth", step=datetime.timedelta(minutes=1))
-with row2c2:
-    place = st.text_input("Place of Birth (City, State, Country)")
+with c1:
+    st.markdown("<div style='font-weight:700; font-size:18px;'>Name</div>", unsafe_allow_html=True)
+    _c1a, _c1b = st.columns([1,1])
+    with _c1a:
+        name = st.text_input("", key="name_input", label_visibility="collapsed")
 
-row3c1, row3c2 = st.columns(2)
-with row3c1:
-    tz_override = st.text_input("UTC offset override (optional, e.g., 5.5)", "")
-with row3c2:
-    st.write("")  # spacer
-# === End two-per-row ===
+with c2:
+    st.markdown("<div style='font-weight:700; font-size:18px;'>Date of Birth</div>", unsafe_allow_html=True)
+    _c2a, _c2b = st.columns([1,1])
+    with _c2a:
+        dob = st.date_input("", key="dob_input", label_visibility="collapsed")
 
+c3, c4 = st.columns(2)
 
-    api_key = st.secrets.get("GEOAPIFY_API_KEY","")
+with c3:
+    st.markdown("<div style='font-weight:700; font-size:18px;'>Time of Birth</div>", unsafe_allow_html=True)
+    _c3a, _c3b = st.columns([1,1])
+    with _c3a:
+        tob = st.time_input("", key="tob_input", label_visibility="collapsed")
 
-    if st.button("Generate DOCX"):
+with c4:
+    st.markdown("<div style='font-weight:700; font-size:18px;'>Place of Birth (City, State, Country)</div>", unsafe_allow_html=True)
+    _c4a, _c4b = st.columns([1,1])
+    with _c4a:
+        place = st.text_input("", key="place_input", label_visibility="collapsed")
+
+st.markdown("<div style='font-weight:700; font-size:18px;'>UTC offset override (optional, e.g., 5.5)</div>", unsafe_allow_html=True)
+u1, u2 = st.columns([1,1])
+with u1:
+    tz_override = st.text_input("", key="tz_input", label_visibility="collapsed")
+
+if st.button("Generate DOCX"):
         try:
             lat, lon, disp = geocode(place, api_key)
             dt_local = datetime.datetime.combine(dob, tob).replace(tzinfo=None)
