@@ -149,7 +149,6 @@ from urllib.parse import urlencode
 from google.oauth2 import id_token
 from google.auth.transport import requests as g_requests
 import streamlit as st
-from login_branding_helper import show_login_screen
 
 # Read secrets (supports both top-level and [google_oauth] section)
 _cfg = st.secrets.get("google_oauth", st.secrets)
@@ -297,7 +296,6 @@ from PIL import Image
 def _apply_bg():
     try:
         import streamlit as st
-from login_branding_helper import show_login_screen, base64
         from pathlib import Path
         p = Path("assets/ganesha_bg.png")
         if p.exists():
