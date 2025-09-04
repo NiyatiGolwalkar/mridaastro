@@ -194,14 +194,24 @@ def sign_out():
     st.rerun()
 
 # --- Handle Google redirect (works on /oauth2callback or any path with ?code=...)
-qs = _get_query_params_as_legacy_dict()
-if "code" in qs:
+#     Use new stable API: st.query_params (replaces deprecated experimental_get_query_params)
+qp = dict(st.query_params)  # convert to a plain dict
+code  = qp.get("code")
+state = qp.get("state")
+
+# If values are lists, take the first element
+if isinstance(code, list):
+    code = code[0] if code else None
+if isinstance(state, list):
+    state = state[0] if state else None
+
+if code:
     try:
-        if "oauth_state" in st.session_state and qs.get("state", [""])[0] != st.session_state["oauth_state"]:
+        if "oauth_state" in st.session_state and state != st.session_state["oauth_state"]:
             st.error("State mismatch. Please try signing in again.")
             st.stop()
 
-        tokens = exchange_code_for_tokens(qs["code"][0])
+        tokens = exchange_code_for_tokens(code)
         claims = verify_id_token(tokens["id_token"])
         st.session_state["user"] = {
             "email": claims.get("email"),
