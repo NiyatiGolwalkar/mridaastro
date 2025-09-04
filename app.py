@@ -1043,15 +1043,19 @@ with row3c2:
     api_key = st.secrets.get("GEOAPIFY_API_KEY","")
 
     if st.button("Generate DOCX"):
-        # Generate kundali silently and show only download button
-        # Expect an existing function `generate_kundali_docx` that builds the docx.
-        try:
-            doc_bytes = _download_only_generate(generate_kundali_docx, name, dob, tob, place, tz_override)
-        except Exception:
-            # Fallback: attempt a generic `create_docx` if present
+        # Generate kundali silently and show only a download button
+        doc_bytes = None
+        # Choose an available generator from known options
+        generator = None
+        if 'generate_kundali_docx' in globals() and callable(globals()['generate_kundali_docx']):
+            generator = globals()['generate_kundali_docx']
+        elif 'create_docx' in globals() and callable(globals()['create_docx']):
+            generator = globals()['create_docx']
+        # Try to produce bytes
+        if generator is not None:
             try:
-                doc_bytes = _download_only_generate(create_docx, name, dob, tob, place, tz_override)
-            except Exception as _e:
+                doc_bytes = _download_only_generate(generator, name, dob, tob, place, tz_override)
+            except Exception as e:
                 doc_bytes = None
         if doc_bytes:
             safe_name = (name or "kundali").strip().replace(" ", "_")
@@ -1063,7 +1067,7 @@ with row3c2:
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
         else:
-            st.error("Couldn't generate the DOCX. Please try again or share logs.")
+            st.error("Couldn't generate the DOCX. Please check the generator function or try again.")
 
             jd, ay, sidelons = sidereal_positions(dt_utc)
             lagna_sign, asc_sid = ascendant_sign(jd, lat, lon, ay)
