@@ -1052,6 +1052,22 @@ with row3c2:
     api_key = st.secrets.get("GEOAPIFY_API_KEY","")
 
     if st.button("Generate DOCX"):
+    # Wrap generation in a safe try/except to avoid UI-breaking errors
+    try:
+        built = build_kundali_docx(name, dob, tob, place, tz_override)
+        doc_bytes = _to_docx_bytes(built) if built is not None else None
+    except Exception:
+        doc_bytes = None
+    if doc_bytes:
+        safe = (name or "Kundali").strip().replace(" ", "_")
+        st.download_button(
+            "Download Kundali (DOCX)",
+            data=doc_bytes,
+            file_name=f"{safe}_kundali.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+    else:
+        st.error("Couldn't generate the DOCX. Please check the generator function.")
         # Generate silently and present only a download button
         try:
             built = build_kundali_docx(name, dob, tob, place, tz_override)
@@ -1330,8 +1346,8 @@ with row3c2:
                 st.subheader("Navamsa Kundali (Preview)")
                 st.image(img_nav, use_container_width=True)
 
-        except Exception as e:
-            st.error(str(e))
-
+#         except Exception as e:
+#             st.error(str(e))
+# 
 if __name__=='__main__':
     main()
