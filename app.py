@@ -127,21 +127,24 @@ import pandas as pd
 import pytz
 import streamlit as st
 
-# --- Custom style for all buttons (Generate + Download) ---
+# --- Custom style for Generate & Download buttons ---
 st.markdown("""
     <style>
-    div.stButton > button {
+    div.stButton > button,
+    div.stDownloadButton > button {
         background-color: black;
         color: white;
         font-weight: 600;
         border-radius: 8px;
         border: 1px solid #2e8b57;
     }
-    div.stButton > button:hover {
+    div.stButton > button:hover,
+    div.stDownloadButton > button:hover {
         background-color: #2e8b57 !important;  /* sea green hover */
         color: white !important;
     }
-    div.stButton > button:active {
+    div.stButton > button:active,
+    div.stDownloadButton > button:active {
         background-color: #2e8b57 !important;  /* sea green click */
         color: white !important;
     }
@@ -252,6 +255,14 @@ def _load_page_icon():
     except Exception:
         return "🪔"
 st.set_page_config(page_title="MRIDAASTRO", layout="wide", page_icon=_load_page_icon())
+
+# --- First-visit reset so 'Required' doesn't show on initial load ---
+if 'first_visit' not in st.session_state:
+    st.session_state['first_visit'] = True
+if st.session_state.get('first_visit', False):
+    st.session_state['submitted'] = False
+    st.session_state['first_visit'] = False
+
 
 
 
@@ -1080,6 +1091,7 @@ with row3c1:
 
         
         
+        # mark this as the first submit click (drives inline Required messages)
         st.session_state['submitted'] = True
 # first submit gate
         st.session_state['submitted'] = True
