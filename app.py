@@ -1050,31 +1050,28 @@ with row3c2:
 
     if st.button("Generate DOCX"):
         
-        # ---- Validation guard before any processing ----
+                # ---- Validation guard before any processing ----
         try:
             _any_err = name_err or place_err or tz_err
         except Exception:
             _any_err = False
             # recompute conservatively
-            try:
-                _any_err = _any_err or (not (name or '').strip())
-            except Exception:
-                pass
-            try:
-                _any_err = _any_err or (not (place or '').strip())
-            except Exception:
-                pass
-            try:
-                if tz_override.strip():
+            if not (name or '').strip():
+                _any_err = True
+            if not (place or '').strip():
+                _any_err = True
+            if tz_override.strip():
+                try:
                     _x = float(tz_override)
                     if _x < -12 or _x > 14:
                         _any_err = True
-            except Exception:
-                _any_err = True
+                except Exception:
+                    _any_err = True
         if _any_err:
             st.markdown("<div style='color:#c1121f; font-weight:600; padding:8px 0;'>Please fix the highlighted fields above.</div>", unsafe_allow_html=True)
             st.stop()
         # ---- End Validation guard ----
+
 try:
             lat, lon, disp = geocode(place, api_key)
             dt_local = datetime.datetime.combine(dob, tob).replace(tzinfo=None)
