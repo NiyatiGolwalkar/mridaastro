@@ -986,6 +986,34 @@ def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
     # Borders similar to other tables
     add_table_borders(t, size=6)
     compact_table_paragraphs(t)
+def _download_only_generate(make_docx_fn, *args, **kwargs):
+    '''
+    Wraps an existing docx-creation function and returns bytes suitable for st.download_button.
+    `make_docx_fn` should either:
+    - return a python-docx Document (we will save to BytesIO), or
+    - return a file path to the .docx, or
+    - return bytes.
+    '''
+    doc_bytes = None
+    result = make_docx_fn(*args, **kwargs)
+    try:
+        # If result is a python-docx Document
+        from docx.document import Document as _DocxType
+        if isinstance(result, _DocxType):
+            bio = BytesIO()
+            result.save(bio)
+            doc_bytes = bio.getvalue()
+    except Exception:
+        pass
+    if doc_bytes is None:
+        # If result is a path
+        if isinstance(result, str) and result.lower().endswith(".docx"):
+            with open(result, "rb") as f:
+                doc_bytes = f.read()
+        elif isinstance(result, (bytes, bytearray)):
+            doc_bytes = bytes(result)
+    return doc_bytes
+
 def main():
     pass
     # === Brand Header ===
@@ -1015,17 +1043,27 @@ with row3c2:
     api_key = st.secrets.get("GEOAPIFY_API_KEY","")
 
     if st.button("Generate DOCX"):
+        # Generate kundali silently and show only download button
+        # Expect an existing function `generate_kundali_docx` that builds the docx.
         try:
-            lat, lon, disp = geocode(place, api_key)
-            dt_local = datetime.datetime.combine(dob, tob).replace(tzinfo=None)
-            used_manual = False
-            if tz_override.strip():
-                tz_hours = float(tz_override)
-                dt_utc = dt_local - datetime.timedelta(hours=tz_hours)
-                tzname = f"UTC{tz_hours:+.2f} (manual)"
-                used_manual = True
-            else:
-                tzname, tz_hours, dt_utc = tz_from_latlon(lat, lon, dt_local)
+            doc_bytes = _download_only_generate(generate_kundali_docx, name, dob, tob, place, tz_override)
+        except Exception:
+            # Fallback: attempt a generic `create_docx` if present
+            try:
+                doc_bytes = _download_only_generate(create_docx, name, dob, tob, place, tz_override)
+            except Exception as _e:
+                doc_bytes = None
+        if doc_bytes:
+            safe_name = (name or "kundali").strip().replace(" ", "_")
+            st.success("Kundali is ready. Click below to download.")
+            st.download_button(
+                "Download Kundali (DOCX)",
+                data=doc_bytes,
+                file_name=f"{safe_name}_kundali.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
+        else:
+            st.error("Couldn't generate the DOCX. Please try again or share logs.")
 
             jd, ay, sidelons = sidereal_positions(dt_utc)
             lagna_sign, asc_sid = ascendant_sign(jd, lat, lon, ay)
