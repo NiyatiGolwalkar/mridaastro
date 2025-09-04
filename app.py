@@ -1088,67 +1088,30 @@ with row3c1:
 
     if st.button("Generate Kundali"):
 
-        # --- First-click validation guard ---
-        st.session_state['submitted'] = True  # so inline 'Required' shows immediately
+        
+        # --- First-click validation guard (single, authoritative) ---
+        st.session_state['submitted'] = True  # show inline 'Required' labels
 
         _name = (st.session_state.get('name_input') or '').strip()
         _place = (st.session_state.get('place_input') or '').strip()
         _tz    = (st.session_state.get('tz_input') or '').strip()
 
-        _any_err = (not _name) or (not _place)
-
-        # UTC offset must be a number in [-12, 14]
-        try:
-            _tzv = float(_tz)
-            if _tzv < -12 or _tzv > 14:
-                _any_err = True
-        except Exception:
-            _any_err = True
-
-        if _any_err:
-            st.markdown("<div style='color:#c1121f; font-weight:700; padding:8px 0;'>Please fix the highlighted fields above.</div>", unsafe_allow_html=True)
-            st.stop()
-# mark this as the first submit click (drives inline Required messages)
-        st.session_state['submitted'] = True
-# first submit gate
-        st.session_state['submitted'] = True
-
-        # gather values
-        _name = (st.session_state.get('name_input') or '').strip()
-        _place = (st.session_state.get('place_input') or '').strip()
-        _tz = (st.session_state.get('tz_input') or '').strip()
-
-        _any_err = (not _name) or (not _place)
-        try:
-            _tzv = float(_tz)
-            if _tzv < -12 or _tzv > 14:
-                _any_err = True
-        except Exception:
-            _any_err = True
-
-        if _any_err:
-            st.markdown("<div style='color:#c1121f; font-weight:700; padding:8px 0;'>Please fix the highlighted fields above.</div>", unsafe_allow_html=True)
-            st.stop()
-# first submit (so errors show on first click)
-        st.session_state['submitted'] = True
-
-        # compute errors
-        _name = (st.session_state.get('name_input') or '').strip()
-        _place = (st.session_state.get('place_input') or '').strip()
-        _any_err = (not _name) or (not _place)
-
-        _tz = (st.session_state.get('tz_input') or '').strip() if 'tz_input' in st.session_state else ''
-        if _tz:
+        # Validate requireds
+        any_err = False
+        if not _name or not _place or not _tz:
+            any_err = True
+        else:
             try:
                 _tzv = float(_tz)
                 if _tzv < -12 or _tzv > 14:
-                    _any_err = True
+                    any_err = True
             except Exception:
-                _any_err = True
+                any_err = True
 
-        if _any_err:
-            st.markdown("<div style='color:#c1121f; font-weight:600; padding:8px 0;'>Please fix the highlighted fields above.</div>", unsafe_allow_html=True)
+        if any_err:
+            st.markdown("<div style='color:#c1121f; font-weight:700; padding:8px 0;'>Please fix the highlighted fields above.</div>", unsafe_allow_html=True)
             st.stop()
+
 
         # key presence
         api_key = st.secrets.get("GEOAPIFY_API_KEY", "")
