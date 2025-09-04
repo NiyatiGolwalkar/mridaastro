@@ -335,11 +335,9 @@ def _apply_bg()
 
 
 # === Centered form styling (keeps scroll for longer forms) ===
-import streamlit as st as _st_for_css  # alias to avoid shadowing user imports
-
-_st_for_css.markdown("""
+st.markdown("""
 <style>
-  /* Make background stay fixed and let page scroll when needed */
+  /* Keep background fixed while allowing content to scroll if it grows */
   html, body, [data-testid="stAppViewContainer"] {
     min-height: 100vh;
     height: auto;
@@ -347,13 +345,14 @@ _st_for_css.markdown("""
     background-attachment: fixed !important;
   }
 
-  /* On short pages, vertically center content; on long pages, it simply flows */
+  /* The main container becomes a column that can center short pages */
   [data-testid="stAppViewContainer"] > .main {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
   }
-  /* This wrapper will center the first block if it's not tall; otherwise it's normal */
+
+  /* The primary content block styled as a card */
   .block-container {
     width: 100%;
     max-width: 980px;
@@ -365,12 +364,12 @@ _st_for_css.markdown("""
     backdrop-filter: blur(4px);
   }
 
-  /* Optional: add a little breathing room on top when needed */
+  /* Add breathing room on taller screens */
   @media (min-height: 700px) {
     .block-container { margin-top: 5vh; margin-bottom: 5vh; }
   }
 
-  /* Keep header transparent over background */
+  /* Header over transparent bg */
   [data-testid="stHeader"] { background: transparent; }
 </style>
 """, unsafe_allow_html=True)
