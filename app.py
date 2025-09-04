@@ -243,7 +243,7 @@ st.markdown(
       <div style='font-family:Georgia,serif; font-style:italic; font-size:20px; color:#34495E; margin-bottom:10px;'>
         In the light of divine, let your soul journey shine
       </div>
-      <div style='height:3px; width:160px; margin:0 auto 6px auto; background:#2CB67D; border-radius:2px;'></div>
+      <div style='height:3px; width:160px; margin:0 auto 6px auto; background:black; border-radius:2px;'></div>
     </div>
     """,
     unsafe_allow_html=True
@@ -1002,25 +1002,44 @@ def main():
     # st.title(APP_TITLE)  # removed to avoid duplicate brand name# === Two fields per row layout (stacked labels, half-width) ===
 row1c1, row1c2 = st.columns(2)
 with row1c1:
-    st.markdown("<div style='font-weight:700; font-size:18px;'>Name</div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-weight:700; font-size:18px;'>Name <span style='color:red'>*</span></div>", unsafe_allow_html=True)
     name = st.text_input("", key="name_input", label_visibility="collapsed")
+
+    name_err = not (name or "").strip()
+    if name_err:
+        st.markdown("<div style='color:#c1121f; font-size:12px; margin-top:4px;'>Required</div>", unsafe_allow_html=True)
 with row1c2:
-    st.markdown("<div style='font-weight:700; font-size:18px;'>Date of Birth</div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-weight:700; font-size:18px;'>Date of Birth <span style='color:red'>*</span></div>", unsafe_allow_html=True)
     dob = st.date_input("", key="dob_input", label_visibility="collapsed",
                         min_value=datetime.date(1800,1,1), max_value=datetime.date(2100,12,31))
 
 row2c1, row2c2 = st.columns(2)
 with row2c1:
-    st.markdown("<div style='font-weight:700; font-size:18px;'>Time of Birth</div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-weight:700; font-size:18px;'>Time of Birth <span style='color:red'>*</span></div>", unsafe_allow_html=True)
     tob = st.time_input("", key="tob_input", label_visibility="collapsed", step=datetime.timedelta(minutes=1))
 with row2c2:
-    st.markdown("<div style='font-weight:700; font-size:18px;'>Place of Birth (City, State, Country)</div>", unsafe_allow_html=True)
+    st.markdown("<div style='font-weight:700; font-size:18px;'>Place of Birth (City, State, Country) <span style='color:red'>*</span></div>", unsafe_allow_html=True)
     place = st.text_input("", key="place_input", label_visibility="collapsed")
 
+
+    place_err = not (place or "").strip()
+    if place_err:
+        st.markdown("<div style='color:#c1121f; font-size:12px; margin-top:4px;'>Required</div>", unsafe_allow_html=True)
 row3c1, row3c2 = st.columns(2)
 with row3c1:
     st.markdown("<div style='font-weight:700; font-size:18px;'>UTC offset override (optional, e.g., 5.5)</div>", unsafe_allow_html=True)
     tz_override = st.text_input("", key="tz_input", label_visibility="collapsed", value="")
+
+    tz_err = False
+    if tz_override.strip():
+        try:
+            _tz_val = float(tz_override)
+            if _tz_val < -12 or _tz_val > 14:
+                tz_err = True
+        except Exception:
+            tz_err = True
+    if tz_err:
+        st.markdown("<div style='color:#c1121f; font-size:12px; margin-top:4px;'>Enter a valid number (e.g., 5.5)</div>", unsafe_allow_html=True)
 with row3c2:
     st.write("")
 # === End two-per-row ===
@@ -1030,7 +1049,33 @@ with row3c2:
     api_key = st.secrets.get("GEOAPIFY_API_KEY","")
 
     if st.button("Generate DOCX"):
+        
+        # ---- Validation guard before any processing ----
         try:
+            _any_err = name_err or place_err or tz_err
+        except Exception:
+            _any_err = False
+            # recompute conservatively
+            try:
+                _any_err = _any_err or (not (name or '').strip())
+            except Exception:
+                pass
+            try:
+                _any_err = _any_err or (not (place or '').strip())
+            except Exception:
+                pass
+            try:
+                if tz_override.strip():
+                    _x = float(tz_override)
+                    if _x < -12 or _x > 14:
+                        _any_err = True
+            except Exception:
+                _any_err = True
+        if _any_err:
+            st.markdown("<div style='color:#c1121f; font-weight:600; padding:8px 0;'>Please fix the highlighted fields above.</div>", unsafe_allow_html=True)
+            st.stop()
+        # ---- End Validation guard ----
+try:
             lat, lon, disp = geocode(place, api_key)
             dt_local = datetime.datetime.combine(dob, tob).replace(tzinfo=None)
             used_manual = False
