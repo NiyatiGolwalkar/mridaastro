@@ -219,7 +219,7 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 # ---- End helpers ----
 
 
-APP_TITLE = "MRIDAASTRO"
+APP_TITLE = "DevoAstroBhav Kundali — Locked (v6.8.8)"
 st.set_page_config(page_title=APP_TITLE, layout="wide", page_icon="🪔")
 
 
@@ -970,19 +970,27 @@ def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
     compact_table_paragraphs(t)
 def main():
     st.title(APP_TITLE)
-st.markdown("""
-<div style='text-align:center; font-style:italic; font-size:20px;'>In the light of the divine, let your soul journey shine</div>
-""", unsafe_allow_html=True)
+    
+# === Two fields per row layout ===
+row1c1, row1c2 = st.columns(2)
+with row1c1:
+    name = st.text_input("Name")
+with row1c2:
+    dob = st.date_input("Date of Birth", min_value=datetime.date(1800,1,1), max_value=datetime.date(2100,12,31))
 
-    col0, col1 = st.columns([1.2, 1])
-    with col0:
-        name = st.text_input("Name")
-        dob = st.date_input("Date of Birth", min_value=datetime.date(1800,1,1), max_value=datetime.date(2100,12,31))
-        tob = st.time_input("Time of Birth", step=datetime.timedelta(minutes=1))
-        place = st.text_input("Place of Birth (City, State, Country)")
-        tz_override = st.text_input("UTC offset override (optional, e.g., 5.5)", "")
-    with col1:
-        pass
+row2c1, row2c2 = st.columns(2)
+with row2c1:
+    tob = st.time_input("Time of Birth", step=datetime.timedelta(minutes=1))
+with row2c2:
+    place = st.text_input("Place of Birth (City, State, Country)")
+
+row3c1, row3c2 = st.columns(2)
+with row3c1:
+    tz_override = st.text_input("UTC offset override (optional, e.g., 5.5)", "")
+with row3c2:
+    st.write("")  # spacer
+# === End two-per-row ===
+
 
     api_key = st.secrets.get("GEOAPIFY_API_KEY","")
 
