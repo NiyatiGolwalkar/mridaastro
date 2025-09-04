@@ -280,7 +280,7 @@ def compute_statuses_all(sidelons):
     out = {}
     sun_lon = sidelons.get('Su', 0.0)
     for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
-        lon = sidelons[code]
+#         lon = sidelons[code]
         rasi = planet_rasi_sign(lon)
 #         nav  = navamsa_sign_from_lon_sid(lon)
         varg = (rasi == nav)
@@ -477,7 +477,7 @@ def tz_from_latlon(lat, lon, dt_local):
     else: start = ((sign + 4 - 1) % 12) + 1
     return ((start - 1 + pada) % 12) + 1
 
-def positions_table_no_symbol(sidelons):
+# def positions_table_no_symbol(sidelons):
     rows=[]
     for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
         lon=sidelons[code]; sign, deg_str = fmt_deg_sign(lon); nak_lord, sub_lord = kp_sublord(lon)
@@ -879,7 +879,7 @@ def detect_sade_sati_or_dhaiyya(sidelons:dict, transit_dt=None):
 
 def detect_kaalsarp(sidelons:dict)->bool:
     try:
-        ra = sidelons['Ra'] % 360.0
+#         ra = sidelons['Ra'] % 360.0
         ke = (ra + 180.0) % 360.0
         span = (ke - ra) % 360.0  # should be 180
         inside = 0
@@ -1073,7 +1073,7 @@ with row3c2:
 #             lagna_sign, asc_sid = ascendant_sign(jd, lat, lon, ay)
 #             nav_lagna_sign = navamsa_sign_from_lon_sid(asc_sid)
 
-            df_positions = positions_table_no_symbol(sidelons)
+#             df_positions = positions_table_no_symbol(sidelons)
 
             ORDER = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
             YEARS = {'Ke':7,'Ve':20,'Su':6,'Mo':10,'Ma':7,'Ra':18,'Ju':16,'Sa':19,'Me':17}
