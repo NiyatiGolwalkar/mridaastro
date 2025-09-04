@@ -331,7 +331,52 @@ from PIL import Image
 
 
 # === App background (minimal, no logic changes) ===
-def _apply_bg():
+def _apply_bg()
+
+
+# === Centered form styling (keeps scroll for longer forms) ===
+import streamlit as st as _st_for_css  # alias to avoid shadowing user imports
+
+_st_for_css.markdown("""
+<style>
+  /* Make background stay fixed and let page scroll when needed */
+  html, body, [data-testid="stAppViewContainer"] {
+    min-height: 100vh;
+    height: auto;
+    overflow-y: auto;
+    background-attachment: fixed !important;
+  }
+
+  /* On short pages, vertically center content; on long pages, it simply flows */
+  [data-testid="stAppViewContainer"] > .main {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  /* This wrapper will center the first block if it's not tall; otherwise it's normal */
+  .block-container {
+    width: 100%;
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 32px 28px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.82);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.20);
+    backdrop-filter: blur(4px);
+  }
+
+  /* Optional: add a little breathing room on top when needed */
+  @media (min-height: 700px) {
+    .block-container { margin-top: 5vh; margin-bottom: 5vh; }
+  }
+
+  /* Keep header transparent over background */
+  [data-testid="stHeader"] { background: transparent; }
+</style>
+""", unsafe_allow_html=True)
+# === End centered form styling ===
+
+:
     try:
         import streamlit as st, base64
         from pathlib import Path
