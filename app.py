@@ -127,11 +127,11 @@ import pandas as pd
 import pytz
 import streamlit as st
 from PIL import Image
+
 def _load_page_icon():
     try:
         return Image.open("assets/fevicon_icon.png")
     except Exception:
-        # fallback to diya emoji if asset missing
         return "🪔"
 
 
@@ -139,15 +139,7 @@ def _load_page_icon():
 # === App background (minimal, no logic changes) ===
 def _apply_bg():
     try:
-        import streamlit as st
-from PIL import Image
-def _load_page_icon():
-    try:
-        return Image.open("assets/fevicon_icon.png")
-    except Exception:
-        # fallback to diya emoji if asset missing
-        return "🪔"
-, base64
+        import streamlit as st, base64
         from pathlib import Path
         p = Path("assets/ganesha_bg.png")
         if p.exists():
@@ -237,7 +229,7 @@ def next_antar_in_days_utc(now_utc, md_segments, days_window):
 # ---- End helpers ----
 
 
-st.set_page_config(page_title="MRIDAASTRO", layout="wide", page_icon=_load_page_icon())
+st.set_page_config(page_title='MRIDAASTRO', layout='wide', page_icon=_load_page_icon())
 
 
 
@@ -1012,10 +1004,6 @@ row1c1, row1c2 = st.columns(2)
 with row1c1:
     st.markdown("<div style='font-weight:700; font-size:18px;'>Name</div>", unsafe_allow_html=True)
     name = st.text_input("", key="name_input", label_visibility="collapsed")
-
-    name_err = (not (name or '').strip())
-    if name_err:
-        st.markdown(\"<div style='color:#c1121f; font-size:12px; margin-top:-6px;'>Required</div>\", unsafe_allow_html=True)
 with row1c2:
     st.markdown("<div style='font-weight:700; font-size:18px;'>Date of Birth</div>", unsafe_allow_html=True)
     dob = st.date_input("", key="dob_input", label_visibility="collapsed",
@@ -1029,26 +1017,10 @@ with row2c2:
     st.markdown("<div style='font-weight:700; font-size:18px;'>Place of Birth (City, State, Country)</div>", unsafe_allow_html=True)
     place = st.text_input("", key="place_input", label_visibility="collapsed")
 
-
-    place_err = (not (place or '').strip())
-    if place_err:
-        st.markdown(\"<div style='color:#c1121f; font-size:12px; margin-top:-6px;'>Required</div>\", unsafe_allow_html=True)
 row3c1, row3c2 = st.columns(2)
 with row3c1:
     st.markdown("<div style='font-weight:700; font-size:18px;'>UTC offset override (optional, e.g., 5.5)</div>", unsafe_allow_html=True)
     tz_override = st.text_input("", key="tz_input", label_visibility="collapsed", value="")
-
-    tz_err = False
-    if tz_override.strip():
-        try:
-            _tz_val = float(tz_override)
-            # basic sanity check: valid world offsets roughly between -12 and +14
-            if _tz_val < -12 or _tz_val > 14:
-                tz_err = True
-        except Exception:
-            tz_err = True
-    if tz_err:
-        st.markdown(\"<div style='color:#c1121f; font-size:12px; margin-top:-6px;'>Enter a valid number (e.g., 5.5)</div>\", unsafe_allow_html=True)
 with row3c2:
     st.write("")
 # === End two-per-row ===
@@ -1058,32 +1030,7 @@ with row3c2:
     api_key = st.secrets.get("GEOAPIFY_API_KEY","")
 
     if st.button("Generate DOCX"):
-        
-
-    # ---- Validation guard before generating ----
-    any_err = False
-    try:
-        any_err = name_err or place_err or tz_err
-    except Exception:
-        # If error flags not defined (e.g., code paths changed), recompute quick checks
-        name_err = (not (name or '').strip())
-        place_err = (not (place or '').strip())
-        tz_err = False
-        if tz_override.strip():
-            try:
-                _tz_val = float(tz_override)
-                if _tz_val < -12 or _tz_val > 14:
-                    tz_err = True
-            except Exception:
-                tz_err = True
-        any_err = name_err or place_err or tz_err
-
-    if any_err:
-        st.markdown("""<div style='color:#c1121f; font-weight:600; padding:8px 0;'>
-        Please fix the highlighted fields above.</div>""", unsafe_allow_html=True)
-        st.stop()
-    # ---- End Validation guard ----
-try:
+        try:
             lat, lon, disp = geocode(place, api_key)
             dt_local = datetime.datetime.combine(dob, tob).replace(tzinfo=None)
             used_manual = False
