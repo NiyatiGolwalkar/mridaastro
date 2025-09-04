@@ -999,13 +999,12 @@ with row1c1:
     name = st.text_input("", key="name_input", label_visibility="collapsed")
 with row1c2:
     st.markdown("<div style='font-weight:700; font-size:18px;'>Date of Birth</div>", unsafe_allow_html=True)
-    dob = st.date_input("", key="dob_input", label_visibility="collapsed", 
-                        min_value=datetime.date(1800,1,1), max_value=datetime.date(2100,12,31))
+    dob = st.date_input("", key="dob_input", label_visibility="collapsed")
 
 row2c1, row2c2 = st.columns(2)
 with row2c1:
     st.markdown("<div style='font-weight:700; font-size:18px;'>Time of Birth</div>", unsafe_allow_html=True)
-    tob = st.time_input("", key="tob_input", label_visibility="collapsed", step=datetime.timedelta(minutes=1))
+    tob = st.time_input("", key="tob_input", label_visibility="collapsed")
 with row2c2:
     st.markdown("<div style='font-weight:700; font-size:18px;'>Place of Birth (City, State, Country)</div>", unsafe_allow_html=True)
     place = st.text_input("", key="place_input", label_visibility="collapsed")
@@ -1017,6 +1016,7 @@ with row3c1:
 with row3c2:
     st.write("")  # spacer
 # === End two-per-row ===
+
 
 
 
