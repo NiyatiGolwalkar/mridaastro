@@ -1,161 +1,208 @@
+# app.py — MRIDAASTRO
+# - Shiva favicon (assets/shiva_fevicon.png)
+# - Centered brand header
+# - Black underline beneath tagline
+# - Background image (tries several common filenames)
+# - Validations on all inputs
+# - Minimal fallback DOCX builder (replace with your full generator when ready)
 
-# app_with_favicon_blackline_validations_fix.py
-# -------------------------------------------------
-# MRIDAASTRO — header underline black; validations; robust favicon loading
-# -------------------------------------------------
-
-import os
-import io
-import datetime as dt
-from PIL import Image
-
+import datetime
+from io import BytesIO
+from pathlib import Path
+import base64
 import streamlit as st
 
-APP_TITLE = "MRIDAASTRO"
 
-def _load_favicon():
-    """
-    Try several common paths/filenames for the Shiva favicon.
-    Falls back to an Om emoji if not found.
-    Returns an image object or a string (emoji).
-    """
-    candidates = [
-        "assets/shiva_fevicon.png",
-        "assets/Shiva Fevicon.png",
-        "assets/shiva_favicon.png",
-        "assets/ShivaFavicon.png",
-        "shiva_fevicon.png",
-    ]
-    for p in candidates:
-        if os.path.exists(p):
-            try:
-                return Image.open(p)
-            except Exception:
-                pass
-    # last resort
-    return "🕉️"
-
-# Set page config FIRST (no Streamlit calls before this)
+# ------------------------------------------------------------
+# Page config (uses your Shiva favicon)
+# ------------------------------------------------------------
 st.set_page_config(
-    page_title=APP_TITLE,
+    page_title="MRIDAASTRO",
     layout="wide",
-    page_icon=_load_favicon(),
+    page_icon="assets/shiva_fevicon.png",
 )
 
-# --- simple style: underline to black (length kept as-is) ---
+
+# ------------------------------------------------------------
+# Background image helper
+# ------------------------------------------------------------
+def _apply_bg():
+    try:
+        candidates = [
+            "assets/mrida_bg.png",
+            "assets/bg.png",
+            "assets/bg.jpg",
+            "assets/background.png",
+        ]
+        img_path = next((Path(p) for p in candidates if Path(p).exists()), None)
+        if not img_path:
+            return
+        b64 = base64.b64encode(img_path.read_bytes()).decode()
+        st.markdown(
+            f"""
+            <style>
+              [data-testid="stAppViewContainer"] {{
+                background: url('data:image/png;base64,{b64}') no-repeat center top fixed;
+                background-size: cover;
+              }}
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+    except Exception:
+        pass
+
+
+_apply_bg()
+
+
+# ------------------------------------------------------------
+# Header (centered + black underline)
+# ------------------------------------------------------------
 st.markdown(
     """
-    <style>
-      .header-wrap {text-align:center; margin-top: 10px; margin-bottom: 18px;}
-      .header-title {font-size: 46px; font-weight: 800; letter-spacing: 1px;}
-      .header-tagline {font-size: 22px; font-style: italic; color: rgba(0,0,0,0.75);}
-      .header-underline{width: 200px; height: 4px; background:#000; border-radius:3px;
-                        margin: 8px auto 0 auto;}
-      /* make field labels larger & bold */
-      .stForm label, .stMarkdown h5 {font-weight: 800 !important; font-size: 1.05rem;}
-    </style>
+    <div style='text-align:center; padding: 18px 0 6px 0;'>
+      <div style='font-size:46px; font-weight:800; letter-spacing:1px; color:#2C3E50; text-shadow:1px 1px 2px #ccc;'>
+        MRIDAASTRO
+      </div>
+      <div style='font-family:Georgia,serif; font-style:italic; font-size:20px; color:#34495E; margin:6px 0 12px;'>
+        In the light of divine, let your soul journey shine
+      </div>
+      <div style='height:4px; width:200px; margin:0 auto; background:#000; border-radius:2px;'></div>
+    </div>
     """,
-    unsafe_allow_html=True,
+    unsafe_allow_html=True
 )
+st.write("")
 
-# --- Header ---
-st.markdown('<div class="header-wrap">', unsafe_allow_html=True)
-st.markdown(f'<div class="header-title">{APP_TITLE}</div>', unsafe_allow_html=True)
-st.markdown('<div class="header-tagline">In the light of divine, let your soul journey shine</div>', unsafe_allow_html=True)
-st.markdown('<div class="header-underline"></div>', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
 
-# --- Helpers ---
-def _is_blank(x) -> bool:
-    if x is None:
-        return True
-    if isinstance(x, str):
-        return x.strip() == ""
-    return False
+# ------------------------------------------------------------
+# Validated inputs
+# ------------------------------------------------------------
+def _validated_inputs():
+    errors = []
 
-def _parse_utc_offset(raw):
-    if raw is None:
-        return None
-    if isinstance(raw, str) and raw.strip() == "":
-        return None
-    try:
-        val = float(raw)
-    except Exception:
-        st.error("UTC offset must be a number like 5.5 or -4.")
-        st.stop()
-    if not (-14.0 <= val <= 14.0):
-        st.error("UTC offset must be between -14 and +14 hours.")
-        st.stop()
-    return val
+    c1, c2 = st.columns(2)
+    with c1:
+        name = st.text_input("Name", key="name_input", placeholder="Enter full name")
+    with c2:
+        dob = st.date_input(
+            "Date of Birth",
+            key="dob_input",
+            min_value=datetime.date(1800, 1, 1),
+            max_value=datetime.date(2100, 12, 31),
+        )
 
-# --- Layout ---
-col1, col2 = st.columns(2)
+    c3, c4 = st.columns(2)
+    with c3:
+        tob = st.time_input(
+            "Time of Birth",
+            key="tob_input",
+            step=datetime.timedelta(minutes=1),
+        )
+    with c4:
+        place = st.text_input(
+            "Place of Birth (City, State, Country)",
+            key="place_input",
+            placeholder="City, State, Country",
+        )
 
-with col1:
-    st.markdown("**Name**")
-    name = st.text_input("", key="name_input", placeholder="Enter full name")
+    c5, c6 = st.columns([2, 1])
+    with c5:
+        tz_override = st.text_input(
+            "UTC offset override (optional, e.g., 5.5)",
+            key="tz_input",
+            placeholder="e.g., 5.5 or -4",
+        )
+    with c6:
+        generate_clicked = st.button("Generate Kundali")
 
-with col2:
-    st.markdown("**Date of Birth**")
-    dob = st.date_input("", key="dob_input")
+    # ---------- validations ----------
+    if not name or not name.strip():
+        errors.append("Please enter your name.")
+    elif len(name.strip()) < 2:
+        errors.append("Name looks too short.")
 
-with col1:
-    st.markdown("**Time of Birth**")
-    # Use time_input; defaults to None by setting a placeholder
-    tob = st.time_input("", key="tob_input")
+    if not isinstance(tob, datetime.time):
+        errors.append("Please choose a valid time of birth (HH:mm).")
 
-with col2:
-    st.markdown("**Place of Birth (City, State, Country)**")
-    pob = st.text_input("", key="pob_input", placeholder="City, State, Country")
+    if not place or not place.strip():
+        errors.append("Please enter a valid place (City, State, Country).")
 
-with col1:
-    st.markdown("**UTC offset override (optional, e.g., 5.5)**")
-    utc_offset_raw = st.text_input("", key="utc_input", placeholder="e.g., 5.5 or -4")
-    utc_offset = _parse_utc_offset(utc_offset_raw)
-
-with col2:
-    generate = st.button("Generate Kundali", use_container_width=False)
-
-# --- Validations on click ---
-if generate:
-    # Name checks
-    if _is_blank(name):
-        st.error("Please enter your name.")
-        st.stop()
-    # simple alphabetic validation with spaces and dots
-    import re
-    if not re.fullmatch(r"[A-Za-z .'-]+", name.strip()):
-        st.error("Name can include only letters, spaces, dots, hyphens and apostrophes.")
-        st.stop()
-
-    # DOB required
-    if dob is None:
-        st.error("Please select your date of birth.")
-        st.stop()
-
-    # Time required (for time_input, a dt.time is returned; treat None if not set)
-    if tob is None or (isinstance(tob, str) and tob.strip() == ""):
-        st.error("Please select your time of birth.")
-        st.stop()
-    if isinstance(tob, str):
-        # try to parse HH:MM
+    if tz_override.strip():
         try:
-            hh, mm = [int(p.strip()) for p in tob.split(":")[:2]]
-            tob = dt.time(hour=hh, minute=mm)
-        except Exception:
-            st.error("Time of Birth must be in HH:MM format.")
-            st.stop()
+            float(tz_override)
+        except ValueError:
+            errors.append("UTC override must be a number, e.g., 5.5 or -4.")
 
-    # Place required
-    if _is_blank(pob):
-        st.error("Please enter the Place of Birth (City, State, Country).")
-        st.stop()
+    if errors:
+        st.error("• " + "\n• ".join(errors))
 
-    # All good -> continue with your existing generate routine
-    st.success("Inputs look good. Proceeding to generate the Kundali document…")
+    return (
+        generate_clicked and not errors,
+        errors,
+        name.strip() if name else "",
+        dob,
+        tob,
+        place.strip() if place else "",
+        tz_override.strip(),
+    )
 
-    # >>>> CALL YOUR EXISTING GENERATION FUNCTION HERE <<<<
-    # For example:
-    # file_bytes = build_kundali_docx(name, dob, tob, pob, utc_offset)
-    # st.download_button("Download Kundali (DOCX)", data=file_bytes, file_name="kundali.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
+can_generate, errors, name, dob, tob, place, tz_override = _validated_inputs()
+
+
+# ------------------------------------------------------------
+# Minimal fallback DOCX builder
+# ------------------------------------------------------------
+def _simple_docx(name, dob, tob, place, tz_override) -> bytes:
+    try:
+        from docx import Document
+        from docx.shared import Pt
+    except Exception as e:
+        raise RuntimeError(
+            "python-docx is required for the fallback document. "
+            "Install with 'pip install python-docx' or plug in your real generator."
+        ) from e
+
+    doc = Document()
+    doc.add_heading("MRIDAASTRO — Kundali", level=1)
+
+    p = doc.add_paragraph()
+    run = p.add_run(f"Name: {name}\n")
+    run.font.size = Pt(12)
+    p.add_run(f"Date of Birth: {dob.isoformat()}\n")
+    p.add_run(f"Time of Birth: {tob.strftime('%H:%M')}\n")
+    p.add_run(f"Place of Birth: {place}\n")
+    if tz_override:
+        p.add_run(f"UTC override: {tz_override}\n")
+
+    p.add_run(
+        "\nThis is a placeholder document so the app runs.\n"
+        "Hook your full kundali generator where indicated in the code."
+    )
+
+    bio = BytesIO()
+    doc.save(bio)
+    bio.seek(0)
+    return bio.read()
+
+
+# ------------------------------------------------------------
+# Generate & Download
+# ------------------------------------------------------------
+if can_generate:
+    try:
+        # Replace this with your full kundali generator call if available:
+        # bytes_data = generate_kundali_docx_full(name, dob, tob, place, tz_override)
+        bytes_data = _simple_docx(name, dob, tob, place, tz_override)
+
+        file_name = f"Kundali_{name.replace(' ', '_')}.docx"
+        st.download_button(
+            label="Download Kundali (DOCX)",
+            data=bytes_data,
+            file_name=file_name,
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+    except Exception as ex:
+        st.error(f"Could not generate the document. {type(ex).__name__}: {ex}")
