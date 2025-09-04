@@ -1325,13 +1325,7 @@ with row3c2:
                 st.subheader("महादशा / अंतरदशा")
                 st.dataframe(df_an.reset_index(drop=True), use_container_width=True, hide_index=True)
             with rc:
-                st.subheader("Lagna Kundali (Preview)")
-                st.image(img_lagna, use_container_width=True)
                 st.subheader("Navamsa Kundali (Preview)")
                 st.image(img_nav, use_container_width=True)
-
-        except Exception as e:
-            st.error(str(e))
-
 if __name__=='__main__':
     main()
