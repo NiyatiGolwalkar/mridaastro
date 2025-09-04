@@ -466,7 +466,7 @@ def tz_from_latlon(lat, lon, dt_local):
     out['Ra'] = xx[0] % 360.0; out['Ke'] = (out['Ra'] + 180.0) % 360.0
     ay = swe.get_ayanamsa_ut(jd); return jd, ay, out
 
-def ascendant_sign(jd, lat, lon, ay):
+# def ascendant_sign(jd, lat, lon, ay):
     cusps, ascmc = swe.houses_ex(jd, lat, lon, b'P'); asc_trop = ascmc[0]; asc_sid = (asc_trop - ay) % 360.0
     return int(asc_sid // 30) + 1, asc_sid
 
@@ -1070,7 +1070,7 @@ with row3c2:
             st.error("Couldn't generate the DOCX. Please check the generator function or try again.")
 # 
 #             jd, ay, sidelons = sidereal_positions(dt_utc)  # disabled at import; computed during generation
-            lagna_sign, asc_sid = ascendant_sign(jd, lat, lon, ay)
+#             lagna_sign, asc_sid = ascendant_sign(jd, lat, lon, ay)
             nav_lagna_sign = navamsa_sign_from_lon_sid(asc_sid)
 
             df_positions = positions_table_no_symbol(sidelons)
