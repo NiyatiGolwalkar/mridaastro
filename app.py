@@ -235,7 +235,7 @@ st.markdown(
       <div style='font-family:Georgia,serif; font-style:italic; font-size:20px; color:#34495E; margin-bottom:10px;'>
         In the light of divine, let your soul journey shine
       </div>
-      <div style='height:3px; width:160px; margin:0 auto 6px auto; background:#2CB67D; border-radius:2px;'></div>
+      <div style='height:3px; width:100%; max-width:1200px; margin:0 auto 6px auto; background:gold; border-radius:2px;'></div>
     </div>
     """,
     unsafe_allow_html=True
@@ -1014,14 +1014,16 @@ with row3c1:
     st.markdown("<div style='font-weight:700; font-size:18px;'>UTC offset override (optional, e.g., 5.5)</div>", unsafe_allow_html=True)
     tz_override = st.text_input("", key="tz_input", label_visibility="collapsed", value="")
 with row3c2:
-    st.write("")
+    # Generate button aligned with UTC field
+    generate_clicked = st.button("Generate Kundali")
 # === End two-per-row ===
 
 
 
     api_key = st.secrets.get("GEOAPIFY_API_KEY","")
 
-    if st.button("Generate DOCX"):
+    if 'generate_clicked' in locals() and generate_clicked:
+
         try:
             lat, lon, disp = geocode(place, api_key)
             dt_local = datetime.datetime.combine(dob, tob).replace(tzinfo=None)
