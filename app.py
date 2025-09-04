@@ -127,21 +127,21 @@ import pandas as pd
 import pytz
 import streamlit as st
 
-# --- Custom style for Generate button ---
+# --- Custom style for all buttons (Generate + Download) ---
 st.markdown("""
     <style>
-    div.stButton > button:first-child {
-        background-color: black;         /* default */
+    div.stButton > button {
+        background-color: black;
         color: white;
         font-weight: 600;
         border-radius: 8px;
         border: 1px solid #2e8b57;
     }
-    div.stButton > button:first-child:hover {
+    div.stButton > button:hover {
         background-color: #2e8b57 !important;  /* sea green hover */
         color: white !important;
     }
-    div.stButton > button:first-child:active {
+    div.stButton > button:active {
         background-color: #2e8b57 !important;  /* sea green click */
         color: white !important;
     }
@@ -1079,7 +1079,9 @@ with row3c1:
         
 
         
-        # first submit gate
+        
+        st.session_state['submitted'] = True
+# first submit gate
         st.session_state['submitted'] = True
 
         # gather values
