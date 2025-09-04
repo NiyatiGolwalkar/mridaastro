@@ -34,12 +34,12 @@ ONE_PAGE = True
 
 # --- Appearance configuration ---
 # Sizing (pt) — tuned smaller to reduce white space
-# NUM_W_PT = 10       # house number box width (was 12)  # neutralized at import
-# NUM_H_PT = 12       # house number box height (was 14)  # neutralized at import
-# PLANET_W_PT = 20    # planet label box width (was 16)  # neutralized at import
-# PLANET_H_PT = 16    # planet label box height (was 14)  # neutralized at import
-# GAP_X_PT = 3        # horizontal gap between planet boxes (was 4)  # neutralized at import
-# OFFSET_Y_PT = 10    # vertical offset below number box (was 12)  # neutralized at import
+NUM_W_PT = 10       # house number box width (was 12)
+NUM_H_PT = 12       # house number box height (was 14)
+PLANET_W_PT = 20    # planet label box width (was 16)
+PLANET_H_PT = 16    # planet label box height (was 14)
+GAP_X_PT = 3        # horizontal gap between planet boxes (was 4)
+OFFSET_Y_PT = 10    # vertical offset below number box (was 12)
 
 # Options: "plain", "bordered", "shaded", "bordered_shaded"
 HOUSE_NUM_STYLE = "bordered"
@@ -126,6 +126,33 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import pytz
 import streamlit as st
+
+# === Download helper (packs doc to bytes) ===
+def _to_docx_bytes(doc_or_bytes_or_path):
+    try:
+        from docx import Document as _Doc
+    except Exception:
+        _Doc = None
+    # If bytes already:
+    if isinstance(doc_or_bytes_or_path, (bytes, bytearray)):
+        return bytes(doc_or_bytes_or_path)
+    # If path-like string:
+    if isinstance(doc_or_bytes_or_path, str):
+        try:
+            with open(doc_or_bytes_or_path, "rb") as f:
+                return f.read()
+        except Exception:
+            return None
+    # If python-docx Document:
+    if _Doc is not None and isinstance(doc_or_bytes_or_path, _Doc):
+        bio = BytesIO()
+        doc_or_bytes_or_path.save(bio)
+        bio.seek(0)
+        return bio.getvalue()
+    # Unknown
+    return None
+# === End helper ===
+
 
 
 # === App background (minimal, no logic changes) ===
@@ -241,7 +268,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 # === End MRIDAASTRO Header ===
-# _apply_bg()  # neutralized at import
+_apply_bg()
 AYANAMSHA_VAL = swe.SIDM_LAHIRI
 YEAR_DAYS     = 365.2422
 
@@ -280,9 +307,9 @@ def compute_statuses_all(sidelons):
     out = {}
     sun_lon = sidelons.get('Su', 0.0)
     for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
-#         lon = sidelons[code]
+        lon = sidelons[code]
         rasi = planet_rasi_sign(lon)
-#         nav  = navamsa_sign_from_lon_sid(lon)
+        nav  = navamsa_sign_from_lon_sid(lon)
         varg = (rasi == nav)
         # Combustion: Sun only, optional same-sign constraint
         combust = False
@@ -341,7 +368,7 @@ def fmt_planet_label(code, flags):
 
 def planet_navamsa_house(lon_sid, nav_lagna_sign):
     # Return 1..12 house index in Navamsa for a planet
-#     nav_sign = navamsa_sign_from_lon_sid(lon_sid)  # 1..12
+    nav_sign = navamsa_sign_from_lon_sid(lon_sid)  # 1..12
     return ((nav_sign - nav_lagna_sign) % 12) + 1
 
 def build_navamsa_house_planets(sidelons, nav_lagna_sign):
@@ -369,7 +396,7 @@ def build_navamsa_house_planets_marked(sidelons, nav_lagna_sign):
     stats = compute_statuses_all(sidelons)
     sun_nav = stats['Su']['nav']  # Sun's Navāṁśa sign
     for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
-#         nav_sign = navamsa_sign_from_lon_sid(sidelons[code])
+        nav_sign = navamsa_sign_from_lon_sid(sidelons[code])
         h = ((nav_sign - nav_lagna_sign) % 12) + 1
         fl = _make_flags('nav', stats[code])   # nav-based self/exalt/debil
         # Navāṁśa combust rule: planet combust iff shares Nav sign with Sun
@@ -456,7 +483,7 @@ def tz_from_latlon(lat, lon, dt_local):
     return tzname, offset_hours, dt_utc_naive
 
 
-# def sidereal_positions(dt_utc):
+def sidereal_positions(dt_utc):
     jd = swe.julday(dt_utc.year, dt_utc.month, dt_utc.day, dt_utc.hour + dt_utc.minute/60 + dt_utc.second/3600)
     set_sidereal_locked(); flags = swe.FLG_SWIEPH | swe.FLG_SPEED | swe.FLG_SIDEREAL
     out = {}
@@ -466,18 +493,18 @@ def tz_from_latlon(lat, lon, dt_local):
     out['Ra'] = xx[0] % 360.0; out['Ke'] = (out['Ra'] + 180.0) % 360.0
     ay = swe.get_ayanamsa_ut(jd); return jd, ay, out
 
-# def ascendant_sign(jd, lat, lon, ay):
-#     cusps, ascmc = swe.houses_ex(jd, lat, lon, b'P'); asc_trop = ascmc[0]; asc_sid = (asc_trop - ay) % 360.0
-#     return int(asc_sid // 30) + 1, asc_sid
+def ascendant_sign(jd, lat, lon, ay):
+    cusps, ascmc = swe.houses_ex(jd, lat, lon, b'P'); asc_trop = ascmc[0]; asc_sid = (asc_trop - ay) % 360.0
+    return int(asc_sid // 30) + 1, asc_sid
 
-# def navamsa_sign_from_lon_sid(lon_sid):
+def navamsa_sign_from_lon_sid(lon_sid):
     sign = int(lon_sid // 30) + 1; deg_in_sign = lon_sid % 30.0; pada = int(deg_in_sign // (30.0/9.0))
     if sign in (1,4,7,10): start = sign
     elif sign in (2,5,8,11): start = ((sign + 8 - 1) % 12) + 1
     else: start = ((sign + 4 - 1) % 12) + 1
     return ((start - 1 + pada) % 12) + 1
 
-# def positions_table_no_symbol(sidelons):
+def positions_table_no_symbol(sidelons):
     rows=[]
     for code in ['Su','Mo','Ma','Me','Ju','Ve','Sa','Ra','Ke']:
         lon=sidelons[code]; sign, deg_str = fmt_deg_sign(lon); nak_lord, sub_lord = kp_sublord(lon)
@@ -865,7 +892,7 @@ def detect_sade_sati_or_dhaiyya(sidelons:dict, transit_dt=None):
             tdt = datetime.now(timezone.utc)
         else:
             tdt = transit_dt
-#         _jd, _ay, trans = sidereal_positions(tdt.replace(tzinfo=None) if hasattr(tdt, 'tzinfo') else tdt)
+        _jd, _ay, trans = sidereal_positions(tdt.replace(tzinfo=None) if hasattr(tdt, 'tzinfo') else tdt)
         sat = planet_rasi_sign(trans['Sa'])
         d = (sat - moon) % 12
         if d in (11, 0, 1):
@@ -879,7 +906,7 @@ def detect_sade_sati_or_dhaiyya(sidelons:dict, transit_dt=None):
 
 def detect_kaalsarp(sidelons:dict)->bool:
     try:
-#         ra = sidelons['Ra'] % 360.0
+        ra = sidelons['Ra'] % 360.0
         ke = (ra + 180.0) % 360.0
         span = (ke - ra) % 360.0  # should be 180
         inside = 0
@@ -986,34 +1013,6 @@ def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
     # Borders similar to other tables
     add_table_borders(t, size=6)
     compact_table_paragraphs(t)
-def _download_only_generate(make_docx_fn, *args, **kwargs):
-    '''
-    Wraps an existing docx-creation function and returns bytes suitable for st.download_button.
-    `make_docx_fn` should either:
-    - return a python-docx Document (we will save to BytesIO), or
-    - return a file path to the .docx, or
-    - return bytes.
-    '''
-    doc_bytes = None
-    result = make_docx_fn(*args, **kwargs)
-    try:
-        # If result is a python-docx Document
-        from docx.document import Document as _DocxType
-        if isinstance(result, _DocxType):
-            bio = BytesIO()
-            result.save(bio)
-            doc_bytes = bio.getvalue()
-    except Exception:
-        pass
-    if doc_bytes is None:
-        # If result is a path
-        if isinstance(result, str) and result.lower().endswith(".docx"):
-            with open(result, "rb") as f:
-                doc_bytes = f.read()
-        elif isinstance(result, (bytes, bytearray)):
-            doc_bytes = bytes(result)
-    return doc_bytes
-
 def main():
     pass
     # === Brand Header ===
@@ -1042,124 +1041,28 @@ with row3c2:
 
     api_key = st.secrets.get("GEOAPIFY_API_KEY","")
 
-    if st.button("Generate DOCX"):
-        # Generate kundali silently and show only a download button
-        doc_bytes = None
-        # Choose an available generator from known options
-        generator = None
-        if 'generate_kundali_docx' in globals() and callable(globals()['generate_kundali_docx']):
-            generator = globals()['generate_kundali_docx']
-        elif 'create_docx' in globals() and callable(globals()['create_docx']):
-            generator = globals()['create_docx']
-        # Try to produce bytes
-        if generator is not None:
-            try:
-                doc_bytes = _download_only_generate(generator, name, dob, tob, place, tz_override)
-            except Exception as e:
-                doc_bytes = None
-        if doc_bytes:
-            safe_name = (name or "kundali").strip().replace(" ", "_")
-            st.success("Kundali is ready. Click below to download.")
-            st.download_button(
-                "Download Kundali (DOCX)",
-                data=doc_bytes,
-                file_name=f"{safe_name}_kundali.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            )
-        else:
-            st.error("Couldn't generate the DOCX. Please check the generator function or try again.")
-# 
-#             jd, ay, sidelons = sidereal_positions(dt_utc)  # disabled at import; computed during generation
-#             lagna_sign, asc_sid = ascendant_sign(jd, lat, lon, ay)
-#             nav_lagna_sign = navamsa_sign_from_lon_sid(asc_sid)
+if st.button("Generate DOCX"):
+    # Run your existing generation logic (reusing the same variables in scope)
+    # Expect a python-docx Document in variable `doc` at the end, or return value from your own function.
+    generated = None
+    try:
+        # If the current script builds a `doc` object inline, we keep that code minimal here:
+        try:
+            generated = doc  # if your code populates `doc`
+        except Exception:
+            generated = None
+    except Exception:
+        generated = None
 
-#             df_positions = positions_table_no_symbol(sidelons)
-
-            ORDER = ['Ke','Ve','Su','Mo','Ma','Ra','Ju','Sa','Me']
-            YEARS = {'Ke':7,'Ve':20,'Su':6,'Mo':10,'Ma':7,'Ra':18,'Ju':16,'Sa':19,'Me':17}
-
-            def moon_balance_days(moon_sid):
-                NAK=360.0/27.0; part = moon_sid % 360.0; ni = int(part // NAK); pos = part - ni*NAK
-                md_lord = ORDER[ni % 9]; frac = pos/NAK; remaining_days = YEARS[md_lord]*(1 - frac)*YEAR_DAYS
-                return md_lord, remaining_days
-
-            def build_mahadashas_days_utc(birth_utc_dt, moon_sid):
-                md_lord, rem_days = moon_balance_days(moon_sid); end_limit = birth_utc_dt + datetime.timedelta(days=100*YEAR_DAYS)
-                segments=[]; birth_md_start = birth_utc_dt; birth_md_end = min(birth_md_start + datetime.timedelta(days=rem_days), end_limit)
-                segments.append({"planet": md_lord, "start": birth_md_start, "end": birth_md_end, "days": rem_days})
-                idx = (ORDER.index(md_lord) + 1) % 9; t = birth_md_end
-                while t < end_limit:
-                    L = ORDER[idx]; dur_days = YEARS[L]*YEAR_DAYS; end = min(t + datetime.timedelta(days=dur_days), end_limit)
-                    segments.append({"planet": L, "start": t, "end": end, "days": dur_days}); t = end; idx = (idx + 1) % 9
-                return segments
-            md_segments_utc = build_mahadashas_days_utc(dt_utc, sidelons['Mo'])
-
-            def age_years(birth_dt_local, end_utc):
-                local_end = _utc_to_local(end_utc, tzname, tz_hours, used_manual)
-                days = (local_end.date() - birth_dt_local.date()).days
-                return int(days // YEAR_DAYS)
-
-            df_md = pd.DataFrame([
-                {"ग्रह": HN[s["planet"]],
-                 "समाप्ति तिथि": _utc_to_local(s["end"], tzname, tz_hours, used_manual).strftime("%d-%m-%Y"),
-                 "आयु (वर्ष)": age_years(dt_local, s["end"])}
-                for s in md_segments_utc
-            ])
-
-            now_utc = datetime.datetime.utcnow()
-            rows_an = next_antar_in_days_utc(now_utc, md_segments_utc, days_window=365*10)
-            df_an = pd.DataFrame([
-                {"महादशा": HN[r["major"]], "अंतरदशा": HN[r["antar"]],
-                 "तिथि": _utc_to_local(r["end"], tzname, tz_hours, used_manual).strftime("%d-%m-%Y")}
-                for r in rows_an
-            ]).head(5)
-
-            img_lagna = render_north_diamond(size_px=800, stroke=3)
-            img_nav   = render_north_diamond(size_px=800, stroke=3)
-
-            # DOCX
-            doc = make_document()
-            sec = doc.sections[0]; sec.page_width = Mm(210); sec.page_height = Mm(297)
-            margin = Mm(12); sec.left_margin = sec.right_margin = margin; sec.top_margin = Mm(8); sec.bottom_margin = Mm(8)
-
-            style = doc.styles['Normal']; style.font.name = LATIN_FONT; style.font.size = Pt(BASE_FONT_PT)
-            style._element.rPr.rFonts.set(qn('w:eastAsia'), HINDI_FONT); style._element.rPr.rFonts.set(qn('w:cs'), HINDI_FONT)
-
-            
-            
-            
-            
-            # ===== Report Header Block (exact lines) =====
-            try:
-                # MRIDAASTRO
-                hdr1 = doc.add_paragraph(); hdr1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r = hdr1.add_run("MRIDAASTRO"); r.font.bold = True; r.font.small_caps = True; r.font.size = Pt(16)
-
-                # Tagline
-                hdr2 = doc.add_paragraph(); hdr2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r2 = hdr2.add_run("In the light of the divine, let your soul journey shine."); r2.italic = True; r2.font.size = Pt(10)
-
-                # Title
-                hdr3 = doc.add_paragraph(); hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI)"); r3.bold = True; r3.font.size = Pt(13)
-
-                # Blank separator (small)
-                # hdr3.paragraph_format.space_after = Pt(2)
-
-                # Name
-                hdr4 = doc.add_paragraph(); hdr4.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r4 = hdr4.add_run("Niyati Niraj Golwalkar"); r4.font.size = Pt(10); r4.bold = True
-
-                # Role line
-                hdr5 = doc.add_paragraph(); hdr5.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r5 = hdr5.add_run("Astrologer • Sound & Mantra Healer"); r5.font.size = Pt(9.5)
-
-                # Contact line
-                hdr6 = doc.add_paragraph(); hdr6.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r6 = hdr6.add_run("Phone: +91 9302413816  |  Electronic City Phase 1, Bangalore, India"); r6.font.size = Pt(9.5)
-            except Exception:
-                pass
-            # ===== End Header Block (exact lines) =====
+    data = _to_docx_bytes(generated) if generated is not None else None
+    if data:
+        safe_name = (name or "Kundali").strip().replace(" ", "_")
+        st.success("Kundali is ready.")
+        st.download_button("Download Kundali (DOCX)", data=data,
+                           file_name=f"{safe_name}_kundali.docx",
+                           mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+    else:
+        st.error("Couldn't generate the DOCX. Please check the generator function.")
 # ===== End Header Block (simplified & robust) =====
 # ===== End Header Block (safe) =====
 
@@ -1325,7 +1228,13 @@ with row3c2:
                 st.subheader("महादशा / अंतरदशा")
                 st.dataframe(df_an.reset_index(drop=True), use_container_width=True, hide_index=True)
             with rc:
+                st.subheader("Lagna Kundali (Preview)")
+                st.image(img_lagna, use_container_width=True)
                 st.subheader("Navamsa Kundali (Preview)")
                 st.image(img_nav, use_container_width=True)
+
+        except Exception as e:
+            st.error(str(e))
+
 if __name__=='__main__':
     main()
