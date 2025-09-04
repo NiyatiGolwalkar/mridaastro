@@ -987,6 +987,7 @@ def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
     add_table_borders(t, size=6)
     compact_table_paragraphs(t)
 def main():
+    pass
     # === Brand Header ===
     # === End Brand Header ===
 
