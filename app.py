@@ -3,10 +3,9 @@ import base64
 from io import BytesIO
 import streamlit as st
 
-# ------------------ Page config ------------------
 st.set_page_config(page_title="MRIDAASTRO", layout="wide", page_icon="🔮")
 
-# ------------------ Background (base64, cloud-safe) ------------------
+# ------------------ Background (base64) ------------------
 def _apply_bg():
     img_path = os.path.join("assets", "ganesha_bg.png")
     if os.path.exists(img_path):
@@ -57,17 +56,14 @@ tz_override = st.text_input("UTC offset override (optional, e.g., 5.5)")
 
 # ------------------ Helpers ------------------
 def _to_docx_bytes(doc_or_bytes_or_path):
-    """Return raw .docx bytes from a python-docx Document, bytes, or a file path."""
     try:
         from docx import Document as _Doc
     except Exception:
         _Doc = None
 
-    # already bytes
     if isinstance(doc_or_bytes_or_path, (bytes, bytearray)):
         return bytes(doc_or_bytes_or_path)
 
-    # file path string
     if isinstance(doc_or_bytes_or_path, str) and doc_or_bytes_or_path.lower().endswith(".docx"):
         try:
             with open(doc_or_bytes_or_path, "rb") as f:
@@ -75,7 +71,6 @@ def _to_docx_bytes(doc_or_bytes_or_path):
         except Exception:
             return None
 
-    # python-docx Document
     if _Doc is not None and isinstance(doc_or_bytes_or_path, _Doc):
         bio = BytesIO()
         doc_or_bytes_or_path.save(bio)
@@ -83,33 +78,44 @@ def _to_docx_bytes(doc_or_bytes_or_path):
 
     return None
 
-def _build_kundali_docx_entry(name, dob, tob, place, tz_override):
-    """Call a user-provided generator if present; else return a valid, minimal docx."""
-    # Try to call an existing generator you may already have in your codebase
-    for fn_name in ("generate_kundali_docx_full", "generate_kundali_docx", "create_docx", "main_build_doc"):
-        fn = globals().get(fn_name)
-        if callable(fn):
-            return fn(name, dob, tob, place, tz_override)
+def _build_fallback_doc(name, dob, tob, place, tz_override):
+    """Always produces a valid .docx using python-docx."""
+    from docx import Document
+    from docx.shared import Pt
+    doc = Document()
+    doc.add_heading("MRIDAASTRO", level=1)
+    p = doc.add_paragraph("In the light of divine, let your soul journey shine")
+    p.runs[0].italic = True
+    doc.add_paragraph("This placeholder DOCX is generated because the kundali generator wasn't found or failed.")
+    doc.add_paragraph(f"Name: {name or ''}")
+    doc.add_paragraph(f"Date of Birth: {dob}")
+    doc.add_paragraph(f"Time of Birth: {tob}")
+    doc.add_paragraph(f"Place of Birth: {place or ''}")
+    if tz_override:
+        doc.add_paragraph(f"UTC override: {tz_override}")
+    return doc
 
-    # Fallback: build a *valid* docx using python-docx so the download never errors
+def _try_call(fn, *args):
     try:
-        from docx import Document
-        doc = Document()
-        title = name or "Kundali"
-        doc.add_heading(f"{title}", level=1)
-        doc.add_paragraph("This is a placeholder document. Replace this fallback with your kundali generator output.")
-        return doc
+        return fn(*args)
     except Exception:
         return None
 
+def _build_kundali_docx_entry(name, dob, tob, place, tz_override):
+    # Try a set of likely generator names; if any exist and succeed, use it.
+    for fn_name in ("generate_kundali_docx_full", "generate_kundali_docx", "create_docx", "main_build_doc"):
+        fn = globals().get(fn_name)
+        if callable(fn):
+            built = _try_call(fn, name, dob, tob, place, tz_override)
+            if built is not None:
+                return built
+    # Fallback if none worked
+    return _build_fallback_doc(name, dob, tob, place, tz_override)
+
 # ------------------ Generate -> Download-only ------------------
 if st.button("Generate DOCX"):
-    try:
-        built = _build_kundali_docx_entry(name, dob, tob, place, tz_override)
-        doc_bytes = _to_docx_bytes(built) if built is not None else None
-    except Exception:
-        doc_bytes = None
-
+    built = _build_kundali_docx_entry(name, dob, tob, place, tz_override)
+    doc_bytes = _to_docx_bytes(built)
     if doc_bytes:
         safe = (name or "Kundali").strip().replace(" ", "_")
         st.download_button(
