@@ -5,3 +5,6 @@ timezonefinder
 pytz
 python-docx
 matplotlib
+google-auth
+google-auth-oauthlib
+requests
