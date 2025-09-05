@@ -331,7 +331,10 @@ from PIL import Image
 
 
 # === App background (minimal, no logic changes) ===
-def _apply_bg():
+def _apply_bg()
+_apply_centered_fixed_form_and_fonts()
+_render_brand_header()
+:
     try:
         import streamlit as st, base64
         from pathlib import Path
@@ -351,6 +354,66 @@ def _apply_bg():
         pass
 # === End App background ===
 
+
+# === Centered, fixed form + brand fonts ===
+def _apply_centered_fixed_form_and_fonts():
+    import streamlit as st
+    st.markdown("""
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@700&display=swap');
+      html, body, [data-testid="stAppViewContainer"] {
+        height: 100vh;
+        overflow: hidden;
+        background-attachment: fixed !important;
+      }
+      .block-container {
+        position: fixed;
+        top: 54%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: min(92vw, 980px);
+        max-height: 82vh;
+        overflow: auto;
+        padding: 32px 28px;
+        border-radius: 16px;
+        background: rgba(255,255,255,0.86);
+        box-shadow: 0 12px 32px rgba(0,0,0,0.25);
+        backdrop-filter: blur(4px);
+      }
+      [data-testid="stHeader"] { background: transparent; }
+      .brand-title {
+        font-family: 'Cinzel Decorative', cursive;
+        font-size: clamp(40px, 6vw, 64px);
+        line-height: 1.1;
+        text-align: center;
+        margin: 0 0 8px 0;
+        color: #000;
+        letter-spacing: 1px;
+      }
+      .brand-tagline {
+        font-family: 'Cinzel', serif;
+        font-size: clamp(16px, 2.2vw, 26px);
+        font-style: italic;
+        text-align: center;
+        color: #000;
+        margin: -6px 0 18px 0;
+      }
+      .brand-underline {
+        width: 140px;
+        height: 4px;
+        border-radius: 4px;
+        background: #000;
+        margin: 8px auto 24px auto;
+      }
+    </style>
+    """, unsafe_allow_html=True)
+
+def _render_brand_header():
+    import streamlit as st
+    st.markdown('<div class="brand-title">MRIDAASTRO</div>', unsafe_allow_html=True)
+    st.markdown('<div class="brand-tagline">In the light of divine, let your soul journey shine</div>', unsafe_allow_html=True)
+    st.markdown('<div class="brand-underline"></div>', unsafe_allow_html=True)
+# === End centered, fixed form + brand fonts ===
 
 import swisseph as swe
 from timezonefinder import TimezoneFinder
@@ -474,14 +537,7 @@ st.markdown(
 )
 # === End MRIDAASTRO Header ===
 _apply_bg()
-
-# --- Sidereal mode (Lahiri) ---
-AYANAMSHA_VAL = getattr(swe, "SIDM_LAHIRI", 1)  # fallback if constant name differs
-try:
-    swe.set_sid_mode(AYANAMSHA_VAL)
-except Exception as _sid_err:
-    st.warning(f"Could not set sidereal mode: { _sid_err }")
-# --- End sidereal mode setup ---
+AYANAMSHA_VAL = swe.SIDM_LAHIRI
 YEAR_DAYS     = 365.2422
 
 BASE_FONT_PT = 7.0
