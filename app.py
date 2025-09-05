@@ -327,19 +327,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown("""
-    <style>
-    /* Half-width input fields inside columns */
-    div[data-testid="stTextInput"] input,
-    div[data-testid="stDateInput"] input,
-    div[data-testid="stTimeInput"] input {
-        width: 50% !important;
-        min-width: 220px;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-
 from PIL import Image
 
 
@@ -443,7 +430,32 @@ def _load_page_icon():
         return Image.open("assets/fevicon_icon.png")
     except Exception:
         return "🪔"
-st.set_page_config(page_title="MRIDAASTRO", layout="wide", page_icon=_load_page_icon())
+st.set_page_config(page_title="MRIDAASTRO", layout="wide", page_icon=_load_page_icon()
+
+st.markdown("""
+<style>
+/* Half-width inputs, consistent across text/date/time */
+div[data-testid="stTextInput"] input,
+div[data-testid="stDateInput"] input,
+div[data-testid="stTimeInput"] input {
+  max-width: 260px !important;
+  width: 100% !important;
+}
+/* Ensure the immediate container doesn't stretch too wide */
+div[data-testid="stTextInput"] > div:first-child,
+div[data-testid="stDateInput"] > div:first-child,
+div[data-testid="stTimeInput"] > div:first-child {
+  max-width: 280px !important;
+}
+/* Match font on inputs too */
+div[data-testid="stTextInput"] input,
+div[data-testid="stDateInput"] input,
+div[data-testid="stTimeInput"] input {
+  font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif !important;
+}
+</style>
+""", unsafe_allow_html=True)
+)
 
 # --- First-visit reset so 'Required' doesn't show on initial load ---
 if 'first_visit' not in st.session_state:
@@ -474,7 +486,7 @@ def render_label(text: str, show_required: bool = False):
 st.markdown(
     """
     <style>
-      @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700;800&display=swap');
       :root { --brand-font: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
     </style>
     <div style='text-align:center; padding: 14px 0 4px 0; font-family: var(--brand-font);'>
@@ -1272,18 +1284,18 @@ with row3c1:
     tz_err = st.session_state.get('submitted') and (not tz_val)
     render_label('UTC offset override (e.g., 5.5) <span style="color:red">*</span>', tz_err)
     tz_override = st.text_input("", key="tz_input", label_visibility="collapsed", value="")
-st.write("")
+    
 with row3c2:
     st.write("")
     st.button("Generate Kundali", key="gen_btn", on_click=lambda: st.session_state.update({'submitted': True}))
-
+st.write("")
 # === End two-per-row ===
 
 
 
     api_key = st.secrets.get("GEOAPIFY_API_KEY","")
 
-    st.button("Generate Kundali", key="gen_btn", on_click=lambda: st.session_state.update({'submitted': True}))
+    # (moved) Generate button handled next to UTC field)
 
     # --- Validation gate computed on rerun after click ---
     can_generate = False
