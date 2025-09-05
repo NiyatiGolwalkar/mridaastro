@@ -331,36 +331,29 @@ from PIL import Image
 
 
 # === App background (minimal, no logic changes) ===
-
 def _apply_bg():
-    """Sets the app background image; safe no-op if asset missing."""
     try:
-        import streamlit as st
-        import base64
+        import streamlit as st, base64
         from pathlib import Path
-
-        bg = Path("assets/ganesha_bg.png")  # Change to assets/login_bg.png if you prefer
-        if not bg.exists():
-            return
-
-        b64 = base64.b64encode(bg.read_bytes()).decode("utf-8")
-        st.markdown(
-            f"""
+        p = Path("assets/ganesha_bg.png")
+        if p.exists():
+            b64 = base64.b64encode(p.read_bytes()).decode()
+            css = f"""
             <style>
-              [data-testid="stAppViewContainer"] {{
-                background-image: url("data:image/png;base64,{b64}");
+            [data-testid="stAppViewContainer"] {{
+                background: url('data:image/png;base64,{b64}') no-repeat center top fixed;
                 background-size: cover;
-                background-position: top center;
-                background-attachment: fixed;
-              }}
-              [data-testid="stHeader"] {{ background: transparent; }}
+            }}
             </style>
-            """,
-            unsafe_allow_html=True,
-        )
+            """
+            st.markdown(css, unsafe_allow_html=True)
     except Exception:
         pass
+# === End App background ===
 
+
+import swisseph as swe
+from timezonefinder import TimezoneFinder
 
 
 def _bbox_of_poly(poly):
@@ -481,7 +474,14 @@ st.markdown(
 )
 # === End MRIDAASTRO Header ===
 _apply_bg()
-AYANAMSHA_VAL = swe.SIDM_LAHIRI
+
+# --- Sidereal mode (Lahiri) ---
+AYANAMSHA_VAL = getattr(swe, "SIDM_LAHIRI", 1)  # fallback if constant name differs
+try:
+    swe.set_sid_mode(AYANAMSHA_VAL)
+except Exception as _sid_err:
+    st.warning(f"Could not set sidereal mode: { _sid_err }")
+# --- End sidereal mode setup ---
 YEAR_DAYS     = 365.2422
 
 BASE_FONT_PT = 7.0
