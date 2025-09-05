@@ -126,20 +126,224 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import pytz
 import streamlit as st
+# === App background helper (for authenticated pages) ===
+import base64, os, streamlit as st
 
-# === App background (canonical) ===
-def _apply_bg():
-    """Sets full-page background; safe no-op if image missing."""
+def set_app_background(image_path: str, size: str = "contain", position: str = "top center"):
+    """
+    Shows a page background image on *authenticated* pages.
+    Call this after login/whitelist check, before rendering the UI.
+    """
     try:
+        if not os.path.exists(image_path):
+            return
+        with open(image_path, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode("utf-8")
+        st.markdown(f"""
+        <style>
+          [data-testid="stAppViewContainer"] {{
+            background-image: url("data:image/png;base64,{b64}");
+            background-size: {size};
+            background-position: {position};
+            background-repeat: no-repeat;
+            background-color: #f6ede6; /* fallback */
+          }}
+          [data-testid="stHeader"] {{
+            background: transparent;
+          }}
+        </style>
+        """, unsafe_allow_html=True)
+    except Exception:
+        pass
+# === End background helper ===
+
+
+# --- Google Search Console verification (inject into <head>) ---
+st.markdown("""
+<script>
+(function() {
+  try {
+    var meta = document.createElement('meta');
+    meta.name = 'google-site-verification';
+    meta.content = '01pSw-vPDjcZLjPluDXzbWvMR-YxFjh3w3T94nMxsVU';
+    document.getElementsByTagName('head')[0].appendChild(meta);
+  } catch (e) { console.log('GSC meta inject error', e); }
+})();
+</script>
+""", unsafe_allow_html=True)
+
+
+from login_branding_helper import show_login_screen
+
+# ===================== Google OAuth2 Login Gate (with callback) =====================
+import time, requests
+from urllib.parse import urlencode
+from google.oauth2 import id_token
+from google.auth.transport import requests as g_requests
+import streamlit as st
+
+# Read secrets (supports both top-level and [google_oauth] section)
+_cfg = st.secrets.get("google_oauth", st.secrets)
+CLIENT_ID     = _cfg["client_id"]
+CLIENT_SECRET = _cfg["client_secret"]
+REDIRECT_URI  = _cfg["redirect_uri"]  # e.g. https://mridaastro.streamlit.app/oauth2callback
+
+AUTH_ENDPOINT  = "https://accounts.google.com/o/oauth2/v2/auth"
+TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
+SCOPES = "openid email profile"
+
+def build_auth_url(state: str) -> str:
+    params = {
+        "client_id": CLIENT_ID,
+        "redirect_uri": REDIRECT_URI,
+        "response_type": "code",
+        "scope": SCOPES,
+        "access_type": "online",
+        "include_granted_scopes": "true",
+        "prompt": "consent",
+        "state": state,
+    }
+    return f"{AUTH_ENDPOINT}?{urlencode(params)}"
+
+def exchange_code_for_tokens(code: str) -> dict:
+    data = {
+        "code": code,
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+        "redirect_uri": REDIRECT_URI,
+        "grant_type": "authorization_code",
+    }
+    resp = requests.post(TOKEN_ENDPOINT, data=data, timeout=15)
+    resp.raise_for_status()
+    return resp.json()
+
+def verify_id_token(idt: str) -> dict:
+    # Verifies signature & audience (CLIENT_ID)
+    return id_token.verify_oauth2_token(idt, g_requests.Request(), CLIENT_ID)
+
+def sign_out():
+    for k in ("user", "oauth", "oauth_state"):
+        st.session_state.pop(k, None)
+    st.rerun()
+
+# --- Handle Google redirect (works on /oauth2callback or any path with ?code=...)
+#     Use new stable API: st.query_params (replaces deprecated experimental_get_query_params)
+qp = dict(st.query_params)  # convert to a plain dict
+code  = qp.get("code")
+state = qp.get("state")
+
+# If values are lists, take the first element
+if isinstance(code, list):
+    code = code[0] if code else None
+if isinstance(state, list):
+    state = state[0] if state else None
+
+if code:
+    try:
+        if "oauth_state" in st.session_state and state != st.session_state["oauth_state"]:
+            st.error("State mismatch. Please try signing in again.")
+            st.stop()
+
+        tokens = exchange_code_for_tokens(code)
+        claims = verify_id_token(tokens["id_token"])
+        st.session_state["user"] = {
+            "email": claims.get("email"),
+            "name": claims.get("name") or claims.get("email"),
+            "picture": claims.get("picture", ""),
+        }
+        st.session_state["oauth"] = tokens
+
+        # Clear query params and send user back to root path
+        st.query_params.clear()
+        st.markdown("<script>history.replaceState({}, '', '/');</script>", unsafe_allow_html=True)
+
+        st.success(f"Signed in as {st.session_state['user']['email']}")
+        time.sleep(0.5)
+        st.rerun()
+    except Exception:
+        st.error("Login failed. Please try again.")
+        st.stop()
+
+# --- If not signed in, show login and stop
+if "user" not in st.session_state:
+    # Render the fully branded login screen (background + hero + gold button)
+    show_login_screen()
+    st.stop()
+
+# --- Restrict who can access (pick ONE approach) ---
+
+# --- Restrict who can access (STRICT WHITELIST) ---
+email = (st.session_state["user"].get("email") or "").lower()
+
+# Read allowed users from Streamlit secrets. Supports either a list or a comma-separated string.
+_allowed_raw = st.secrets.get("allowed_users", [])
+if isinstance(_allowed_raw, str):
+    allowed_users = {u.strip().lower() for u in _allowed_raw.split(",") if u.strip()}
+elif isinstance(_allowed_raw, (list, tuple, set)):
+    allowed_users = {str(u).strip().lower() for u in _allowed_raw if str(u).strip()}
+else:
+    allowed_users = set()
+
+# Enforce: if whitelist is empty -> deny by default to avoid accidental exposure.
+if not allowed_users:
+    st.error("Access restricted. No allowed users configured. Add 'allowed_users' in Streamlit Secrets.")
+    st.stop()
+
+if email not in allowed_users:
+    st.error("Access restricted to authorized users only.")
+    st.stop()
+
+# Set background for authenticated app pages
+set_app_background("assets/login_bg.png", size="contain", position="top center")
+
+
+# Show identity & Sign out in sidebar
+st.sidebar.markdown(f"**Signed in:** {st.session_state['user'].get('name') or email} ({email})")
+if st.sidebar.button("Sign out"):
+    sign_out()
+# =================== End Google OAuth2 Login Gate (with callback) ===================
+
+# --- Custom style for Generate & Download buttons ---
+st.markdown("""
+    <style>
+    div.stButton > button,
+    div.stDownloadButton > button {
+        background-color: black;
+        color: white;
+        font-weight: 600;
+        border-radius: 8px;
+        border: 1px solid #2e8b57;
+    }
+    div.stButton > button:hover,
+    div.stDownloadButton > button:hover {
+        background-color: #2e8b57 !important;  /* sea green hover */
+        color: white !important;
+    }
+    div.stButton > button:active,
+    div.stDownloadButton > button:active {
+        background-color: #2e8b57 !important;  /* sea green click */
+        color: white !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+from PIL import Image
+
+
+# === App background (minimal, no logic changes) ===
+
+def _apply_bg():
+    """Sets the app background image; safe no-op if asset missing."""
+    try:
+        import streamlit as st
         import base64
         from pathlib import Path
-        import streamlit as st
 
-        # choose your background asset
-        bg_path = Path("assets/ganesha_bg.png")  # or Path("assets/login_bg.png")
-        if not bg_path.exists():
+        bg = Path("assets/ganesha_bg.png")  # Change to assets/login_bg.png if you prefer
+        if not bg.exists():
             return
-        b64 = base64.b64encode(bg_path.read_bytes()).decode("utf-8")
+
+        b64 = base64.b64encode(bg.read_bytes()).decode("utf-8")
         st.markdown(
             f"""
             <style>
@@ -156,12 +360,7 @@ def _apply_bg():
         )
     except Exception:
         pass
-# === End App background ===
- ===
 
-
-import swisseph as swe
-from timezonefinder import TimezoneFinder
 
 
 def _bbox_of_poly(poly):
