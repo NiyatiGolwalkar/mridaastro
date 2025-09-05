@@ -334,46 +334,32 @@ from PIL import Image
 def _apply_bg()
 
 
-# === Centered form styling (keeps scroll for longer forms) ===
-st.markdown("""
+# === Fixed, centered form container (keeps internal scroll if long) ===
+import streamlit as st as _st_css
+_st_css.markdown("""
 <style>
-  /* Keep background fixed while allowing content to scroll if it grows */
   html, body, [data-testid="stAppViewContainer"] {
     min-height: 100vh;
-    height: auto;
-    overflow-y: auto;
     background-attachment: fixed !important;
   }
-
-  /* The main container becomes a column that can center short pages */
-  [data-testid="stAppViewContainer"] > .main {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-  }
-
-  /* The primary content block styled as a card */
   .block-container {
-    width: 100%;
-    max-width: 980px;
-    margin: 0 auto;
-    padding: 32px 28px;
+    position: fixed;
+    top: 55%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(92vw, 980px);
+    max-height: 80vh;
+    overflow: auto;
+    padding: 28px 28px;
     border-radius: 14px;
-    background: rgba(255,255,255,0.82);
-    box-shadow: 0 10px 28px rgba(0,0,0,0.20);
+    background: rgba(255,255,255,0.86);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.25);
     backdrop-filter: blur(4px);
   }
-
-  /* Add breathing room on taller screens */
-  @media (min-height: 700px) {
-    .block-container { margin-top: 5vh; margin-bottom: 5vh; }
-  }
-
-  /* Header over transparent bg */
   [data-testid="stHeader"] { background: transparent; }
 </style>
 """, unsafe_allow_html=True)
-# === End centered form styling ===
+# === End fixed, centered form container ===
 
 :
     try:
