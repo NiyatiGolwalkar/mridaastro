@@ -331,9 +331,7 @@ from PIL import Image
 
 
 # === App background (minimal, no logic changes) ===
-def _apply_bg()
-_apply_centered_fixed_form_and_fonts()
-:
+def _apply_bg():
     try:
         import streamlit as st, base64
         from pathlib import Path
@@ -352,56 +350,89 @@ _apply_centered_fixed_form_and_fonts()
     except Exception:
         pass
 # === End App background ===
-# === Centered fixed form + brand fonts ===
-def _apply_centered_fixed_form_and_fonts():
-    import streamlit as st
-    st.markdown(
-        """
-        <style>
-          @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@700&display=swap');
-          
-          html, body, [data-testid="stAppViewContainer"] {
-            height: 100vh;
-            overflow: hidden;                 /* stop page scroll */
-            background-attachment: fixed !important;
-          }
-          .block-container {
-            position: fixed;                  /* lock the main block */
-            top: 54%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: min(92vw, 980px);
-            max-height: 82vh;                 /* internal scroll only if needed */
-            overflow: auto;
-            padding: 32px 28px;
-            border-radius: 16px;
-            background: rgba(255,255,255,0.86);
-            box-shadow: 0 12px 32px rgba(0,0,0,0.25);
-            backdrop-filter: blur(4px);
-          }
-          [data-testid="stHeader"] { background: transparent; }
-          
-          /* Brand typography matching login */
-          h1 { 
-            font-family: 'Cinzel Decorative', cursive; 
-            font-weight: 700; 
-            letter-spacing: 1px;
-          }
-          .brand-tagline, h2, h3 {
-            font-family: 'Cinzel', serif;
-            font-style: italic;
-          }
-        </style>
-        """
-        , unsafe_allow_html=True
-    )
-# === End centered fixed form ===
-
-
 
 
 import swisseph as swe
 from timezonefinder import TimezoneFinder
+
+
+
+# === Centered fixed form + brand fonts ===
+def _apply_centered_fixed_form_and_fonts():
+    """Lock the main form in the center (no page scroll) and apply brand fonts like the login page."""
+    import streamlit as st
+    st.markdown("""
+    <style>
+      /* Load brand fonts (same look as login) */
+      @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=EB+Garamond:ital@0;1&display=swap');
+
+      /* Remove page scrolling and center the main block */
+      html, body, [data-testid="stAppViewContainer"] {
+        height: 100%;
+        overflow: hidden;            /* <- prevents page scroll */
+        background-color: transparent;
+      }
+
+      /* Center the Streamlit main block */
+      .main .block-container {
+        position: fixed;             /* <- keeps the form fixed */
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        max-width: 1150px;           /* adjust if needed */
+        width: 95vw;
+        background: transparent;
+        z-index: 10;
+      }
+
+      /* Optional: make sidebar independently scrollable if it gets long */
+      section[data-testid="stSidebar"] .css-1d391kg,
+      section[data-testid="stSidebar"] [data-testid="stSidebarContent"] {
+        height: 100vh;
+        overflow: auto;
+      }
+
+      /* Brand title + tagline (use the fonts from login) */
+      .mrida-title {
+        font-family: "Cinzel Decorative", serif;
+        letter-spacing: 1px;
+        font-weight: 700;
+        font-size: 46px;
+        color: #000;
+        text-shadow: 1px 1px 2px #ccc;
+        margin-bottom: 6px;
+      }
+      .mrida-tagline {
+        font-family: "EB Garamond", Georgia, serif;
+        font-style: italic;
+        font-size: 20px;
+        color: #000;
+        margin-bottom: 10px;
+      }
+      .mrida-hr {
+        height: 3px;
+        width: 160px;
+        margin: 0 auto 6px auto;
+        background: #000;
+        border-radius: 2px;
+      }
+    </style>
+    """, unsafe_allow_html=True)
+# === End centered fixed form ===
+
+
+def render_mrida_header():
+    import streamlit as st
+    st.markdown(
+        """
+        <div style='text-align:center; padding: 14px 0 4px 0;'>
+          <div class="mrida-title">MRIDAASTRO</div>
+          <div class="mrida-tagline">In the light of divine, let your soul journey shine</div>
+          <div class="mrida-hr"></div>
+        </div>
+        """, unsafe_allow_html=True
+    )
+
 
 
 def _bbox_of_poly(poly):
