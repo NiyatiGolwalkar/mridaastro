@@ -1227,7 +1227,7 @@ def main():
     # === End Brand Header ===
 
     # st.title(APP_TITLE)  # removed to avoid duplicate brand name# === Two fields per row layout (stacked labels, half-width) ===
-row1c1, row1c2, _r1s1, _r1s2 = st.columns([1,1,1,1])
+sp1, row1c1, row1c2, sp2 = st.columns([1,2,2,1])
 with row1c1:
     name_val = (st.session_state.get('name_input','') or '').strip()
     name_err = st.session_state.get('submitted') and (not name_val)
@@ -1240,7 +1240,7 @@ with row1c2:
     dob = st.date_input("", key="dob_input", label_visibility="collapsed",
                         min_value=datetime.date(1800,1,1), max_value=datetime.date(2100,12,31))
 
-row2c1, row2c2, _r2s1, _r2s2 = st.columns([1,1,1,1])
+sp3, row2c1, row2c2, sp4 = st.columns([1,2,2,1])
 with row2c1:
     tob_val = st.session_state.get('tob_input', None)
     tob_err = st.session_state.get('submitted') and (tob_val is None)
@@ -1252,26 +1252,23 @@ with row2c2:
     render_label('Place of Birth (City, State, Country) <span style="color:red">*</span>', place_err)
     place = st.text_input("", key="place_input", label_visibility="collapsed")
 
-row3c1, row3c2, row3c3, _r3s = st.columns([1,1,0.8,0.2])
+sp5, row3c1, row3c2, row3c3, sp6 = st.columns([1,2,2,1.2,1])
 with row3c1:
     tz_val = (st.session_state.get('tz_input','') or '').strip()
     tz_err = st.session_state.get('submitted') and (not tz_val)
     render_label('UTC offset override (e.g., 5.5) <span style="color:red">*</span>', tz_err)
     tz_override = st.text_input("", key="tz_input", label_visibility="collapsed", value="")
 with row3c2:
-    # reserved (you can put another field later if needed)
-    pass
+    # spacer / reserved
+    st.write("")
 with row3c3:
     st.markdown("&nbsp;", unsafe_allow_html=True)
-    if st.button("Generate Kundali", key="gen_btn"):
+    if st.button("Generate Kundali", key="btn_generate"):
         st.session_state.update({'submitted': True})
 # === End two-per-row ===
+api_key = st.secrets.get("GEOAPIFY_API_KEY","")
 
-
-
-    api_key = st.secrets.get("GEOAPIFY_API_KEY","")
-
-    st.button("Generate Kundali", key="gen_btn", on_click=lambda: st.session_state.update({'submitted': True}))
+    st.button("Generate Kundali", key="btn_generate", on_click=lambda: st.session_state.update({'submitted': True}))
 
     # --- Validation gate computed on rerun after click ---
     can_generate = False
