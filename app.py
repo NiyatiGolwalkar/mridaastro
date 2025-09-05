@@ -81,14 +81,8 @@ def set_page_background(doc, hex_color):
 # --- Phalit ruled lines (25 rows) ---
 from docx.enum.table import WD_ROW_HEIGHT_RULE
 def add_phalit_section(container_cell, width_inches=3.60, rows=25):
-    # Enhanced Phalit section header
-    head = container_cell.add_paragraph("फलित")
-    head.runs[0].bold = True
-    head.runs[0].underline = True
-    head.runs[0].font.size = Pt(12)
-    head.runs[0].font.color.rgb = RGBColor(139, 69, 19)  # Saddle brown color
-    head.paragraph_format.space_before = Pt(8)
-    head.paragraph_format.space_after = Pt(4)
+    # Add beautiful cylindrical gradient header bar for फलित section
+    create_cylindrical_section_header(container_cell, "फलित", width_pt=260)
 
     t = container_cell.add_table(rows=rows, cols=1); t.autofit = False
     # Clear table borders so only bottom rules show
@@ -114,7 +108,7 @@ def add_phalit_section(container_cell, width_inches=3.60, rows=25):
         for edge in ('top','left','right'):
             el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'nil'); tcBorders.append(el)
         el = OxmlElement('w:bottom')
-        el.set(qn('w:val'),'single'); el.set(qn('w:sz'),'8'); el.set(qn('w:space'),'0'); el.set(qn('w:color'),'B6B6B6')
+        el.set(qn('w:val'),'single'); el.set(qn('w:sz'),'8'); el.set(qn('w:space'),'0'); el.set(qn('w:color'),'E67E22')
         tcBorders.append(el)
         tcPr.append(tcBorders)
 
@@ -1151,8 +1145,8 @@ def center_header_row(table):
 
 # ===== MODERN DESIGN STYLING FUNCTIONS =====
 
-def create_cylindrical_section_header(container, title_text):
-    """Create modern cylindrical tube-shaped section headers"""
+def create_cylindrical_section_header(container, title_text, width_pt=320):
+    """Create modern cylindrical tube-shaped section headers with dynamic width"""
     # Create paragraph for the header
     header_para = container.add_paragraph()
     header_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -1175,7 +1169,7 @@ def create_cylindrical_section_header(container, title_text):
       </w:pPr>
       <w:r>
         <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
-          <v:roundrect style="position:relative;width:320pt;height:28pt;margin-left:auto;margin-right:auto" 
+          <v:roundrect style="position:relative;width:{width_pt}pt;height:28pt;margin-left:auto;margin-right:auto" 
                        arcsize="45%" strokecolor="#D2691E" strokeweight="1.5pt">
             <v:fill type="gradient" color="#F15A23" color2="#FFEACC" angle="90" opacity="1"/>
             <v:textbox inset="8pt,4pt,8pt,4pt">
@@ -1851,7 +1845,7 @@ def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
     # title.paragraph_format.space_after = Pt(2)
     # title.paragraph_format.space_before = Pt(6)
     # title.paragraph_format.space_after = Pt(3)
-    create_cylindrical_section_header(container_cell, "प्रमुख बिंदु")
+    create_cylindrical_section_header(container_cell, "प्रमुख बिंदु", width_pt=260)
 
     rows = []
 
@@ -2279,7 +2273,7 @@ if can_generate:
             create_unified_personal_details_box(left, str(name), str(dob), str(tob), str(place_disp))
             # Original planetary positions section
             # h1 = left.add_paragraph("ग्रह स्थिति"); _apply_hindi_caption_style(h1, size_pt=11, underline=True, bold=True)
-            create_cylindrical_section_header(left, "ग्रह स्थिति")
+            create_cylindrical_section_header(left, "ग्रह स्थिति", width_pt=260)
             
             # === COMPLETELY REWRITTEN FIRST TABLE: ग्रह स्थिति ===
             # Create table with exact 5 columns for clean structure
@@ -2321,7 +2315,7 @@ if can_generate:
 
             # Original Mahadasha section
             # h2 = left.add_paragraph("विंशोत्तरी महादशा"); _apply_hindi_caption_style(h2, size_pt=11, underline=True, bold=True); h2.paragraph_format.keep_with_next = True; h2.paragraph_format.space_after = Pt(2)
-            create_cylindrical_section_header(left, "विंशोत्तरी महादशा")
+            create_cylindrical_section_header(left, "विंशोत्तरी महादशा", width_pt=260)
             t2 = left.add_table(rows=1, cols=len(df_md.columns)); t2.autofit=True
             for i,c in enumerate(df_md.columns): t2.rows[0].cells[i].text=c
             for _,row in df_md.iterrows():
@@ -2339,7 +2333,7 @@ if can_generate:
 
             # Original Antardasha section
             # h3 = left.add_paragraph("महादशा / अंतरदशा"); _apply_hindi_caption_style(h3, size_pt=11, underline=True, bold=True)
-            create_cylindrical_section_header(left, "महादशा / अंतरदशा")
+            create_cylindrical_section_header(left, "महादशा / अंतरदशा", width_pt=260)
             t3 = left.add_table(rows=1, cols=len(df_an.columns)); t3.autofit=True
             for i,c in enumerate(df_an.columns): t3.rows[0].cells[i].text=c
             for _,row in df_an.iterrows():
@@ -2353,8 +2347,8 @@ if can_generate:
                         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             center_header_row(t3); set_table_font(t3, pt=BASE_FONT_PT); add_table_borders(t3, size=6)
             apply_premium_table_style(t3)  # Apply orange headers and alternating grey rows
-            compact_table_paragraphs(t3)
             set_col_widths(t3, [1.20, 1.50, 1.10])
+            compact_table_paragraphs(t3)  # Move after styling to prevent border conflicts
 
             # One-page: place Pramukh Bindu under tables (left column) to free right column for charts
             try:
@@ -2414,9 +2408,19 @@ if can_generate:
             rasi_house_planets = build_rasi_house_planets_marked(sidelons, lagna_sign)
             p1._p.addnext(kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
 
-            # Original Navamsa chart title
+            # Original Navamsa chart title - Enhanced styling for visibility
             cell2 = kt.rows[1].cells[0]; cap2 = cell2.add_paragraph("नवांश कुंडली")
-            cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap2, size_pt=11, underline=True, bold=True); cap2.paragraph_format.space_before = Pt(2); cap2.paragraph_format.space_after = Pt(2)
+            cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            # Ensure the title is visible with proper formatting
+            if cap2.runs:
+                run = cap2.runs[0]
+            else:
+                run = cap2.add_run("नवांश कुंडली")
+            run.bold = True
+            run.underline = True  
+            run.font.size = Pt(11)
+            run.font.color.rgb = RGBColor(139, 69, 19)  # Saddle brown color
+            cap2.paragraph_format.space_before = Pt(2); cap2.paragraph_format.space_after = Pt(2)
             p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0)
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
             p2._p.addnext(kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
