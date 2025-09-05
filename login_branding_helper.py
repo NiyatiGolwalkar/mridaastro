@@ -60,16 +60,6 @@ def show_login_screen():
     # If config missing, we already showed an error; avoid rendering a broken button
     if not login_url:
         return
-    
-    # Add demo mode for Replit testing
-    if st.button("🧪 Demo Mode (Skip OAuth)", key="demo_mode"):
-        st.session_state["user"] = {
-            "email": "niyati.golwalkar@gmail.com",
-            "name": "Demo User",
-            "picture": "",
-        }
-        st.session_state["oauth"] = {"demo": True}
-        st.rerun()
 
     # Background image
     bg_path = Path("assets/login_bg.png")
