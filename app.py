@@ -331,31 +331,47 @@ from PIL import Image
 
 
 # === App background (minimal, no logic changes) ===
-
-# App background (safe, canonical)
-def _apply_bg():
-
-
-# --- Centered fixed form + brand fonts (login-match) ---
+def _apply_bg()
+_apply_centered_fixed_form_and_fonts()
+:
+    try:
+        import streamlit as st, base64
+        from pathlib import Path
+        p = Path("assets/ganesha_bg.png")
+        if p.exists():
+            b64 = base64.b64encode(p.read_bytes()).decode()
+            css = f"""
+            <style>
+            [data-testid="stAppViewContainer"] {{
+                background: url('data:image/png;base64,{b64}') no-repeat center top fixed;
+                background-size: cover;
+            }}
+            </style>
+            """
+            st.markdown(css, unsafe_allow_html=True)
+    except Exception:
+        pass
+# === End App background ===
+# === Centered fixed form + brand fonts ===
 def _apply_centered_fixed_form_and_fonts():
     import streamlit as st
     st.markdown(
         """
         <style>
           @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@700&display=swap');
-
+          
           html, body, [data-testid="stAppViewContainer"] {
             height: 100vh;
-            overflow: hidden;                  /* stop page scroll */
+            overflow: hidden;                 /* stop page scroll */
             background-attachment: fixed !important;
           }
           .block-container {
-            position: fixed;                   /* lock main block */
+            position: fixed;                  /* lock the main block */
             top: 54%;
             left: 50%;
             transform: translate(-50%, -50%);
             width: min(92vw, 980px);
-            max-height: 82vh;                  /* internal scroll only if needed */
+            max-height: 82vh;                 /* internal scroll only if needed */
             overflow: auto;
             padding: 32px 28px;
             border-radius: 16px;
@@ -364,68 +380,28 @@ def _apply_centered_fixed_form_and_fonts():
             backdrop-filter: blur(4px);
           }
           [data-testid="stHeader"] { background: transparent; }
-
-          .brand-title {
-            font-family: 'Cinzel Decorative', cursive;
-            font-size: clamp(40px, 6vw, 64px);
-            line-height: 1.1;
-            text-align: center;
-            margin: 0 0 8px 0;
-            color: #000;
+          
+          /* Brand typography matching login */
+          h1 { 
+            font-family: 'Cinzel Decorative', cursive; 
+            font-weight: 700; 
             letter-spacing: 1px;
           }
-          .brand-tagline {
+          .brand-tagline, h2, h3 {
             font-family: 'Cinzel', serif;
-            font-size: clamp(16px, 2.2vw, 26px);
             font-style: italic;
-            text-align: center;
-            color: #000;
-            margin: -6px 0 18px 0;
-          }
-          .brand-underline {
-            width: 140px;
-            height: 4px;
-            border-radius: 4px;
-            background: #000;
-            margin: 8px auto 24px auto;
           }
         </style>
         """
         , unsafe_allow_html=True
     )
+# === End centered fixed form ===
 
-def _render_brand_header():
-    import streamlit as st
-    st.markdown('<div class="brand-title">MRIDAASTRO</div>', unsafe_allow_html=True)
-    st.markdown('<div class="brand-tagline">In the light of divine, let your soul journey shine</div>', unsafe_allow_html=True)
-    st.markdown('<div class="brand-underline"></div>', unsafe_allow_html=True)
-# --- End styles ---
-    """Set a full-page fixed background image if present."""
-    try:
-        import base64
-        from pathlib import Path
-        import streamlit as st
 
-        bg_path = Path("assets/ganesha_bg.png")  # change to assets/login_bg.png if needed
-        if not bg_path.exists():
-            return
-        b64 = base64.b64encode(bg_path.read_bytes()).decode("utf-8")
-        st.markdown(
-            f"""
-            <style>
-              [data-testid="stAppViewContainer"] {{
-                background-image: url("data:image/png;base64,{b64}");
-                background-size: cover;
-                background-position: top center;
-                background-attachment: fixed;
-              }}
-              [data-testid="stHeader"] {{ background: transparent; }}
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )
-    except Exception:
-        pass
+
+
+import swisseph as swe
+from timezonefinder import TimezoneFinder
 
 
 def _bbox_of_poly(poly):
