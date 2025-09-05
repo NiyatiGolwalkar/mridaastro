@@ -7,19 +7,19 @@ from urllib.parse import urlencode
 from pathlib import Path
 import streamlit as st
 
-
 def _read_google_oauth_from_secrets():
     """Return (client_id, redirect_uri); None if missing."""
-    cfg = {}
     try:
-        # Streamlit Secrets behaves like a Mapping
-        cfg = st.secrets.get("google_oauth", {})  # {} if key not present
+        # Read secrets the same way as main.py
+        _cfg = st.secrets.get("google_oauth", st.secrets)
+        client_id = _cfg["client_id"]
+        redirect_uri = _cfg["redirect_uri"]
+        return client_id, redirect_uri
     except Exception:
-        cfg = {}
-    client_id = os.getenv("GOOGLE_OAUTH_CLIENT_ID", cfg.get("client_id"))
-    redirect_uri = os.getenv("GOOGLE_OAUTH_REDIRECT_URI", cfg.get("redirect_uri"))
-    return client_id, redirect_uri
-
+        # Also try environment variables as fallback
+        client_id = os.getenv("GOOGLE_OAUTH_CLIENT_ID")
+        redirect_uri = os.getenv("GOOGLE_OAUTH_REDIRECT_URI")
+        return client_id, redirect_uri
 
 def build_auth_url(state: str) -> str:
     client_id, redirect_uri = _read_google_oauth_from_secrets()
@@ -52,7 +52,6 @@ def build_auth_url(state: str) -> str:
     }
     return f"{AUTH_ENDPOINT}?{urlencode(params)}"
 
-
 def show_login_screen():
     """Render the branded login page. Requires google_oauth secrets/env to be set."""
     st.session_state["oauth_state"] = str(time.time())
@@ -61,6 +60,16 @@ def show_login_screen():
     # If config missing, we already showed an error; avoid rendering a broken button
     if not login_url:
         return
+    
+    # Add demo mode for Replit testing
+    if st.button("🧪 Demo Mode (Skip OAuth)", key="demo_mode"):
+        st.session_state["user"] = {
+            "email": "niyati.golwalkar@gmail.com",
+            "name": "Demo User",
+            "picture": "",
+        }
+        st.session_state["oauth"] = {"demo": True}
+        st.rerun()
 
     # Background image
     bg_path = Path("assets/login_bg.png")
