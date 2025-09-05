@@ -460,14 +460,11 @@ def render_label(text: str, show_required: bool = False):
 # === MRIDAASTRO Brand Header (Top) ===
 st.markdown(
     """
-    <style>
-      @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&display=swap');
-    </style>
     <div style='text-align:center; padding: 14px 0 4px 0;'>
-      <div style='font-family:"Cinzel Decorative", serif; font-size:46px; font-weight:800; letter-spacing:1px; color:#000000; text-shadow:1px 1px 2px #ccc; margin-bottom:6px;'>
+      <div style='font-size:46px; font-weight:800; letter-spacing:1px; color:#000000; text-shadow:1px 1px 2px #ccc; margin-bottom:6px;'>
         MRIDAASTRO
       </div>
-      <div style='font-family:"Cinzel Decorative", serif; font-style:italic; font-size:20px; color:#000000; margin-bottom:10px;'>
+      <div style='font-family:Georgia,serif; font-style:italic; font-size:20px; color:#000000; margin-bottom:10px;'>
         In the light of divine, let your soul journey shine
       </div>
       <div style='height:3px; width:160px; margin:0 auto 6px auto; background:black; border-radius:2px;'></div>
@@ -1227,7 +1224,7 @@ def main():
     # === End Brand Header ===
 
     # st.title(APP_TITLE)  # removed to avoid duplicate brand name# === Two fields per row layout (stacked labels, half-width) ===
-sp1, row1c1, row1c2, sp2 = st.columns([1,1,1,1])
+row1c1, row1c2 = st.columns(2)
 with row1c1:
     name_val = (st.session_state.get('name_input','') or '').strip()
     name_err = st.session_state.get('submitted') and (not name_val)
@@ -1240,7 +1237,7 @@ with row1c2:
     dob = st.date_input("", key="dob_input", label_visibility="collapsed",
                         min_value=datetime.date(1800,1,1), max_value=datetime.date(2100,12,31))
 
-sp3, row2c1, row2c2, sp4 = st.columns([1,1,1,1])
+row2c1, row2c2 = st.columns(2)
 with row2c1:
     tob_val = st.session_state.get('tob_input', None)
     tob_err = st.session_state.get('submitted') and (tob_val is None)
@@ -1252,18 +1249,18 @@ with row2c2:
     render_label('Place of Birth (City, State, Country) <span style="color:red">*</span>', place_err)
     place = st.text_input("", key="place_input", label_visibility="collapsed")
 
-sp5, utc_col, btn_col, sp6 = st.columns([1,1,1,1])
-with utc_col:
+row3c1, row3c2 = st.columns(2)
+with row3c1:
     tz_val = (st.session_state.get('tz_input','') or '').strip()
     tz_err = st.session_state.get('submitted') and (not tz_val)
     render_label('UTC offset override (e.g., 5.5) <span style="color:red">*</span>', tz_err)
     tz_override = st.text_input("", key="tz_input", label_visibility="collapsed", value="")
-with btn_col:
-    st.markdown("&nbsp;", unsafe_allow_html=True)
-    if st.button("Generate Kundali", key="btn_generate_inline"):
-        st.session_state.update({'submitted': True})
+    st.write("")
 # === End two-per-row ===
-api_key = st.secrets.get("GEOAPIFY_API_KEY","")
+
+
+
+    api_key = st.secrets.get("GEOAPIFY_API_KEY","")
 
     st.button("Generate Kundali", key="gen_btn", on_click=lambda: st.session_state.update({'submitted': True}))
 
