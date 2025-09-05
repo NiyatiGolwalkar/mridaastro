@@ -331,7 +331,7 @@ from PIL import Image
 
 
 # === App background (minimal, no logic changes) ===
-def _apply_bg()
+def _apply_bg():
 _apply_centered_fixed_form_and_fonts()
 _render_brand_header()
 :
