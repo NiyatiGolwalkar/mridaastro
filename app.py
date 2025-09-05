@@ -203,11 +203,9 @@ try:
     REDIRECT_URI  = _cfg["redirect_uri"]  # e.g. https://mridaastro.streamlit.app/oauth2callback
     OAUTH_ENABLED = True
 except:
-    # Demo mode - OAuth not configured
-    CLIENT_ID     = "demo"
-    CLIENT_SECRET = "demo"
-    REDIRECT_URI  = "demo"
-    OAUTH_ENABLED = False
+   st.error("⚠️ Google OAuth credentials not configured. Please configure google_oauth secrets.")
+    st.info("Required secrets: client_id, client_secret, redirect_uri")
+    st.stop()
 
 AUTH_ENDPOINT  = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
