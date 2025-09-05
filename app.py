@@ -6,104 +6,6 @@ import os
 from io import BytesIO
 from docx import Document as _WordDocument
 
-
-# === BRAND / LAYOUT HELPERS (injected) ========================================
-import base64
-from pathlib import Path
-
-def _apply_bg():
-    """Full-page fixed background; safe if asset missing."""
-    try:
-        bg_path = Path("assets/ganesha_bg.png")  # change to assets/login_bg.png if needed
-        if not bg_path.exists():
-            return
-        b64 = base64.b64encode(bg_path.read_bytes()).decode("utf-8")
-        st.markdown(
-            f"""
-            <style>
-              [data-testid="stAppViewContainer"] {{
-                background-image: url("data:image/png;base64,{b64}");
-                background-size: cover;
-                background-position: top center;
-                background-attachment: fixed;
-              }}
-              [data-testid="stHeader"] {{ background: transparent; }}
-            </style>
-            """,
-            unsafe_allow_html=True,
-        )
-    except Exception:
-        pass
-
-def _apply_centered_fixed_form_and_fonts():
-    """Freeze content in the center (no page scroll) + brand fonts."""
-    st.markdown(
-        """
-        <style>
-          @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@700&display=swap');
-
-          html, body, [data-testid="stAppViewContainer"] {
-            height: 100vh;
-            overflow: hidden;                 /* stop page scroll */
-            background-attachment: fixed !important;
-          }
-          .block-container {
-            position: fixed;                  /* lock the main block */
-            top: 54%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: min(92vw, 980px);
-            max-height: 82vh;                 /* internal scroll only if overflows */
-            overflow: auto;
-            padding: 32px 28px;
-            border-radius: 16px;
-            background: rgba(255,255,255,0.86);
-            box-shadow: 0 12px 32px rgba(0,0,0,0.25);
-            backdrop-filter: blur(4px);
-          }
-          [data-testid="stHeader"] { background: transparent; }
-
-          .brand-title {
-            font-family: 'Cinzel Decorative', cursive;
-            font-size: clamp(40px, 6vw, 64px);
-            line-height: 1.1;
-            text-align: center;
-            margin: 0 0 8px 0;
-            color: #000;
-            letter-spacing: 1px;
-          }
-          .brand-tagline {
-            font-family: 'Cinzel', serif;
-            font-size: clamp(16px, 2.2vw, 26px);
-            font-style: italic;
-            text-align: center;
-            color: #000;
-            margin: -6px 0 18px 0;
-          }
-          .brand-underline {
-            width: 140px;
-            height: 4px;
-            border-radius: 4px;
-            background: #000;
-            margin: 8px auto 24px auto;
-          }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-def _render_brand_header():
-    st.markdown('<div class="brand-title">MRIDAASTRO</div>', unsafe_allow_html=True)
-    st.markdown('<div class="brand-tagline">In the light of divine, let your soul journey shine</div>', unsafe_allow_html=True)
-    st.markdown('<div class="brand-underline"></div>', unsafe_allow_html=True)
-
-# Apply immediately (safe to call more than once)
-_apply_bg()
-_apply_centered_fixed_form_and_fonts()
-_render_brand_header()
-# ============================================================================
-
-
 TEMPLATE_DOCX = "bg_template.docx"
 
 def make_document():
@@ -429,11 +331,101 @@ from PIL import Image
 
 
 # === App background (minimal, no logic changes) ===
- === End App background ===
+
+# App background (safe, canonical)
+def _apply_bg():
 
 
-import swisseph as swe
-from timezonefinder import TimezoneFinder
+# --- Centered fixed form + brand fonts (login-match) ---
+def _apply_centered_fixed_form_and_fonts():
+    import streamlit as st
+    st.markdown(
+        """
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&family=Cinzel:wght@700&display=swap');
+
+          html, body, [data-testid="stAppViewContainer"] {
+            height: 100vh;
+            overflow: hidden;                  /* stop page scroll */
+            background-attachment: fixed !important;
+          }
+          .block-container {
+            position: fixed;                   /* lock main block */
+            top: 54%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: min(92vw, 980px);
+            max-height: 82vh;                  /* internal scroll only if needed */
+            overflow: auto;
+            padding: 32px 28px;
+            border-radius: 16px;
+            background: rgba(255,255,255,0.86);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.25);
+            backdrop-filter: blur(4px);
+          }
+          [data-testid="stHeader"] { background: transparent; }
+
+          .brand-title {
+            font-family: 'Cinzel Decorative', cursive;
+            font-size: clamp(40px, 6vw, 64px);
+            line-height: 1.1;
+            text-align: center;
+            margin: 0 0 8px 0;
+            color: #000;
+            letter-spacing: 1px;
+          }
+          .brand-tagline {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(16px, 2.2vw, 26px);
+            font-style: italic;
+            text-align: center;
+            color: #000;
+            margin: -6px 0 18px 0;
+          }
+          .brand-underline {
+            width: 140px;
+            height: 4px;
+            border-radius: 4px;
+            background: #000;
+            margin: 8px auto 24px auto;
+          }
+        </style>
+        """
+        , unsafe_allow_html=True
+    )
+
+def _render_brand_header():
+    import streamlit as st
+    st.markdown('<div class="brand-title">MRIDAASTRO</div>', unsafe_allow_html=True)
+    st.markdown('<div class="brand-tagline">In the light of divine, let your soul journey shine</div>', unsafe_allow_html=True)
+    st.markdown('<div class="brand-underline"></div>', unsafe_allow_html=True)
+# --- End styles ---
+    """Set a full-page fixed background image if present."""
+    try:
+        import base64
+        from pathlib import Path
+        import streamlit as st
+
+        bg_path = Path("assets/ganesha_bg.png")  # change to assets/login_bg.png if needed
+        if not bg_path.exists():
+            return
+        b64 = base64.b64encode(bg_path.read_bytes()).decode("utf-8")
+        st.markdown(
+            f"""
+            <style>
+              [data-testid="stAppViewContainer"] {{
+                background-image: url("data:image/png;base64,{b64}");
+                background-size: cover;
+                background-position: top center;
+                background-attachment: fixed;
+              }}
+              [data-testid="stHeader"] {{ background: transparent; }}
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+    except Exception:
+        pass
 
 
 def _bbox_of_poly(poly):
