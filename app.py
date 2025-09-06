@@ -134,7 +134,7 @@ def zero_table_cell_margins(table):
         tblPr.append(cellMar)
     except Exception:
         pass
-def add_phalit_section(container_cell, width_inches=3.60, rows=15):
+def add_phalit_section(container_cell, width_inches=3.60, rows=25):
     # Add beautiful cylindrical gradient header bar for फलित section
     create_cylindrical_section_header(container_cell, "फलित", width_pt=260)
 
