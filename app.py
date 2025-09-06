@@ -134,7 +134,7 @@ def zero_table_cell_margins(table):
         tblPr.append(cellMar)
     except Exception:
         pass
-def add_phalit_section(container_cell, width_inches=3.60, rows=25):
+def add_phalit_section(container_cell, width_inches=3.60, rows=15):
     # Add beautiful cylindrical gradient header bar for फलित section
     create_cylindrical_section_header(container_cell, "फलित", width_pt=260)
 
@@ -778,6 +778,31 @@ def geocode(place, api_key):
         res=j["results"][0]; return float(res["lat"]), float(res["lon"]), res.get("formatted", place)
     raise RuntimeError("Place not found.")
 
+
+def geocode_strict(place, api_key):
+    """
+    Strict geocode: requires City/Town/Village + Country; returns (lat, lon, display).
+    Raises RuntimeError if the result is not a populated place.
+    """
+    if not api_key: 
+        raise RuntimeError("Geoapify key missing. Add GEOAPIFY_API_KEY in Secrets.")
+    base="https://api.geoapify.com/v1/geocode/search?"
+    q = urllib.parse.urlencode({"text":place, "format":"json", "limit":1, "apiKey":api_key})
+    with urllib.request.urlopen(base+q, timeout=15) as r: 
+        j = json.loads(r.read().decode())
+    if not j.get("results"): 
+        raise RuntimeError("Place not found. Please enter 'City, State, Country' and pick a real place.")
+    res = j["results"][0]
+    rtype = res.get("result_type","")
+    city = res.get("city") or res.get("town") or res.get("village") or res.get("municipality") or res.get("state_district") or res.get("county")
+    country = res.get("country")
+    if not country or not (city or res.get("state")):
+        raise RuntimeError("Incomplete address. Enter 'City, State, Country'.")
+    good_types = {"city","town","village","municipality","suburb","state_district","county","district"}
+    if rtype and rtype not in good_types:
+        raise RuntimeError("Please enter a valid birth place (city/town/village).")
+    display = res.get("formatted") or ", ".join([x for x in [city, res.get("state"), country] if x])
+    return float(res["lat"]), float(res["lon"]), display
 
 def get_timezone_offset_simple(lat, lon):
     """Simple timezone offset calculation for auto-population using hardcoded values"""
@@ -2053,8 +2078,10 @@ with row1c1:
 with row1c2:
     place_val = (st.session_state.get('place_input','') or '').strip()
     place_err = (st.session_state.get('submitted') or st.session_state.get('generate_clicked')) and (not place_val)
-    render_label('Place of Birth (City, State, Country) <span style="color:red">*</span>', place_err)
-    place = st.text_input("Place of Birth", key="place_input", label_visibility="collapsed")
+    place_valid = bool(st.session_state.get('place_validated'))
+place_err = (st.session_state.get('submitted') or st.session_state.get('generate_clicked')) and not place_valid
+render_label('Place of Birth (City, State, Country) <span style="color:red">*</span>', place_err)
+place = st.text_input("Place of Birth", key="place_input", label_visibility="collapsed")
 
 # Clear previous generation if any field changes
 current_form_values = {
@@ -2081,19 +2108,20 @@ st.session_state['last_form_values'] = current_form_values
 # Auto-populate UTC offset when place changes
 place_input_val = st.session_state.get('place_input', '').strip()
 if place_input_val and place_input_val != st.session_state.get('last_place_checked', ''):
+    st.session_state['tz_input'] = ''
+    st.session_state['last_place_checked'] = ''
     try:
         api_key = st.secrets.get("GEOAPIFY_API_KEY", "")
         if api_key:
-            # Try to geocode and detect timezone
-            lat, lon, disp = geocode(place_input_val, api_key)
-            # Use simple timezone offset calculation for auto-population
+            lat, lon, disp = geocode_strict(place_input_val, api_key)
             offset_hours = get_timezone_offset_simple(lat, lon)
-            # Auto-populate the UTC offset field
             st.session_state['tz_input'] = str(offset_hours)
             st.session_state['last_place_checked'] = place_input_val
-            st.rerun()  # Refresh to show the auto-populated value
+            st.session_state['place_validated_display'] = disp
+            st.session_state['place_validated'] = True
+            st.rerun()
     except Exception as e:
-        # If auto-detection fails, just leave the field for manual entry
+        st.session_state['place_validated'] = False
         pass
 
 # Row 2: Date of Birth, Time of Birth, and UTC offset override
@@ -2163,7 +2191,7 @@ if generate_clicked or st.session_state.get('submitted'):
     any_err = False
 
     # Check all required fields
-    if not _name or not _place or not _tz or _dob is None or _tob is None:
+    if not _name or not _place or not _tz or _dob is None or _tob is None or not st.session_state.get('place_validated'):
         any_err = True
     else:
         try:
@@ -2210,12 +2238,12 @@ if can_generate:
     try:
             # Use the validated variables from session state
             name = _name
-            place = _place
+            place = st.session_state.get('place_validated_display', _place)
             dob = _dob
             tob = _tob
             tz_override = _tz
 
-            lat, lon, disp = geocode(place, api_key)
+            lat, lon, disp = geocode_strict(place, api_key)
 
             dt_local = datetime.datetime.combine(dob, tob).replace(tzinfo=None)
             used_manual = False
@@ -2610,7 +2638,7 @@ if can_generate:
             # One-page: place Pramukh Bindu under tables (left column) to free right column for charts
             try:
                 add_pramukh_bindu_section(left, sidelons, lagna_sign, dt_utc)
-                add_phalit_section(left, rows=25)  # Reduced rows to prevent overlapping
+                add_phalit_section(left, rows=12)  # Reduced rows to prevent overlapping
             except Exception:
                 pass
             right = outer.rows[0].cells[1]
