@@ -1,3 +1,7 @@
+# === MRIDAASTRO — Reverted Baseline (from 'replit code with proper person details Section.py') ===
+# This file is intended as the new stable base to build further tweaks.
+# Changes: None (byte-for-byte baseline), aside from this banner.
+
 APP_TITLE = "MRIDAASTRO"
 APP_TAGLINE = "In the light of divine, let your soul journey shine"
 
@@ -969,7 +973,7 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
         <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:80" fillcolor="#ffffff" strokecolor="none" strokeweight="0pt">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-              <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
+              <w:p><w:pPr><w:jc w:val="{text_jc}"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
             </w:txbxContent>
           </v:textbox>
         </v:rect>
@@ -1047,7 +1051,7 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
     xml = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-        <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
+        <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
           <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="#CC6600" strokeweight="3pt" fillcolor="#ffdcc8"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
@@ -1112,7 +1116,7 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
         <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{box_w}pt;height:{box_h}pt;z-index:5" strokecolor="none">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-              <w:p><w:pPr><w:jc w:val="center"/></w:pPr>{content}</w:p>
+              <w:p><w:pPr><w:jc w:val="{text_jc}"/></w:pPr>{content}</w:p>
             </w:txbxContent>
           </v:textbox>
         </v:rect>
@@ -1121,7 +1125,7 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
     xml = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-        <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
+        <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
           <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="#CC6600" strokeweight="3pt" fillcolor="#ffdcc8"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
@@ -1155,14 +1159,14 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
         <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{w}pt;height:{h}pt;z-index:5" strokecolor="none">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-              <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
+              <w:p><w:pPr><w:jc w:val="{text_jc}"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
             </w:txbxContent>
           </v:textbox>
         </v:rect>''')
     boxes_xml = "\\n".join(boxes)
     xml = f'''<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
         <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-          <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
+          <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
             <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.25pt" fillcolor="#ffdcc8"/>
             <v:line style="position:absolute;z-index:2" from="0,0" to="{S},{S}" strokecolor="black" strokeweight="1.25pt"/>
             <v:line style="position:absolute;z-index:2" from="{S},0" to="0,{S}" strokecolor="black" strokeweight="1.25pt"/>
@@ -1195,11 +1199,11 @@ def center_header_row(table):
 
 # ===== MODERN DESIGN STYLING FUNCTIONS =====
 
-def create_cylindrical_section_header(container, title_text, width_pt=320):
+def create_cylindrical_section_header(container, title_text, width_pt=320, align='center', spacing_after=20, text_jc='center'):
     """Create modern cylindrical tube-shaped section headers with dynamic width"""
     # Create paragraph for the header
     header_para = container.add_paragraph()
-    header_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    header_para.alignment = (WD_ALIGN_PARAGRAPH.RIGHT if align=='right' else (WD_ALIGN_PARAGRAPH.LEFT if align=='left' else WD_ALIGN_PARAGRAPH.CENTER))
     header_para.paragraph_format.space_before = Pt(0)
     header_para.paragraph_format.space_after = Pt(0)
     
@@ -1214,7 +1218,7 @@ def create_cylindrical_section_header(container, title_text, width_pt=320):
     xml_content = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
       <w:pPr>
-        <w:jc w:val="center"/>
+        <w:jc w:val="{text_jc}"/>
         <w:spacing w:before="120" w:after="100"/>
       </w:pPr>
       <w:r>
@@ -1225,7 +1229,7 @@ def create_cylindrical_section_header(container, title_text, width_pt=320):
             <v:textbox inset="8pt,4pt,8pt,4pt">
               <w:txbxContent>
                 <w:p>
-                  <w:pPr><w:jc w:val="center"/></w:pPr>
+                  <w:pPr><w:jc w:val="{text_jc}"/></w:pPr>
                   <w:r>
                     <w:rPr>
                       <w:color w:val="FFFFFF"/>
@@ -1285,7 +1289,7 @@ def create_unified_personal_details_box(container, name, dob, tob, place):
                 <v:textbox inset="12pt,10pt,12pt,10pt">
                   <w:txbxContent>
                     <w:p>
-                      <w:pPr><w:jc w:val="center"/><w:spacing w:after="120"/></w:pPr>
+                      <w:pPr><w:jc w:val="{text_jc}"/><w:spacing w:after="120"/></w:pPr>
                       <w:r>
                         <w:rPr>
                           <w:color w:val="F15A23"/>
@@ -2298,7 +2302,7 @@ if can_generate:
                 header_table.rows[0].height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
                 header_table.rows[0].height = Pt(92)
                 # Vertical center the whole block within the cell
-                left_cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+                left_cell.vertical_alignment = WD_ALIGN_VERTICAL.TOP
                 # Personal Details Title
                 p_title = left_cell.add_paragraph()
                 p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -2423,7 +2427,7 @@ if can_generate:
                 p_tag.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 r_tag = p_tag.add_run("In the light of the divine, let your soul journey shine.")
                 r_tag.italic = True
-                r_tag.font.size = Pt(14)  # Enhanced from 10pt to 14pt
+                r_tag.font.size = Pt(10)  # Enhanced from 10pt to 14pt
                 
                 # Add some space after header table
                 spacer1 = doc.add_paragraph()
@@ -2455,14 +2459,11 @@ if can_generate:
             CHART_H_PT = int(CHART_W_PT * 0.80)
             ROW_HEIGHT_PT = int(CHART_H_PT + 14)
             
-            # Remove outer borders, keep only internal divider with dark orange
+            # Remove outer borders and the internal vertical divider
             tbl = outer._tbl; tblPr = tbl.tblPr; tblBorders = OxmlElement('w:tblBorders')
-            # Remove all outer borders
-            for edge in ('top','left','bottom','right'):
+            for edge in ('top','left','bottom','right','insideH','insideV'):
                 el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'nil'); tblBorders.append(el)
-            # Keep internal vertical divider with dark orange
-            for edge in ('insideV',):
-                el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'single'); el.set(qn('w:sz'),'6'); el.set(qn('w:color'), 'D2691E'); tblBorders.append(el)
+            tblPr.append(tblBorders)
             # Remove horizontal internal borders
             for edge in ('insideH',):
                 el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'nil'); tblBorders.append(el)
@@ -2615,30 +2616,17 @@ if can_generate:
             kt.autofit = False
             kt.columns[0].width = Inches(right_width_in)
             for row in kt.rows: row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY; row.height = Pt(ROW_HEIGHT_PT)
-            
-
-            # Original Lagna chart title
-            cell1 = kt.rows[0].cells[0]; cap1 = cell1.add_paragraph("लग्न कुंडली")
-            cap1.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap1, size_pt=11, underline=True, bold=True); cap1.paragraph_format.space_before = Pt(2); cap1.paragraph_format.space_after = Pt(2)
-            p1 = cell1.add_paragraph(); p1.paragraph_format.space_before = Pt(2); p1.paragraph_format.space_after = Pt(4)
+            # Lagna chart cylindrical header bar (centered)
+            create_cylindrical_section_header(cell1, "लग्न कुंडली", width_pt=int(CHART_W_PT), align='center', spacing_after=0, text_jc='center')
+            p1 = cell1.add_paragraph(); p1.paragraph_format.space_before = Pt(0); p1.paragraph_format.space_after = Pt(0)
             # Lagna chart with planets in single box per house
             rasi_house_planets = build_rasi_house_planets_marked(sidelons, lagna_sign)
             p1._p.addnext(kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
 
             # Original Navamsa chart title - Enhanced styling for visibility
-            cell2 = kt.rows[1].cells[0]; cap2 = cell2.add_paragraph("नवांश कुंडली")
-            cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            # Ensure the title is visible with proper formatting
-            if cap2.runs:
-                run = cap2.runs[0]
-            else:
-                run = cap2.add_run("नवांश कुंडली")
-            run.bold = True
-            run.underline = True  
-            run.font.size = Pt(11)
-            run.font.color.rgb = RGBColor(139, 69, 19)  # Saddle brown color
-            cap2.paragraph_format.space_before = Pt(2); cap2.paragraph_format.space_after = Pt(2)
-            p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(2); p2.paragraph_format.space_after = Pt(4)
+            cell2 = kt.rows[1].cells[0];             # Navamsha chart cylindrical header bar (centered)
+            create_cylindrical_section_header(cell2, "नवांश कुंडली", width_pt=int(CHART_W_PT), align='center', spacing_after=0, text_jc='center')
+            p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0)
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
             p2._p.addnext(kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
             # (प्रमुख बिंदु moved to row 2 of outer table)
