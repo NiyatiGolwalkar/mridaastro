@@ -2642,12 +2642,16 @@ if can_generate:
             kt.columns[0].width = Inches(right_width_in)
             for row in kt.rows: row.height_rule = WD_ROW_HEIGHT_RULE.EXACTLY; row.height = Pt(ROW_HEIGHT_PT)
             cell1 = kt.rows[0].cells[0]
+            try:
+                set_cell_margins(cell1, top=0, bottom=0)
+            except Exception:
+                pass
             # Lagna chart cylindrical header bar (centered)
             create_cylindrical_section_header(cell1, "लग्न कुंडली", width_pt=int(CHART_W_PT), align='center', spacing_after=0, text_jc='center')
-            p1 = cell1.add_paragraph(); p1.paragraph_format.space_before = Pt(0); p1.paragraph_format.space_after = Pt(0)
+            hdr_p = cell1.paragraphs[-1]
             # Lagna chart with planets in single box per house
             rasi_house_planets = build_rasi_house_planets_marked(sidelons, lagna_sign)
-            p1._p.addnext(kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
+            hdr_p._p.addnext(kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
 
             # Original Navamsa chart title - Enhanced styling for visibility
             cell2 = kt.rows[1].cells[0];                         sp_nav = cell2.add_paragraph(); sp_nav.paragraph_format.space_before = Pt(8); sp_nav.paragraph_format.space_after = Pt(0)
