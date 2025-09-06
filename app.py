@@ -206,54 +206,33 @@ def set_app_background(image_path: str, size: str = "contain", position: str = "
             return
         with open(image_path, "rb") as f:
             b64 = base64.b64encode(f.read()).decode("utf-8")
-        st.markdown(f"""
-        <style>
-          [data-testid="stAppViewContainer"] {{
-            background-image: url("data:image/png;base64,{b64}");
-            background-size: {size};
-            background-position: {position};
-            background-repeat: no-repeat;
-            background-color: #f6ede6; /* fallback */
-          }}
-          [data-testid="stHeader"] {{
-            background: transparent;
-          }}
-        </style>
-        """, unsafe_allow_html=True)
-    except Exception:
-        pass
-# === End background helper ===
-
-
-# --- Google Search Console verification (inject into <head>) ---
-st.markdown(f"""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&display=swap');
-.mrida-brand { text-align:center; padding: 16px 0 8px; }
-.mrida-title {
-  font-family:'Cinzel Decorative',serif;
-  font-weight:700; letter-spacing:1px; color:#000;
-  display:flex; align-items:center; justify-content:center; gap:6px;
-  font-size:50px;
-  text-shadow:1px 1px 2px rgba(0,0,0,0.2);
-}
-.mrida-tilak { width:32px; height:32px; display:inline-block; vertical-align:middle; }
-.mrida-tagline {
-  font-family:'Cinzel Decorative',serif;
-  font-style:italic; color:#000; font-size:22px; margin-top:6px;
-}
-@media (max-width: 480px) {.mrida-title{font-size:38px}.mrida-tilak{width:26px;height:26px}.mrida-tagline{font-size:18px}}
-</style>
-<div class="mrida-brand">
-  <div class="mrida-title">
-    <span>MR</span>
-    <img src="{_tilak_src()}" alt="I" class="mrida-tilak" />
-    <span>DAASTRO</span>
-  </div>
-  <div class="mrida-tagline">In the light of divine, let your soul journey shine</div>
-  <div style="height:3px; width:160px; margin:6px auto 0; background:black; border-radius:2px;"></div>
-</div>
-""", unsafe_allow_html=True)
+        tilak = _tilak_src()
+st.markdown(
+    f"""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&display=swap');
+    .mrida-brand {{ text-align:center; padding:16px 0 8px; }}
+    .mrida-title {{
+      font-family:'Cinzel Decorative',serif; font-weight:700; letter-spacing:1px; color:#000;
+      display:flex; align-items:center; justify-content:center; gap:6px; font-size:50px;
+      text-shadow:1px 1px 2px rgba(0,0,0,0.2);
+    }}
+    .mrida-tilak {{ width:32px; height:32px; display:inline-block; vertical-align:middle; }}
+    .mrida-tagline {{ font-family:'Cinzel Decorative',serif; font-style:italic; color:#000; font-size:22px; margin-top:6px; }}
+    @media (max-width: 480px) {{ .mrida-title{{font-size:38px}} .mrida-tilak{{width:26px;height:26px}} .mrida-tagline{{font-size:18px}} }}
+    </style>
+    <div class="mrida-brand">
+      <div class="mrida-title">
+        <span>MR</span>
+        <img src="{tilak}" alt="I" class="mrida-tilak" />
+        <span>DAASTRO</span>
+      </div>
+      <div class="mrida-tagline">In the light of divine, let your soul journey shine</div>
+      <div style="height:3px; width:160px; margin:6px auto 0; background:black; border-radius:2px;"></div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 # === End MRIDAASTRO Header ===
 _apply_bg()
 AYANAMSHA_VAL = swe.SIDM_LAHIRI
