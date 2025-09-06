@@ -1258,7 +1258,7 @@ def create_cylindrical_section_header(container, title_text, width_pt=320, align
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
       <w:pPr>
         <w:jc w:val="{text_jc}"/>
-        <w:spacing w:before="120" w:after="{int(spacing_after)}"/>
+        <w:spacing w:before="120" w:after="100"/>
       </w:pPr>
       <w:r>
         <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
@@ -2678,7 +2678,7 @@ if can_generate:
             hdr_p._p.addnext(kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
 
             # Original Navamsa chart title - Enhanced styling for visibility
-            cell2 = kt.rows[1].cells[0];                         sp_nav = cell2.add_paragraph(); sp_nav.paragraph_format.space_before = Pt(2); sp_nav.paragraph_format.space_after = Pt(0)
+            cell2 = kt.rows[1].cells[0];                         sp_nav = cell2.add_paragraph(); sp_nav.paragraph_format.space_before = Pt(40); sp_nav.paragraph_format.space_after = Pt(0)
             # Navamsha chart cylindrical header bar (centered)
             create_cylindrical_section_header(cell2, "नवांश कुंडली", width_pt=int(CHART_W_PT), align='center', spacing_after=0, text_jc='center')
             p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0)
