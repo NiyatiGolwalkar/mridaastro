@@ -2610,7 +2610,7 @@ if can_generate:
             # One-page: place Pramukh Bindu under tables (left column) to free right column for charts
             try:
                 add_pramukh_bindu_section(left, sidelons, lagna_sign, dt_utc)
-                add_phalit_section(left, rows=12)  # Reduced rows to prevent overlapping
+                add_phalit_section(left, rows=25)  # Reduced rows to prevent overlapping
             except Exception:
                 pass
             right = outer.rows[0].cells[1]
