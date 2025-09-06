@@ -2496,7 +2496,7 @@ if can_generate:
 
             CHART_W_PT = int(right_width_in * 72 - 10)
             CHART_H_PT = int(CHART_W_PT * 0.80)
-            ROW_HEIGHT_PT = int(CHART_H_PT + 48)
+            ROW_HEIGHT_PT = int(CHART_H_PT + 36)
             
             # Remove outer borders and the internal vertical divider
             tbl = outer._tbl; tblPr = tbl.tblPr; tblBorders = OxmlElement('w:tblBorders')
@@ -2662,6 +2662,10 @@ if can_generate:
                 row.height_rule = WD_ROW_HEIGHT_RULE.AT_LEAST
                 row.height = Pt(ROW_HEIGHT_PT)
             cell1 = kt.rows[0].cells[0]
+            try:
+                set_cell_margins(cell1, top=0, bottom=0)
+            except Exception:
+                pass
             try:
                 set_cell_margins(cell1, top=0, bottom=0)
             except Exception:
