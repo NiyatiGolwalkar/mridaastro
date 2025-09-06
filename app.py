@@ -69,6 +69,28 @@ def shade_cell(cell, fill_hex="FFFFFF"):
 def shade_header_row(table, fill_hex="FFFFFF"):
     return
 
+
+def compact_document_spacing(doc):
+    """Reduce vertical whitespace across the document."""
+    try:
+        from docx.shared import Pt
+        for p in doc.paragraphs:
+            try:
+                p.paragraph_format.space_before = Pt(0)
+                p.paragraph_format.space_after = Pt(0)
+            except Exception:
+                pass
+        for tbl in doc.tables:
+            for row in tbl.rows:
+                for cell in row.cells:
+                    for p in cell.paragraphs:
+                        try:
+                            p.paragraph_format.space_before = Pt(0)
+                            p.paragraph_format.space_after = Pt(0)
+                        except Exception:
+                            pass
+    except Exception:
+        pass
 def set_page_background(doc, hex_color):
     try:
         bg = OxmlElement('w:background')
@@ -1150,8 +1172,8 @@ def create_cylindrical_section_header(container, title_text, width_pt=320):
     # Create paragraph for the header
     header_para = container.add_paragraph()
     header_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    header_para.paragraph_format.space_before = Pt(8)
-    header_para.paragraph_format.space_after = Pt(6)
+    header_para.paragraph_format.space_before = Pt(0)
+    header_para.paragraph_format.space_after = Pt(0)
     
     # Add the title text with styling
     run = header_para.add_run(title_text)
@@ -1205,7 +1227,7 @@ def create_cylindrical_section_header(container, title_text, width_pt=320):
     # Ensure spacing after header so following table starts below the bar
     try:
         spacer = container.add_paragraph()
-        spacer.paragraph_format.space_after = Pt(4)
+        spacer.paragraph_format.space_after = Pt(1)
     except Exception:
         pass
 
