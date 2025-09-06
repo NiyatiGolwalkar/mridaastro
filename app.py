@@ -1258,7 +1258,7 @@ def create_cylindrical_section_header(container, title_text, width_pt=320, align
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
       <w:pPr>
         <w:jc w:val="{text_jc}"/>
-        <w:spacing w:before="120" w:after="100"/>
+        <w:spacing w:before="120" w:after="{int(spacing_after)}"/>
       </w:pPr>
       <w:r>
         <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
@@ -1301,49 +1301,6 @@ def create_cylindrical_section_header(container, title_text, width_pt=320, align
         spacer.paragraph_format.space_after = Pt(0)
     except Exception:
         pass
-
-def create_cylindrical_section_header_custom_after(container, title_text, width_pt=320, align='center', after_twips=100, text_jc='center'):
-    """Create a cylindrical header with a customized 'after' spacing (twips) for this one call."""
-    from docx.oxml import parse_xml
-    from docx.shared import Pt
-    header_para = container.add_paragraph()
-    header_para.alignment = (WD_ALIGN_PARAGRAPH.RIGHT if align=='right' else (WD_ALIGN_PARAGRAPH.LEFT if align=='left' else WD_ALIGN_PARAGRAPH.CENTER))
-    header_para.paragraph_format.space_before = Pt(0)
-    header_para.paragraph_format.space_after = Pt(0)
-    xml_content = f\"\"\"\
-    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-      <w:pPr>
-        <w:jc w:val="{text_jc}"/>
-        <w:spacing w:before="120" w:after="{int(after_twips)}"/>
-      </w:pPr>
-      <w:r>
-        <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-          <v:roundrect style="position:relative;width:{width_pt}pt;height:28pt;margin-left:auto;margin-right:auto" 
-                       arcsize="45%" strokecolor="#D2691E" strokeweight="1.5pt">
-            <v:fill type="gradient" color="#F15A23" color2="#FFEACC" angle="90" opacity="1"/>
-            <v:textbox inset="8pt,4pt,8pt,4pt">
-              <w:txbxContent>
-                <w:p>
-                  <w:pPr><w:jc w:val="{text_jc}"/></w:pPr>
-                  <w:r>
-                    <w:rPr>
-                      <w:color w:val="FFFFFF"/>
-                      <w:sz w:val="24"/>
-                      <w:b/>
-                      <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/>
-                    </w:rPr>
-                    <w:t>{title_text}</w:t>
-                  </w:r>
-                </w:p>
-              </w:txbxContent>
-            </v:textbox>
-          </v:roundrect>
-        </w:pict>
-      </w:r>
-    </w:p>\"\"\"
-    elem = parse_xml(xml_content)
-    container._element.append(elem)
-    container._element.remove(header_para._element)
 
 def create_unified_personal_details_box(container, name, dob, tob, place):
     """Create single rounded corner box with title inside, matching reference image exactly"""
@@ -2723,7 +2680,7 @@ if can_generate:
             # Original Navamsa chart title - Enhanced styling for visibility
             cell2 = kt.rows[1].cells[0];                         sp_nav = cell2.add_paragraph(); sp_nav.paragraph_format.space_before = Pt(2); sp_nav.paragraph_format.space_after = Pt(0)
             # Navamsha chart cylindrical header bar (centered)
-            create_cylindrical_section_header_custom_after(cell2, "नवांश कुंडली", width_pt=int(CHART_W_PT), align=\'center\', after_twips=8, text_jc=\'center\'), align='center', spacing_after=0, text_jc='center')
+            create_cylindrical_section_header(cell2, "नवांश कुंडली", width_pt=int(CHART_W_PT), align='center', spacing_after=0, text_jc='center')
             p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0)
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
             p2._p.addnext(kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
