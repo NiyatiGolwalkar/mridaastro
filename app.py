@@ -74,6 +74,13 @@ def compact_document_spacing(doc):
     """Reduce vertical whitespace across the document."""
     try:
         from docx.shared import Pt
+        try:
+            st = doc.styles["Normal"].paragraph_format
+            st.space_before = Pt(0)
+            st.space_after = Pt(0)
+            st.line_spacing = 1.0
+        except Exception:
+            pass
         for p in doc.paragraphs:
             try:
                 p.paragraph_format.space_before = Pt(0)
@@ -102,6 +109,27 @@ def set_page_background(doc, hex_color):
 
 # --- Phalit ruled lines (25 rows) ---
 from docx.enum.table import WD_ROW_HEIGHT_RULE
+
+def zero_table_cell_margins(table):
+    """Set w:tblCellMar for all sides to 0 to remove extra top/bottom padding inside table cells."""
+    try:
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+        tbl = table._tbl
+        tblPr = tbl.tblPr
+        # Remove existing cell margins if present
+        for el in list(tblPr):
+            if el.tag.endswith('tblCellMar'):
+                tblPr.remove(el)
+        cellMar = OxmlElement('w:tblCellMar')
+        for side in ('top','left','bottom','right'):
+            m = OxmlElement(f'w:{side}')
+            m.set(qn('w:w'), '0')
+            m.set(qn('w:type'), 'dxa')
+            cellMar.append(m)
+        tblPr.append(cellMar)
+    except Exception:
+        pass
 def add_phalit_section(container_cell, width_inches=3.60, rows=15):
     # Add beautiful cylindrical gradient header bar for फलित section
     create_cylindrical_section_header(container_cell, "फलित", width_pt=260)
@@ -1227,7 +1255,7 @@ def create_cylindrical_section_header(container, title_text, width_pt=320):
     # Ensure spacing after header so following table starts below the bar
     try:
         spacer = container.add_paragraph()
-        spacer.paragraph_format.space_after = Pt(1)
+        spacer.paragraph_format.space_after = Pt(0)
     except Exception:
         pass
 
@@ -1864,7 +1892,7 @@ def compact_table_paragraphs(tbl):
 
 def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
     spacer = container_cell.add_paragraph("")
-    spacer.paragraph_format.space_after = Pt(8)
+    spacer.paragraph_format.space_after = Pt(0)
     # Title
     # title = container_cell.add_paragraph("प्रमुख बिंदु")
     # # Match other section titles
@@ -2568,10 +2596,18 @@ if can_generate:
             p2._p.addnext(kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
             # (प्रमुख बिंदु moved to row 2 of outer table)
             # Ensure content goes below chart shape - single spacing paragraph
-            cell2.add_paragraph("").paragraph_format.space_after = Pt(6)
+            cell2.add_paragraph("").paragraph_format.space_after = Pt(0)
             # (Pramukh Bindu moved above charts)
 
-            out = BytesIO(); doc.save(out); out.seek(0)
+            out = BytesIO();
+            # APPLY_ZERO_MARGINS_BEFORE_SAVE
+            try:
+                for tbl in doc.tables:
+                    zero_table_cell_margins(tbl)
+            except Exception:
+                pass
+            compact_document_spacing(doc)
+            doc.save(out); out.seek(0)
             # Store document data in session state for download button
             st.session_state['kundali_doc'] = out.getvalue()
             st.session_state['kundali_filename'] = f"{sanitize_filename(name)}_Horoscope.docx"
