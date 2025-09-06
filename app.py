@@ -1295,261 +1295,54 @@ def create_cylindrical_section_header(container, title_text, width_pt=320, align
     except Exception:
         pass
 
-def create_unified_personal_details_box(container, name, dob, tob, place):
-    """Create single rounded corner box with title inside, matching reference image exactly"""
-    
-    # Try to create a rounded rectangle using VML for truly rounded corners
-    try:
-        # Create content text first
-        content_text = f'''व्यक्तिगत विवरण
 
-नाम: {name}
-जन्म तिथि: {dob}
-जन्म समय: {tob}
-स्थान: {place}'''
-        
-        # Create VML rounded rectangle
-        xml_content = f'''
+def create_unified_personal_details_box(container, name, dob, tob, place):
+    """Draw a rounded rectangle behind the Personal Details cell (overlay only).
+    We keep actual title/table content created by the caller. This mirrors the
+    earlier working version that used a VML roundrect with proper rounded corners.
+    """
+    try:
+        from docx.oxml import parse_xml
+        from docx.oxml.ns import qn
+        # Fixed size overlay; matches earlier working geometry closely.
+        vml_content = f"""
         <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-          <w:pPr>
-            <w:spacing w:before="0" w:after="{spacing_after}"/>
-          </w:pPr>
           <w:r>
             <w:pict xmlns:v="urn:schemas-microsoft-com:vml">
-              \135%\2 fillcolor="white" strokecolor="#F15A23" strokeweight="1.5pt">
-                <v:textbox inset="12pt,10pt,12pt,10pt">
-                  <w:txbxContent>
-                    <w:p>
-                      <w:pPr><w:jc w:val="right"/><w:spacing w:after="120"/></w:pPr>
-                      <w:r>
-                        <w:rPr>
-                          <w:color w:val="F15A23"/>
-                          <w:sz w:val="22"/>
-                          <w:b/>
-                          <w:u/>
-                        </w:rPr>
-                        <w:t>व्यक्तिगत विवरण</w:t>
-                      </w:r>
-                    </w:p>
-                    <w:p>
-                      <w:pPr>
-                        <w:spacing w:after="80"/>
-                        <w:tabs>
-                          <w:tab w:val="left" w:pos="1440"/>
-                        </w:tabs>
-                      </w:pPr>
-                      <w:r>
-                        <w:rPr>
-                          <w:color w:val="F15A23"/>
-                          <w:sz w:val="20"/>
-                          <w:b/>
-                          <w:u/>
-                        </w:rPr>
-                        <w:t>नाम :</w:t>
-                      </w:r>
-                      <w:r>
-                        <w:tab/>
-                        <w:rPr>
-                          <w:color w:val="000000"/>
-                          <w:sz w:val="20"/>
-                        </w:rPr>
-                        <w:t>{name}</w:t>
-                      </w:r>
-                    </w:p>
-                    <w:p>
-                      <w:pPr>
-                        <w:spacing w:after="80"/>
-                        <w:tabs>
-                          <w:tab w:val="left" w:pos="1440"/>
-                        </w:tabs>
-                      </w:pPr>
-                      <w:r>
-                        <w:rPr>
-                          <w:color w:val="F15A23"/>
-                          <w:sz w:val="20"/>
-                          <w:b/>
-                          <w:u/>
-                        </w:rPr>
-                        <w:t>जन्म तिथि :</w:t>
-                      </w:r>
-                      <w:r>
-                        <w:tab/>
-                        <w:rPr>
-                          <w:color w:val="000000"/>
-                          <w:sz w:val="20"/>
-                        </w:rPr>
-                        <w:t>{dob}</w:t>
-                      </w:r>
-                    </w:p>
-                    <w:p>
-                      <w:pPr>
-                        <w:spacing w:after="80"/>
-                        <w:tabs>
-                          <w:tab w:val="left" w:pos="1440"/>
-                        </w:tabs>
-                      </w:pPr>
-                      <w:r>
-                        <w:rPr>
-                          <w:color w:val="F15A23"/>
-                          <w:sz w:val="20"/>
-                          <w:b/>
-                          <w:u/>
-                        </w:rPr>
-                        <w:t>जन्म समय :</w:t>
-                      </w:r>
-                      <w:r>
-                        <w:tab/>
-                        <w:rPr>
-                          <w:color w:val="000000"/>
-                          <w:sz w:val="20"/>
-                        </w:rPr>
-                        <w:t>{tob}</w:t>
-                      </w:r>
-                    </w:p>
-                    <w:p>
-                      <w:pPr>
-                        <w:spacing w:after="40"/>
-                        <w:tabs>
-                          <w:tab w:val="left" w:pos="1440"/>
-                        </w:tabs>
-                      </w:pPr>
-                      <w:r>
-                        <w:rPr>
-                          <w:color w:val="F15A23"/>
-                          <w:sz w:val="20"/>
-                          <w:b/>
-                          <w:u/>
-                        </w:rPr>
-                        <w:t>स्थान :</w:t>
-                      </w:r>
-                      <w:r>
-                        <w:tab/>
-                        <w:rPr>
-                          <w:color w:val="000000"/>
-                          <w:sz w:val="20"/>
-                        </w:rPr>
-                        <w:t>{place}</w:t>
-                      </w:r>
-                    </w:p>
-                  </w:txbxContent>
-                </v:textbox>
+              <v:roundrect style="position:relative;left:0pt;top:0pt;width:332pt;height:92pt;z-index:-1"
+                           arcsize="15%" fillcolor="transparent" strokecolor="#CC6600" strokeweight="3pt">
               </v:roundrect>
             </w:pict>
           </w:r>
-        </w:p>'''
-        
-        from docx.oxml import parse_xml
-        rounded_element = parse_xml(xml_content)
-        container._element.append(rounded_element)
-        return None  # No table to return
-        
+        </w:p>
+        """
+        vml_element = parse_xml(vml_content)
+        # Insert behind any existing content in this cell
+        container._element.insert(0, vml_element)
     except Exception:
-        # Fallback to table approach if VML fails
-        pass
-    
-    # Fallback: Create a table with rounded corners for unified personal details
-    detail_table = container.add_table(rows=1, cols=1)
-    detail_table.autofit = False
-    detail_table.columns[0].width = Inches(3.5)
-    
-    cell = detail_table.rows[0].cells[0]
-    
-    # Add Title "व्यक्तिगत विवरण" inside the box at the top - compact spacing
-    title_para = cell.add_paragraph('व्यक्तिगत विवरण')
-    title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    title_run = title_para.runs[0]
-    title_run.bold = True
-    title_run.underline = True
-    title_run.font.size = Pt(11)  # Slightly smaller for compact
-    title_run.font.color.rgb = RGBColor(241, 90, 35)  # Orange color
-    title_para.paragraph_format.space_after = Pt(4)  # Reduced from 8
-    title_para.paragraph_format.space_before = Pt(0)  # Reduced from 2
-    
-    # Add Name - compact spacing
-    name_para = cell.add_paragraph()
-    name_title = name_para.add_run('नाम: ')
-    name_title.bold = True
-    name_title.font.size = Pt(9)  # Smaller font for compact
-    name_title.font.color.rgb = RGBColor(241, 90, 35)  # Orange color
-    name_content = name_para.add_run(str(name))
-    name_content.font.size = Pt(9)  # Smaller font for compact
-    name_content.font.color.rgb = RGBColor(0, 0, 0)  # Black color like in reference
-    name_para.paragraph_format.space_after = Pt(1)  # Reduced from 3
-    
-    # Add Date of Birth - compact spacing
-    dob_para = cell.add_paragraph()
-    dob_title = dob_para.add_run('जन्म तिथि: ')
-    dob_title.bold = True
-    dob_title.font.size = Pt(9)  # Smaller font for compact
-    dob_title.font.color.rgb = RGBColor(241, 90, 35)  # Orange color
-    dob_content = dob_para.add_run(str(dob))
-    dob_content.font.size = Pt(9)  # Smaller font for compact
-    dob_content.font.color.rgb = RGBColor(0, 0, 0)  # Black color like in reference
-    dob_para.paragraph_format.space_after = Pt(1)  # Reduced from 3
-    
-    # Add Time of Birth - compact spacing
-    tob_para = cell.add_paragraph()
-    tob_title = tob_para.add_run('जन्म समय: ')
-    tob_title.bold = True
-    tob_title.font.size = Pt(9)  # Smaller font for compact
-    tob_title.font.color.rgb = RGBColor(241, 90, 35)  # Orange color
-    tob_content = tob_para.add_run(str(tob))
-    tob_content.font.size = Pt(9)  # Smaller font for compact
-    tob_content.font.color.rgb = RGBColor(0, 0, 0)  # Black color like in reference
-    tob_para.paragraph_format.space_after = Pt(1)  # Reduced from 3
-    
-    # Add Place - compact spacing
-    place_para = cell.add_paragraph()
-    place_title = place_para.add_run('स्थान: ')
-    place_title.bold = True
-    place_title.font.size = Pt(9)  # Smaller font for compact
-    place_title.font.color.rgb = RGBColor(241, 90, 35)  # Orange color
-    place_content = place_para.add_run(str(place))
-    place_content.font.size = Pt(9)  # Smaller font for compact
-    place_content.font.color.rgb = RGBColor(0, 0, 0)  # Black color like in reference
-    place_para.paragraph_format.space_after = Pt(0)  # Reduced from 2
-    
-    # Apply compact rounded corner styling with minimal padding
-    try:
-        cell_elem = cell._tc
-        tcPr = cell_elem.get_or_add_tcPr()
-        
-        # Add rounded corner borders using dotted style for rounded appearance
-        tcBorders = OxmlElement('w:tcBorders')
-        for edge in ('top', 'left', 'bottom', 'right'):
-            border = OxmlElement(f'w:{edge}')
-            border.set(qn('w:val'), 'single')
-            border.set(qn('w:sz'), '6')  # Thin border
-            border.set(qn('w:color'), 'F15A23')  # Orange color matching reference
-            tcBorders.append(border)
-        tcPr.append(tcBorders)
-        
-        # Minimal padding for compact 1-page format
-        tcMar = OxmlElement('w:tcMar')
-        for side in ('top', 'left', 'bottom', 'right'):
-            margin = OxmlElement(f'w:{side}')
-            margin.set(qn('w:w'), '80')  # Minimal padding for compact layout
-            margin.set(qn('w:type'), 'dxa')
-            tcMar.append(margin)
-        tcPr.append(tcMar)
-        
-        # Clean white background
-        shd = OxmlElement('w:shd')
-        shd.set(qn('w:val'), 'clear')
-        shd.set(qn('w:color'), 'auto')
-        shd.set(qn('w:fill'), 'FFFFFF')  # Pure white background
-        tcPr.append(shd)
-        
-        # Add rounded corner effect using XML for better circular appearance
-        tcW = OxmlElement('w:tcW')
-        tcW.set(qn('w:w'), '0')
-        tcW.set(qn('w:type'), 'auto')
-        tcPr.append(tcW)
-        
-    except Exception:
-        pass
-    
-    return detail_table
+        # Fallback: add thick cell borders if VML fails
+        try:
+            from docx.oxml import OxmlElement
+            tc = getattr(container, "_tc", None)
+            if tc is None:
+                tc = container._element
+            tcPr = tc.get_or_add_tcPr()
+            # Remove existing borders first
+            existing_borders = tcPr.find(qn('w:tcBorders'))
+            if existing_borders is not None:
+                tcPr.remove(existing_borders)
+            # Add dark orange thick borders
+            tcBorders = OxmlElement('w:tcBorders')
+            for edge in ('top', 'left', 'bottom', 'right'):
+                el = OxmlElement(f'w:{edge}')
+                el.set(qn('w:val'), 'single')
+                el.set(qn('w:sz'), '18')  # Thick border
+                el.set(qn('w:color'), 'CC6600')  # Dark orange
+                el.set(qn('w:space'), '0')
+                tcBorders.append(el)
+            tcPr.append(tcBorders)
+        except Exception:
+            pass
 
 def create_rounded_detail_box(container, title, content):
     """Create rounded corner boxes for personal details"""
