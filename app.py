@@ -1317,7 +1317,7 @@ def create_unified_personal_details_box(container, name, dob, tob, place):
           <w:r>
             <w:pict xmlns:v="urn:schemas-microsoft-com:vml">
               <v:roundrect style="position:relative;width:332pt;height:130pt" 
-                           arcsize="15%" fillcolor="white" strokecolor="#F15A23" strokeweight="1.5pt">
+                           arcsize="35" fillcolor="white" strokecolor="#F15A23" strokeweight="1.5pt">
                 <v:textbox inset="12pt,10pt,12pt,10pt">
                   <w:txbxContent>
                     <w:p>
