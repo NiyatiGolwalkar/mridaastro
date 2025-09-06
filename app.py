@@ -1045,9 +1045,9 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
     boxes_xml = "\\n".join(num_boxes + planet_boxes)
 
     xml = f'''
-    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:pPr><w:jc w:val="center"/></w:pPr><w:r>
+    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:pPr><w:jc w:val="right"/></w:pPr><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-        <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
+        <v:group style="position:relative;margin-left:auto;margin-right:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
           <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="#CC6600" strokeweight="3pt" fillcolor="#ffdcc8"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
@@ -1119,9 +1119,9 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
         ''')
     boxes_xml = "\\n".join(text_boxes)
     xml = f'''
-    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:pPr><w:jc w:val="center"/></w:pPr><w:r>
+    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:pPr><w:jc w:val="right"/></w:pPr><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-        <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
+        <v:group style="position:relative;margin-left:auto;margin-right:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
           <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="#CC6600" strokeweight="3pt" fillcolor="#ffdcc8"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
@@ -1195,11 +1195,11 @@ def center_header_row(table):
 
 # ===== MODERN DESIGN STYLING FUNCTIONS =====
 
-def create_cylindrical_section_header(container, title_text, width_pt=320):
+def create_cylindrical_section_header(container, title_text, width_pt=320, align='center', spacing_after=20):
     """Create modern cylindrical tube-shaped section headers with dynamic width"""
     # Create paragraph for the header
     header_para = container.add_paragraph()
-    header_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    header_para.alignment = (WD_ALIGN_PARAGRAPH.RIGHT if align=='right' else (WD_ALIGN_PARAGRAPH.LEFT if align=='left' else WD_ALIGN_PARAGRAPH.CENTER))
     header_para.paragraph_format.space_before = Pt(0)
     header_para.paragraph_format.space_after = Pt(0)
     
@@ -1214,18 +1214,18 @@ def create_cylindrical_section_header(container, title_text, width_pt=320):
     xml_content = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
       <w:pPr>
-        <w:jc w:val="center"/>
-        <w:spacing w:before="120" w:after="100"/>
+        <w:jc w:val="{align}"/>
+        <w:spacing w:before="0" w:after="{spacing_after}"/>
       </w:pPr>
       <w:r>
         <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-          <v:roundrect style="position:relative;width:{width_pt}pt;height:28pt;margin-left:auto;margin-right:auto" 
+          <v:roundrect style="position:relative;width:{width_pt}pt;height:28pt;{ ("margin-left:auto;margin-right:0" if align=="right" else ("margin-left:0;margin-right:auto" if align=="left" else "margin-left:auto;margin-right:auto")) }" 
                        arcsize="45%" strokecolor="#D2691E" strokeweight="1.5pt">
             <v:fill type="gradient" color="#F15A23" color2="#FFEACC" angle="90" opacity="1"/>
             <v:textbox inset="8pt,4pt,8pt,4pt">
               <w:txbxContent>
                 <w:p>
-                  <w:pPr><w:jc w:val="center"/></w:pPr>
+                  <w:pPr><w:jc w:val="{align}"/></w:pPr>
                   <w:r>
                     <w:rPr>
                       <w:color w:val="FFFFFF"/>
@@ -2298,7 +2298,7 @@ if can_generate:
                 header_table.rows[0].height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
                 header_table.rows[0].height = Pt(92)
                 # Vertical center the whole block within the cell
-                left_cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+                left_cell.vertical_alignment = WD_ALIGN_VERTICAL.TOP
                 # Personal Details Title
                 p_title = left_cell.add_paragraph()
                 p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -2621,10 +2621,10 @@ if can_generate:
             cell1 = kt.rows[0].cells[0];
             # Cylindrical header for Lagna chart
             try:
-                create_cylindrical_section_header(cell1, "लग्न कुंडली", width_pt=int(CHART_W_PT))
+                create_cylindrical_section_header(cell1, "लग्न कुंडली", width_pt=int(CHART_W_PT), align='right', spacing_after=0)
             except Exception:
                 _cap = cell1.add_paragraph("लग्न कुंडली"); _cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            p1 = cell1.add_paragraph(); p1.paragraph_format.space_before = Pt(2); p1.paragraph_format.space_after = Pt(4); p1.paragraph_format.space_before = Pt(2); p1.paragraph_format.space_after = Pt(4)
+            p1 = cell1.add_paragraph(); p1.alignment = WD_ALIGN_PARAGRAPH.RIGHT; p1.paragraph_format.space_before = Pt(0); p1.paragraph_format.space_after = Pt(0); p1.paragraph_format.space_before = Pt(2); p1.paragraph_format.space_after = Pt(4); p1.paragraph_format.space_before = Pt(2); p1.paragraph_format.space_after = Pt(4)
             # Lagna chart with planets in single box per house
             rasi_house_planets = build_rasi_house_planets_marked(sidelons, lagna_sign)
             p1._p.addnext(kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
@@ -2633,10 +2633,10 @@ if can_generate:
             cell2 = kt.rows[1].cells[0];
             # Cylindrical header for Navamsa chart
             try:
-                create_cylindrical_section_header(cell2, "नवांश कुंडली", width_pt=int(CHART_W_PT))
+                create_cylindrical_section_header(cell2, "नवांश कुंडली", width_pt=int(CHART_W_PT), align='right', spacing_after=0)
             except Exception:
                 _cap2 = cell2.add_paragraph("नवांश कुंडली"); _cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(2); p2.paragraph_format.space_after = Pt(4); p2.paragraph_format.space_before = Pt(2); p2.paragraph_format.space_after = Pt(4)
+            p2 = cell2.add_paragraph(); p2.alignment = WD_ALIGN_PARAGRAPH.RIGHT; p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0); p2.paragraph_format.space_before = Pt(2); p2.paragraph_format.space_after = Pt(4); p2.paragraph_format.space_before = Pt(2); p2.paragraph_format.space_after = Pt(4)
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
             p2._p.addnext(kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
             # (प्रमुख बिंदु moved to row 2 of outer table)
