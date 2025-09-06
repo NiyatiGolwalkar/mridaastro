@@ -388,7 +388,7 @@ def _clamp_in_bbox(left, top, w, h, bbox, pad):
     tmax = bbox['bottom'] - h - pad
     return max(lmin, min(left, lmax)), max(tmin, min(top, tmax))
 from docx import Document
-from docx.enum.table import WD_ROW_HEIGHT_RULE, WD_ALIGN_VERTICAL
+from docx.enum.table import WD_ROW_HEIGHT_RULE, WD_ALIGN_VERTICAL, WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
@@ -2217,10 +2217,11 @@ if can_generate:
                 
                 # LEFT CELL: Personal Details
                 left_cell = header_table.rows[0].cells[0]
+                left_cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
                 
                 # Personal Details Title
                 p_title = left_cell.add_paragraph()
-                p_title.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 r_title = p_title.add_run("व्यक्तिगत विवरण")
                 r_title.font.bold = True
                 r_title.font.size = Pt(12)
@@ -2233,20 +2234,27 @@ if can_generate:
                     ("स्थान:", place)
                 ]
                 
-                for label, value in details:
-                    p = left_cell.add_paragraph()
-                    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                    # Add label
-                    r_label = p.add_run(f"{label}")
-                    r_label.font.size = Pt(10)
-                    r_label.font.bold = True
-                    # Add proper spacing (tab)
-                    r_space = p.add_run("\t")
-                    # Add value - left aligned
-                    r_value = p.add_run(str(value))
-                    r_value.font.size = Pt(10)
-                
-                # Add dark orange rounded border around personal details cell using VML
+                pd_table = left_cell.add_table(rows=len(details), cols=2)
+try:
+    pd_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+except Exception:
+    pass
+set_col_widths(pd_table, [1.3, max(1.0, left_width_in - 1.3 - 0.1)])
+for i, (label, value) in enumerate(details):
+    c0 = pd_table.cell(i, 0)
+    c1 = pd_table.cell(i, 1)
+    # Label (bold, left)
+    p0 = c0.paragraphs[0]
+    p0.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    run0 = p0.add_run(str(label))
+    run0.font.bold = True
+    run0.font.size = Pt(10)
+    # Value (left)
+    p1 = c1.paragraphs[0]
+    p1.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    run1 = p1.add_run(str(value))
+    run1.font.size = Pt(10)
+# Add dark orange rounded border around personal details cell using VML
                 try:
                     # Create a VML rounded rectangle overlay for the personal details
                     vml_w_pt = int(left_width_in * 72) - 12
