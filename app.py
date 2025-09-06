@@ -1072,7 +1072,7 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
     xml = f'''
     <w:p xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:pPr><w:spacing w:before=\"0\" w:after=\"0\"/></w:pPr><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-        <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
+        <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
           <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="#CC6600" strokeweight="3pt" fillcolor="#ffdcc8"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
@@ -1146,7 +1146,7 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
     xml = f'''
     <w:p xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:pPr><w:spacing w:before=\"0\" w:after=\"0\"/></w:pPr><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-        <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
+        <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
           <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="#CC6600" strokeweight="3pt" fillcolor="#ffdcc8"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
@@ -1188,7 +1188,7 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
     xml = f'''
     <w:p xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:pPr><w:spacing w:before=\"0\" w:after=\"0\"/></w:pPr><w:r>
         <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-          <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
+          <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
             <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.25pt" fillcolor="#ffdcc8"/>
             <v:line style="position:absolute;z-index:2" from="0,0" to="{S},{S}" strokecolor="black" strokeweight="1.25pt"/>
             <v:line style="position:absolute;z-index:2" from="{S},0" to="0,{S}" strokecolor="black" strokeweight="1.25pt"/>
@@ -2496,7 +2496,7 @@ if can_generate:
 
             CHART_W_PT = int(right_width_in * 72 - 10)
             CHART_H_PT = int(CHART_W_PT * 0.80)
-            ROW_HEIGHT_PT = int(CHART_H_PT + 36)
+            ROW_HEIGHT_PT = int(CHART_H_PT + 48)
             
             # Remove outer borders and the internal vertical divider
             tbl = outer._tbl; tblPr = tbl.tblPr; tblBorders = OxmlElement('w:tblBorders')
