@@ -1,3 +1,12 @@
+
+# --- Safe fallback for _apply_bg() ---
+try:
+    _apply_bg
+except NameError:
+    def _apply_bg():
+        return
+# --- End fallback ---
+
 # === MRIDAASTRO — Reverted Baseline (from 'replit code with proper person details Section.py') ===
 # This file is intended as the new stable base to build further tweaks.
 # Changes: None (byte-for-byte baseline), aside from this banner.
