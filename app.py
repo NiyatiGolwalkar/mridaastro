@@ -2278,6 +2278,8 @@ if can_generate:
                 # Personal Details Title
                 p_title = left_cell.add_paragraph()
                 p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                p_title.paragraph_format.space_before = Pt(0)
+                p_title.paragraph_format.space_after = Pt(0)
                 r_title = p_title.add_run("व्यक्तिगत विवरण")
                 r_title.font.bold = True
                 r_title.font.size = Pt(12)
@@ -2302,12 +2304,16 @@ if can_generate:
                     # Label
                     p0 = c0.paragraphs[0]
                     p0.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                    p0.paragraph_format.space_before = Pt(0)
+                    p0.paragraph_format.space_after = Pt(0)
                     r0 = p0.add_run(str(label))
                     r0.font.bold = True
                     r0.font.size = Pt(10)
                     # Value
                     p1 = c1.paragraphs[0]
                     p1.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                    p1.paragraph_format.space_before = Pt(0)
+                    p1.paragraph_format.space_after = Pt(0)
                     r1 = p1.add_run(str(value))
                     r1.font.size = Pt(10)
                 
@@ -2315,7 +2321,7 @@ if can_generate:
                 try:
                     # Create a VML rounded rectangle overlay for the personal details
                     vml_w_pt = int(left_width_in * 72) - 12
-                    vml_h_pt = 120
+                    vml_h_pt = 96
                     vml_content = f'''
                     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
                       <w:pPr>
