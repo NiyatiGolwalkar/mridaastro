@@ -1,17 +1,3 @@
-# ============================================================
-# MRIDAASTRO DOCX Generator — V5-STABLE
-# Date: 2025-09-06
-# Notes:
-# - Personal Details box: centered vertically & horizontally inside round-rect
-# - PD overlay height tuned to avoid title overlap; width synced with left column
-# - Left column width ~3.85", right auto = 7.5 - left
-# - Section title bars: proper wrap (no overlap) + minimal spacing
-# - Global spacing tightened (no blank gaps between bars & tables)
-# - Tagline set to 12pt
-# - Both Kundali charts centered in right column
-# - Kundali titles (लग्न कुंडली / नवांश कुंडली) use cylindrical bars
-# ============================================================
-
 APP_TITLE = "MRIDAASTRO"
 APP_TAGLINE = "In the light of divine, let your soul journey shine"
 
@@ -124,28 +110,6 @@ def set_page_background(doc, hex_color):
 # --- Phalit ruled lines (25 rows) ---
 from docx.enum.table import WD_ROW_HEIGHT_RULE
 
-
-def set_cell_margins(cell, *, left=None, right=None, top=None, bottom=None):
-    """Set Word table cell margins in dxa (1/20th of a point)."""
-    try:
-        from docx.oxml import OxmlElement
-        from docx.oxml.ns import qn
-        tc = cell._tc
-        tcPr = tc.get_or_add_tcPr()
-        # Remove existing tcMar if present
-        for el in list(tcPr):
-            if el.tag.endswith('tcMar'):
-                tcPr.remove(el)
-        tcMar = OxmlElement('w:tcMar')
-        for side, val in (('left', left), ('right', right), ('top', top), ('bottom', bottom)):
-            if val is not None:
-                el = OxmlElement(f'w:{side}')
-                el.set(qn('w:w'), str(int(val)))  # dxa
-                el.set(qn('w:type'), 'dxa')
-                tcMar.append(el)
-        tcPr.append(tcMar)
-    except Exception:
-        pass
 def zero_table_cell_margins(table):
     """Set w:tblCellMar for all sides to 0 to remove extra top/bottom padding inside table cells."""
     try:
@@ -479,16 +443,6 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
 from docx.shared import Inches, Mm, Pt
-
-def _tighten_paragraph(p):
-    try:
-        pf = p.paragraph_format
-        pf.space_before = Pt(0)
-        pf.space_after = Pt(0)
-        pf.line_spacing = 1.0
-    except Exception:
-        pass
-
 
 # --- Table header shading helper (match kundali bg) ---
 def shade_cell(cell, fill_hex="FFFFFF"):
@@ -1015,7 +969,7 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
         <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:80" fillcolor="#ffffff" strokecolor="none" strokeweight="0pt">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-              <w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
+              <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
             </w:txbxContent>
           </v:textbox>
         </v:rect>
@@ -1091,9 +1045,9 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
     boxes_xml = "\\n".join(num_boxes + planet_boxes)
 
     xml = f'''
-    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:pPr><w:jc w:val="center"/></w:pPr><w:r>
+    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-        <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
+        <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
           <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="#CC6600" strokeweight="3pt" fillcolor="#ffdcc8"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
@@ -1158,16 +1112,16 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
         <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{box_w}pt;height:{box_h}pt;z-index:5" strokecolor="none">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-              <w:p><w:pPr><w:jc w:val="right"/></w:pPr>{content}</w:p>
+              <w:p><w:pPr><w:jc w:val="center"/></w:pPr>{content}</w:p>
             </w:txbxContent>
           </v:textbox>
         </v:rect>
         ''')
     boxes_xml = "\\n".join(text_boxes)
     xml = f'''
-    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:pPr><w:jc w:val="center"/></w:pPr><w:r>
+    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-        <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
+        <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
           <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="#CC6600" strokeweight="3pt" fillcolor="#ffdcc8"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
@@ -1201,14 +1155,14 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
         <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{w}pt;height:{h}pt;z-index:5" strokecolor="none">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-              <w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
+              <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
             </w:txbxContent>
           </v:textbox>
         </v:rect>''')
     boxes_xml = "\\n".join(boxes)
-    xml = f'''<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:pPr><w:jc w:val="right"/></w:pPr><w:r>
+    xml = f'''<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
         <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-          <v:group style="position:relative;margin-left:auto;margin-right:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
+          <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
             <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.25pt" fillcolor="#ffdcc8"/>
             <v:line style="position:absolute;z-index:2" from="0,0" to="{S},{S}" strokecolor="black" strokeweight="1.25pt"/>
             <v:line style="position:absolute;z-index:2" from="{S},0" to="0,{S}" strokecolor="black" strokeweight="1.25pt"/>
@@ -1241,11 +1195,11 @@ def center_header_row(table):
 
 # ===== MODERN DESIGN STYLING FUNCTIONS =====
 
-def create_cylindrical_section_header(container, title_text, width_pt=320, align='center', spacing_after=20, text_jc='center'):
+def create_cylindrical_section_header(container, title_text, width_pt=320):
     """Create modern cylindrical tube-shaped section headers with dynamic width"""
     # Create paragraph for the header
     header_para = container.add_paragraph()
-    header_para.alignment = (WD_ALIGN_PARAGRAPH.RIGHT if align=='right' else (WD_ALIGN_PARAGRAPH.LEFT if align=='left' else WD_ALIGN_PARAGRAPH.CENTER))
+    header_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
     header_para.paragraph_format.space_before = Pt(0)
     header_para.paragraph_format.space_after = Pt(0)
     
@@ -1260,8 +1214,8 @@ def create_cylindrical_section_header(container, title_text, width_pt=320, align
     xml_content = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
       <w:pPr>
-        <w:jc w:val="{text_jc}"/>
-        <w:spacing w:before="0" w:after="{spacing_after}"/>
+        <w:jc w:val="center"/>
+        <w:spacing w:before="120" w:after="100"/>
       </w:pPr>
       <w:r>
         <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
@@ -1271,7 +1225,7 @@ def create_cylindrical_section_header(container, title_text, width_pt=320, align
             <v:textbox inset="8pt,4pt,8pt,4pt">
               <w:txbxContent>
                 <w:p>
-                  <w:pPr><w:jc w:val="{text_jc}"/></w:pPr>
+                  <w:pPr><w:jc w:val="center"/></w:pPr>
                   <w:r>
                     <w:rPr>
                       <w:color w:val="FFFFFF"/>
@@ -1293,7 +1247,6 @@ def create_cylindrical_section_header(container, title_text, width_pt=320, align
         from docx.oxml import parse_xml
         header_element = parse_xml(xml_content)
         container._element.append(header_element)
-        vml_ok = True
         # Remove the original paragraph we added
         container._element.remove(header_para._element)
     except Exception:
@@ -1306,9 +1259,7 @@ def create_cylindrical_section_header(container, title_text, width_pt=320, align
     except Exception:
         pass
 
-
 def create_unified_personal_details_box(container, name, dob, tob, place):
-    vml_ok = False
     """Create single rounded corner box with title inside, matching reference image exactly"""
     
     # Try to create a rounded rectangle using VML for truly rounded corners
@@ -1329,7 +1280,7 @@ def create_unified_personal_details_box(container, name, dob, tob, place):
           </w:pPr>
           <w:r>
             <w:pict xmlns:v="urn:schemas-microsoft-com:vml">
-              <v:roundrect style="position:relative;width:94pt;height:115pt" 
+              <v:roundrect style="position:relative;width:332pt;height:130pt" 
                            arcsize="15%" fillcolor="white" strokecolor="#F15A23" strokeweight="1.5pt">
                 <v:textbox inset="12pt,10pt,12pt,10pt">
                   <w:txbxContent>
@@ -1529,8 +1480,7 @@ def create_unified_personal_details_box(container, name, dob, tob, place):
         tcPr = cell_elem.get_or_add_tcPr()
         
         # Add rounded corner borders using dotted style for rounded appearance
-        if not vml_ok:
-            tcBorders = OxmlElement('w:tcBorders')
+        tcBorders = OxmlElement('w:tcBorders')
         for edge in ('top', 'left', 'bottom', 'right'):
             border = OxmlElement(f'w:{edge}')
             border.set(qn('w:val'), 'single')
@@ -1627,7 +1577,7 @@ def create_rounded_table_container(doc, table_content, width_pt=400, height_pt=2
     xml_content = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
       <w:pPr>
-        <w:spacing w:before="0" w:after="{spacing_after}"/>
+        <w:spacing w:before="60" w:after="60"/>
       </w:pPr>
       <w:r>
         <w:pict xmlns:v="urn:schemas-microsoft-com:vml">
@@ -2343,17 +2293,112 @@ if can_generate:
                 
                 # LEFT CELL: Personal Details
                 left_cell = header_table.rows[0].cells[0]
-                try:
-                    create_unified_personal_details_box(left_cell, name, dt_local.strftime('%Y-%m-%d'), dt_local.strftime('%H:%M:%S'), place)
-                except Exception:
-                    pass
-
                 
                 # Keep the cell exactly as tall as the overlay so content centers within the round-rect
                 header_table.rows[0].height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
-                header_table.rows[0].height = Pt(118)
+                header_table.rows[0].height = Pt(92)
                 # Vertical center the whole block within the cell
-                left_cell.vertical_alignment = WD_ALIGN_VERTICAL.TOP
+                left_cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+                # Personal Details Title
+                p_title = left_cell.add_paragraph()
+                p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                p_title.paragraph_format.space_before = Pt(0)
+                p_title.paragraph_format.space_after = Pt(0)
+                r_title = p_title.add_run("व्यक्तिगत विवरण")
+                r_title.font.bold = True
+                r_title.font.size = Pt(12)
+                
+                # Create aligned personal details using proper spacing
+                details = [
+                    ("नाम:", name),
+                    ("जन्म तिथि:", dt_local.strftime('%Y-%m-%d')),
+                    ("जन्म समय:", dt_local.strftime('%H:%M:%S')),
+                    ("स्थान:", place)
+                ]
+                
+                pd_table = left_cell.add_table(rows=len(details), cols=2)
+                try:
+                    pd_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+                except Exception:
+                    pass
+                set_col_widths(pd_table, [1.3, max(1.0, left_width_in - 1.3 - 0.1)])
+                for i, (label, value) in enumerate(details):
+                    c0 = pd_table.cell(i, 0)
+                    c1 = pd_table.cell(i, 1)
+                    # tiny inner padding for breathing room (overrides table-level margins)
+                    from docx.oxml import OxmlElement
+                    from docx.oxml.ns import qn
+                    for _cell in (c0, c1):
+                        tcPr = _cell._tc.get_or_add_tcPr()
+                        # Remove existing tcMar if present
+                        for el in list(tcPr):
+                            if el.tag.endswith('tcMar'):
+                                tcPr.remove(el)
+                        tcMar = OxmlElement('w:tcMar')
+                        for side, val in (('top','20'), ('bottom','20'), ('left','35'), ('right','35')):
+                            el = OxmlElement(f'w:{side}')
+                            el.set(qn('w:w'), val)  # dxa units (1/20 pt)
+                            el.set(qn('w:type'), 'dxa')
+                            tcMar.append(el)
+                        tcPr.append(tcMar)
+
+                    # Label
+                    p0 = c0.paragraphs[0]
+                    p0.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                    p0.paragraph_format.space_before = Pt(0)
+                    p0.paragraph_format.space_after = Pt(0)
+                    r0 = p0.add_run(str(label))
+                    r0.font.bold = True
+                    r0.font.size = Pt(10)
+                    # Value
+                    p1 = c1.paragraphs[0]
+                    p1.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                    p1.paragraph_format.space_before = Pt(0)
+                    p1.paragraph_format.space_after = Pt(0)
+                    r1 = p1.add_run(str(value))
+                    r1.font.size = Pt(10)
+                
+                # Add dark orange rounded border around personal details cell using VML
+                try:
+                    # Create a VML rounded rectangle overlay for the personal details
+                    vml_w_pt = int(left_width_in * 72) - 10
+                    vml_h_pt = 92
+                    vml_content = f'''
+                    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                      <w:pPr>
+                        <w:spacing w:before="0" w:after="0"/>
+                      </w:pPr>
+                      <w:r>
+                        <w:pict xmlns:v="urn:schemas-microsoft-com:vml">
+                          <v:roundrect style="position:absolute;left:0pt;top:0pt;width:{int(left_width_in * 72) - 10}pt;height:{vml_h_pt}pt;z-index:-1" 
+                                       arcsize="15%" fillcolor="transparent" strokecolor="#CC6600" strokeweight="3pt">
+                          </v:roundrect>
+                        </w:pict>
+                      </w:r>
+                    </w:p>'''
+                    vml_element = parse_xml(vml_content)
+                    left_cell._element.insert(0, vml_element)
+                except Exception:
+                    # Fallback to regular thick border if VML fails
+                    tc = left_cell._tc
+                    tcPr = tc.get_or_add_tcPr()
+                    
+                    # Remove existing borders first
+                    existing_borders = tcPr.find(qn('w:tcBorders'))
+                    if existing_borders is not None:
+                        tcPr.remove(existing_borders)
+                    
+                    # Add dark orange borders
+                    tcBorders = OxmlElement('w:tcBorders')
+                    for edge in ('top', 'left', 'bottom', 'right'):
+                        el = OxmlElement(f'w:{edge}')
+                        el.set(qn('w:val'), 'single')
+                        el.set(qn('w:sz'), '18')  # Thick border
+                        el.set(qn('w:color'), 'CC6600')  # Dark orange
+                        el.set(qn('w:space'), '0')
+                        tcBorders.append(el)
+                    tcPr.append(tcBorders)
+                
                 # RIGHT CELL: MRIDAASTRO + Tagline
                 right_cell = header_table.rows[0].cells[1]
                 
@@ -2378,7 +2423,7 @@ if can_generate:
                 p_tag.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 r_tag = p_tag.add_run("In the light of the divine, let your soul journey shine.")
                 r_tag.italic = True
-                r_tag.font.size = Pt(10)  # Set to 12pt per request
+                r_tag.font.size = Pt(14)  # Enhanced from 10pt to 14pt
                 
                 # Add some space after header table
                 spacer1 = doc.add_paragraph()
@@ -2405,14 +2450,6 @@ if can_generate:
             # ===== ENHANCED MAIN LAYOUT TABLE =====
             outer = doc.add_table(rows=1, cols=2); outer.autofit=False
             right_width_in = 3.70; outer.columns[0].width = Inches(3.70); outer.columns[1].width = Inches(3.70)
-            # ##GUTTER_APPLIED: add inner gutter so the two columns breathe
-            try:
-                # Remove right padding on left column (fix clipped border)
-                # and enlarge left padding on right column for kundali centering
-                set_cell_margins(outer.cell(0,1), left=360)  # 18pt
-            except Exception:
-                pass
-
 
             CHART_W_PT = int(right_width_in * 72 - 10)
             CHART_H_PT = int(CHART_W_PT * 0.80)
@@ -2423,9 +2460,9 @@ if can_generate:
             # Remove all outer borders
             for edge in ('top','left','bottom','right'):
                 el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'nil'); tblBorders.append(el)
-            # Remove internal vertical divider
+            # Keep internal vertical divider with dark orange
             for edge in ('insideV',):
-                el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'nil'); tblBorders.append(el)
+                el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'single'); el.set(qn('w:sz'),'6'); el.set(qn('w:color'), 'D2691E'); tblBorders.append(el)
             # Remove horizontal internal borders
             for edge in ('insideH',):
                 el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'nil'); tblBorders.append(el)
@@ -2581,25 +2618,27 @@ if can_generate:
             
 
             # Original Lagna chart title
-            cell1 = kt.rows[0].cells[0];
-            # Cylindrical header for Lagna chart
-            try:
-                create_cylindrical_section_header(cell1, "लग्न कुंडली", width_pt=int(CHART_W_PT), align='right', spacing_after=0, text_jc='center')
-            except Exception:
-                _cap = cell1.add_paragraph("लग्न कुंडली"); _cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            p1 = cell1.add_paragraph(); p1.paragraph_format.space_before = Pt(0); p1.paragraph_format.space_after = Pt(0); p1.paragraph_format.space_before = Pt(2); p1.paragraph_format.space_after = Pt(4); p1.paragraph_format.space_before = Pt(2); p1.paragraph_format.space_after = Pt(4)
+            cell1 = kt.rows[0].cells[0]; cap1 = cell1.add_paragraph("लग्न कुंडली")
+            cap1.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap1, size_pt=11, underline=True, bold=True); cap1.paragraph_format.space_before = Pt(2); cap1.paragraph_format.space_after = Pt(2)
+            p1 = cell1.add_paragraph(); p1.paragraph_format.space_before = Pt(2); p1.paragraph_format.space_after = Pt(4)
             # Lagna chart with planets in single box per house
             rasi_house_planets = build_rasi_house_planets_marked(sidelons, lagna_sign)
             p1._p.addnext(kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
 
             # Original Navamsa chart title - Enhanced styling for visibility
-            cell2 = kt.rows[1].cells[0];
-            # Cylindrical header for Navamsa chart
-            try:
-                create_cylindrical_section_header(cell2, "नवांश कुंडली", width_pt=int(CHART_W_PT), align='right', spacing_after=0, text_jc='center')
-            except Exception:
-                _cap2 = cell2.add_paragraph("नवांश कुंडली"); _cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0); p2.paragraph_format.space_before = Pt(2); p2.paragraph_format.space_after = Pt(4); p2.paragraph_format.space_before = Pt(2); p2.paragraph_format.space_after = Pt(4)
+            cell2 = kt.rows[1].cells[0]; cap2 = cell2.add_paragraph("नवांश कुंडली")
+            cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            # Ensure the title is visible with proper formatting
+            if cap2.runs:
+                run = cap2.runs[0]
+            else:
+                run = cap2.add_run("नवांश कुंडली")
+            run.bold = True
+            run.underline = True  
+            run.font.size = Pt(11)
+            run.font.color.rgb = RGBColor(139, 69, 19)  # Saddle brown color
+            cap2.paragraph_format.space_before = Pt(2); cap2.paragraph_format.space_after = Pt(2)
+            p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(2); p2.paragraph_format.space_after = Pt(4)
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
             p2._p.addnext(kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
             # (प्रमुख बिंदु moved to row 2 of outer table)
