@@ -2256,7 +2256,7 @@ if can_generate:
                 # Create top header table (2 columns: Personal Details | MRIDAASTRO)
                 header_table = doc.add_table(rows=1, cols=2)
                 header_table.autofit = False
-                left_width_in = 3.6  # inches; Personal Details column
+                left_width_in = 3.85  # inches; Personal Details column
                 header_table.columns[0].width = Inches(left_width_in)
                 header_table.columns[1].width = Inches(7.5 - left_width_in)  # keep total ~7.5"
   # Right: MRIDAASTRO (adjusted)
@@ -2301,6 +2301,23 @@ if can_generate:
                 for i, (label, value) in enumerate(details):
                     c0 = pd_table.cell(i, 0)
                     c1 = pd_table.cell(i, 1)
+                    # tiny inner padding for breathing room (overrides table-level margins)
+                    from docx.oxml import OxmlElement
+                    from docx.oxml.ns import qn
+                    for _cell in (c0, c1):
+                        tcPr = _cell._tc.get_or_add_tcPr()
+                        # Remove existing tcMar if present
+                        for el in list(tcPr):
+                            if el.tag.endswith('tcMar'):
+                                tcPr.remove(el)
+                        tcMar = OxmlElement('w:tcMar')
+                        for side, val in (('top','20'), ('bottom','20'), ('left','35'), ('right','35')):
+                            el = OxmlElement(f'w:{side}')
+                            el.set(qn('w:w'), val)  # dxa units (1/20 pt)
+                            el.set(qn('w:type'), 'dxa')
+                            tcMar.append(el)
+                        tcPr.append(tcMar)
+
                     # Label
                     p0 = c0.paragraphs[0]
                     p0.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -2320,7 +2337,7 @@ if can_generate:
                 # Add dark orange rounded border around personal details cell using VML
                 try:
                     # Create a VML rounded rectangle overlay for the personal details
-                    vml_w_pt = int(left_width_in * 72) - 12
+                    vml_w_pt = int(left_width_in * 72) - 10
                     vml_h_pt = 88
                     vml_content = f'''
                     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -2329,7 +2346,7 @@ if can_generate:
                       </w:pPr>
                       <w:r>
                         <w:pict xmlns:v="urn:schemas-microsoft-com:vml">
-                          <v:roundrect style="position:absolute;left:0pt;top:0pt;width:{vml_w_pt}pt;height:{vml_h_pt}pt;z-index:-1" 
+                          <v:roundrect style="position:absolute;left:0pt;top:0pt;width:{int(left_width_in * 72) - 10}pt;height:{vml_h_pt}pt;z-index:-1" 
                                        arcsize="15%" fillcolor="transparent" strokecolor="#CC6600" strokeweight="3pt">
                           </v:roundrect>
                         </w:pict>
