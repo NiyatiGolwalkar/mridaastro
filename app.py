@@ -134,7 +134,7 @@ def zero_table_cell_margins(table):
         tblPr.append(cellMar)
     except Exception:
         pass
-def add_phalit_section(container_cell, width_inches=3.60, rows=15):
+def add_phalit_section(container_cell, width_inches=3.60, rows=25):
     # Add beautiful cylindrical gradient header bar for फलित section
     create_cylindrical_section_header(container_cell, "फलित", width_pt=260)
 
@@ -2638,7 +2638,7 @@ if can_generate:
             # One-page: place Pramukh Bindu under tables (left column) to free right column for charts
             try:
                 add_pramukh_bindu_section(left, sidelons, lagna_sign, dt_utc)
-                add_phalit_section(left, rows=12)  # Reduced rows to prevent overlapping
+                add_phalit_section(left, rows=25)  # Reduced rows to prevent overlapping
             except Exception:
                 pass
             right = outer.rows[0].cells[1]
