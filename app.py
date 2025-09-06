@@ -235,8 +235,19 @@ def set_app_background(image_path: str, size: str = "contain", position: str = "
             return
         with open(image_path, "rb") as f:
             b64 = base64.b64encode(f.read()).decode("utf-8")
-        
-# === End MRIDAASTRO Header ===
+        st.markdown(
+            f"""
+            <style>
+            .stApp {{
+                background: url('data:image/png;base64,{b64}') no-repeat {position} / {size} fixed;
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+    except Exception:
+        # If anything fails (file missing, etc.), carry on without background.
+        return# === End MRIDAASTRO Header ===
 _apply_bg()
 AYANAMSHA_VAL = swe.SIDM_LAHIRI
 YEAR_DAYS     = 365.2422
