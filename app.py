@@ -2258,7 +2258,27 @@ if can_generate:
                 header_table.autofit = False
                 left_width_in = 3.85  # inches; Personal Details column
                 header_table.columns[0].width = Inches(left_width_in)
-                header_table.columns[1].width = Inches(7.5 - left_width_in)  # keep total ~7.5"
+                header_table.columns[1].width = Inches(7.5 - left_width_in)
+                # Remove default table cell margins to maximize usable height
+                try:
+                    tbl = header_table._tbl
+                    tblPr = tbl.tblPr
+                    from docx.oxml import OxmlElement
+                    from docx.oxml.ns import qn
+                    # Drop any existing tblCellMar
+                    for el in list(tblPr):
+                        if el.tag.endswith('tblCellMar'):
+                            tblPr.remove(el)
+                    cellMar = OxmlElement('w:tblCellMar')
+                    for side in ('top','bottom','left','right'):
+                        m = OxmlElement(f'w:{side}')
+                        m.set(qn('w:w'), '0')
+                        m.set(qn('w:type'), 'dxa')
+                        cellMar.append(m)
+                    tblPr.append(cellMar)
+                except Exception:
+                    pass
+  # keep total ~7.5"
   # Right: MRIDAASTRO (adjusted)
                 
                 # Remove borders from header table
@@ -2273,8 +2293,12 @@ if can_generate:
                 
                 # LEFT CELL: Personal Details
                 left_cell = header_table.rows[0].cells[0]
-                left_cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
                 
+                # Keep the cell exactly as tall as the overlay so content centers within the round-rect
+                header_table.rows[0].height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
+                header_table.rows[0].height = Pt(92)
+                # Vertical center the whole block within the cell
+                left_cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
                 # Personal Details Title
                 p_title = left_cell.add_paragraph()
                 p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -2338,7 +2362,7 @@ if can_generate:
                 try:
                     # Create a VML rounded rectangle overlay for the personal details
                     vml_w_pt = int(left_width_in * 72) - 10
-                    vml_h_pt = 88
+                    vml_h_pt = 92
                     vml_content = f'''
                     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
                       <w:pPr>
