@@ -784,7 +784,7 @@ def get_timezone_offset_simple(lat, lon):
     try:
         tf = TimezoneFinder()
         tzname = tf.timezone_at(lat=lat, lng=lon)
-        
+
         # Hardcoded timezone offsets to avoid pytz issues
         timezone_offsets = {
             'Asia/Kolkata': 5.5,           # India
@@ -809,14 +809,14 @@ def get_timezone_offset_simple(lat, lon):
             'America/Mexico_City': -6.0,   # CST (Mexico)
             'America/Toronto': -5.0,       # EST (Canada)
         }
-        
+
         if tzname in timezone_offsets:
             offset = timezone_offsets[tzname]
             return offset
         else:
             print(f"DEBUG: Unknown timezone {tzname}, defaulting to 0.0")
             return 0.0
-            
+
     except Exception as e:
         print(f"DEBUG: Timezone detection failed: {e}")
         return 0.0
@@ -824,21 +824,21 @@ def get_timezone_offset_simple(lat, lon):
 def tz_from_latlon(lat, lon, dt_local):
     tf = TimezoneFinder()
     tzname = tf.timezone_at(lat=lat, lng=lon)
-    
+
     # Debug output for timezone detection
     print(f"DEBUG: Coordinates: lat={lat}, lon={lon}")
     print(f"DEBUG: TimezoneFinder detected: {tzname}")
-    
+
     # Fallback if no timezone detected by TimezoneFinder
     if not tzname:
         tzname = "Etc/UTC"
         print(f"DEBUG: No timezone detected by TimezoneFinder, falling back to UTC")
-    
+
     try:
         # Create a fresh naive datetime to avoid any timezone issues
         clean_dt = datetime.datetime(dt_local.year, dt_local.month, dt_local.day, 
                                    dt_local.hour, dt_local.minute, dt_local.second)
-        
+
         tz = pytz.timezone(tzname)
         dt_local_aware = tz.localize(clean_dt)
         dt_utc_naive = dt_local_aware.astimezone(pytz.utc).replace(tzinfo=None)
@@ -931,7 +931,7 @@ def rotated_house_labels(lagna_sign):
 
 
 def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
-    
+
     # robust default for size_pt so definition never depends on globals
     if size_pt is None:
         try:
@@ -1072,7 +1072,7 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
     xml = f'''
     <w:p xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:pPr><w:spacing w:before=\"0\" w:after=\"0\"/></w:pPr><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-        <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
+        <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
           <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="#CC6600" strokeweight="3pt" fillcolor="#ffdcc8"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
@@ -1146,7 +1146,7 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
     xml = f'''
     <w:p xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:pPr><w:spacing w:before=\"0\" w:after=\"0\"/></w:pPr><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-        <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
+        <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
           <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="#CC6600" strokeweight="3pt" fillcolor="#ffdcc8"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
@@ -1188,7 +1188,7 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
     xml = f'''
     <w:p xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:pPr><w:spacing w:before=\"0\" w:after=\"0\"/></w:pPr><w:r>
         <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-          <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{S}pt" coordorigin="0,0" coordsize="{S},{S}">
+          <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
             <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.25pt" fillcolor="#ffdcc8"/>
             <v:line style="position:absolute;z-index:2" from="0,0" to="{S},{S}" strokecolor="black" strokeweight="1.25pt"/>
             <v:line style="position:absolute;z-index:2" from="{S},0" to="0,{S}" strokecolor="black" strokeweight="1.25pt"/>
@@ -1244,7 +1244,7 @@ def create_cylindrical_section_header(container, title_text, width_pt=320, align
             pPr.append(sp)
         except Exception:
             pass
-    
+
     # Add the title text with styling
     if run_text:
         run = header_para.add_run(title_text)
@@ -1252,7 +1252,7 @@ def create_cylindrical_section_header(container, title_text, width_pt=320, align
         run.font.size = Pt(12)
         run.font.bold = True
         run.font.color.rgb = RGBColor(255, 255, 255)  # White text
-    
+
     # Add beautiful gradient background styling using VML shape 
     xml_content = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -1285,7 +1285,7 @@ def create_cylindrical_section_header(container, title_text, width_pt=320, align
         </w:pict>
       </w:r>
     </w:p>'''
-    
+
     try:
         from docx.oxml import parse_xml
         header_element = parse_xml(xml_content)
@@ -1304,7 +1304,7 @@ def create_cylindrical_section_header(container, title_text, width_pt=320, align
 
 def create_unified_personal_details_box(container, name, dob, tob, place):
     """Create single rounded corner box with title inside, matching reference image exactly"""
-    
+
     # Try to create a rounded rectangle using VML for truly rounded corners
     try:
         # Create content text first
@@ -1314,7 +1314,7 @@ def create_unified_personal_details_box(container, name, dob, tob, place):
 जन्म तिथि: {dob}
 जन्म समय: {tob}
 स्थान: {place}'''
-        
+
         # Create VML rounded rectangle
         xml_content = f'''
         <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -1445,23 +1445,23 @@ def create_unified_personal_details_box(container, name, dob, tob, place):
             </w:pict>
           </w:r>
         </w:p>'''
-        
+
         from docx.oxml import parse_xml
         rounded_element = parse_xml(xml_content)
         container._element.append(rounded_element)
         return None  # No table to return
-        
+
     except Exception:
         # Fallback to table approach if VML fails
         pass
-    
+
     # Fallback: Create a table with rounded corners for unified personal details
     detail_table = container.add_table(rows=1, cols=1)
     detail_table.autofit = False
     detail_table.columns[0].width = Inches(3.5)
-    
+
     cell = detail_table.rows[0].cells[0]
-    
+
     # Add Title "व्यक्तिगत विवरण" inside the box at the top - compact spacing
     title_para = cell.add_paragraph('व्यक्तिगत विवरण')
     title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -1472,7 +1472,7 @@ def create_unified_personal_details_box(container, name, dob, tob, place):
     title_run.font.color.rgb = RGBColor(241, 90, 35)  # Orange color
     title_para.paragraph_format.space_after = Pt(4)  # Reduced from 8
     title_para.paragraph_format.space_before = Pt(0)  # Reduced from 2
-    
+
     # Add Name - compact spacing
     name_para = cell.add_paragraph()
     name_title = name_para.add_run('नाम: ')
@@ -1483,7 +1483,7 @@ def create_unified_personal_details_box(container, name, dob, tob, place):
     name_content.font.size = Pt(9)  # Smaller font for compact
     name_content.font.color.rgb = RGBColor(0, 0, 0)  # Black color like in reference
     name_para.paragraph_format.space_after = Pt(1)  # Reduced from 3
-    
+
     # Add Date of Birth - compact spacing
     dob_para = cell.add_paragraph()
     dob_title = dob_para.add_run('जन्म तिथि: ')
@@ -1494,7 +1494,7 @@ def create_unified_personal_details_box(container, name, dob, tob, place):
     dob_content.font.size = Pt(9)  # Smaller font for compact
     dob_content.font.color.rgb = RGBColor(0, 0, 0)  # Black color like in reference
     dob_para.paragraph_format.space_after = Pt(1)  # Reduced from 3
-    
+
     # Add Time of Birth - compact spacing
     tob_para = cell.add_paragraph()
     tob_title = tob_para.add_run('जन्म समय: ')
@@ -1505,7 +1505,7 @@ def create_unified_personal_details_box(container, name, dob, tob, place):
     tob_content.font.size = Pt(9)  # Smaller font for compact
     tob_content.font.color.rgb = RGBColor(0, 0, 0)  # Black color like in reference
     tob_para.paragraph_format.space_after = Pt(1)  # Reduced from 3
-    
+
     # Add Place - compact spacing
     place_para = cell.add_paragraph()
     place_title = place_para.add_run('स्थान: ')
@@ -1516,12 +1516,12 @@ def create_unified_personal_details_box(container, name, dob, tob, place):
     place_content.font.size = Pt(9)  # Smaller font for compact
     place_content.font.color.rgb = RGBColor(0, 0, 0)  # Black color like in reference
     place_para.paragraph_format.space_after = Pt(0)  # Reduced from 2
-    
+
     # Apply compact rounded corner styling with minimal padding
     try:
         cell_elem = cell._tc
         tcPr = cell_elem.get_or_add_tcPr()
-        
+
         # Add rounded corner borders using dotted style for rounded appearance
         tcBorders = OxmlElement('w:tcBorders')
         for edge in ('top', 'left', 'bottom', 'right'):
@@ -1531,7 +1531,7 @@ def create_unified_personal_details_box(container, name, dob, tob, place):
             border.set(qn('w:color'), 'F15A23')  # Orange color matching reference
             tcBorders.append(border)
         tcPr.append(tcBorders)
-        
+
         # Minimal padding for compact 1-page format
         tcMar = OxmlElement('w:tcMar')
         for side in ('top', 'left', 'bottom', 'right'):
@@ -1540,23 +1540,23 @@ def create_unified_personal_details_box(container, name, dob, tob, place):
             margin.set(qn('w:type'), 'dxa')
             tcMar.append(margin)
         tcPr.append(tcMar)
-        
+
         # Clean white background
         shd = OxmlElement('w:shd')
         shd.set(qn('w:val'), 'clear')
         shd.set(qn('w:color'), 'auto')
         shd.set(qn('w:fill'), 'FFFFFF')  # Pure white background
         tcPr.append(shd)
-        
+
         # Add rounded corner effect using XML for better circular appearance
         tcW = OxmlElement('w:tcW')
         tcW.set(qn('w:w'), '0')
         tcW.set(qn('w:type'), 'auto')
         tcPr.append(tcW)
-        
+
     except Exception:
         pass
-    
+
     return detail_table
 
 def create_rounded_detail_box(container, title, content):
@@ -1565,9 +1565,9 @@ def create_rounded_detail_box(container, title, content):
     detail_table = container.add_table(rows=1, cols=1)
     detail_table.autofit = False
     detail_table.columns[0].width = Inches(6.0)
-    
+
     cell = detail_table.rows[0].cells[0]
-    
+
     # Add title
     title_para = cell.add_paragraph(title)
     title_run = title_para.runs[0] if title_para.runs else title_para.add_run(title)
@@ -1575,18 +1575,18 @@ def create_rounded_detail_box(container, title, content):
     title_run.font.size = Pt(10)
     title_run.font.color.rgb = RGBColor(241, 90, 35)  # Orange color
     title_para.paragraph_format.space_after = Pt(2)
-    
+
     # Add content
     content_para = cell.add_paragraph(content)
     content_run = content_para.runs[0] if content_para.runs else content_para.add_run(content)
     content_run.font.size = Pt(9)
     content_run.font.color.rgb = RGBColor(51, 51, 51)  # Dark grey
-    
+
     # Apply rounded corner styling to the cell
     try:
         cell_elem = cell._tc
         tcPr = cell_elem.get_or_add_tcPr()
-        
+
         # Add rounded corner borders
         tcBorders = OxmlElement('w:tcBorders')
         for edge in ('top', 'left', 'bottom', 'right'):
@@ -1596,7 +1596,7 @@ def create_rounded_detail_box(container, title, content):
             border.set(qn('w:color'), 'F15A23')  # Dark orange
             tcBorders.append(border)
         tcPr.append(tcBorders)
-        
+
         # Add cell padding
         tcMar = OxmlElement('w:tcMar')
         for side in ('top', 'left', 'bottom', 'right'):
@@ -1605,17 +1605,17 @@ def create_rounded_detail_box(container, title, content):
             margin.set(qn('w:type'), 'dxa')
             tcMar.append(margin)
         tcPr.append(tcMar)
-        
+
     except Exception:
         pass
-    
+
     return detail_table
 
 def create_rounded_table_container(doc, table_content, width_pt=400, height_pt=200):
     """Create a VML rounded rectangle container for tables with true circular corners"""
     # Create paragraph with VML roundrect container
     p = doc.add_paragraph()
-    
+
     # Create VML roundrect with genuine rounded corners
     xml_content = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -1636,7 +1636,7 @@ def create_rounded_table_container(doc, table_content, width_pt=400, height_pt=2
       </w:r>
     </w:p>
     '''
-    
+
     return parse_xml(xml_content)
 
 def apply_premium_table_style(table, header_color_rgb=(204, 102, 0), alt_row_color_rgb=(255, 235, 224)):
@@ -1646,7 +1646,7 @@ def apply_premium_table_style(table, header_color_rgb=(204, 102, 0), alt_row_col
         tbl = table._tbl
         tblPr = tbl.tblPr
         tblBorders = OxmlElement('w:tblBorders')
-        
+
         # Apply rounded corner border styling
         border_styles = {
             'top': ('thick', '12'),     # Thick top border for rounded effect
@@ -1656,7 +1656,7 @@ def apply_premium_table_style(table, header_color_rgb=(204, 102, 0), alt_row_col
             'insideH': ('single', '6'),  # Internal horizontal borders
             'insideV': ('single', '6')   # Internal vertical borders
         }
-        
+
         for edge, (style, size) in border_styles.items():
             border = OxmlElement(f'w:{edge}')
             border.set(qn('w:val'), style)
@@ -1664,19 +1664,19 @@ def apply_premium_table_style(table, header_color_rgb=(204, 102, 0), alt_row_col
             border.set(qn('w:color'), 'D2691E')  # Dark orange color
             tblBorders.append(border)
         tblPr.append(tblBorders)
-        
+
         # Add table alignment
         tblAlign = OxmlElement('w:jc')
         tblAlign.set(qn('w:val'), 'center')
         tblPr.append(tblAlign)
-        
+
         # Add table style properties for rounded corners
         try:
             # Apply table-level styling for rounded appearance
             tblStyle = OxmlElement('w:tblStyle')
             tblStyle.set(qn('w:val'), 'TableGrid')  # Use a style that supports rounding
             tblPr.insert(0, tblStyle)
-            
+
             # Add table cell margins for better spacing
             tblCellMar = OxmlElement('w:tblCellMar')
             for side in ['top', 'left', 'bottom', 'right']:
@@ -1685,16 +1685,16 @@ def apply_premium_table_style(table, header_color_rgb=(204, 102, 0), alt_row_col
                 margin.set(qn('w:type'), 'dxa')
                 tblCellMar.append(margin)
             tblPr.append(tblCellMar)
-            
+
         except Exception:
             pass
-        
+
         # Add genuine VML rounded corners to corner cells
         try:
             # Get corner cells and add VML rounded rectangle backgrounds
             num_rows = len(table.rows)
             num_cols = len(table.rows[0].cells) if table.rows else 0
-            
+
             if num_rows > 0 and num_cols > 0:
                 # Apply VML rounded backgrounds to corner cells
                 corner_positions = [
@@ -1703,14 +1703,14 @@ def apply_premium_table_style(table, header_color_rgb=(204, 102, 0), alt_row_col
                     (num_rows-1, 0, 'bottom-left'),
                     (num_rows-1, num_cols-1, 'bottom-right')
                 ]
-                
+
                 for row_idx, col_idx, corner_type in corner_positions:
                     try:
                         cell = table.cell(row_idx, col_idx)
-                        
+
                         # Add VML rounded rectangle as paragraph inside the cell
                         vml_para = cell.add_paragraph()
-                        
+
                         # Determine corner-specific arcsize
                         arcsize_map = {
                             'top-left': '0 0 20% 20%',
@@ -1718,7 +1718,7 @@ def apply_premium_table_style(table, header_color_rgb=(204, 102, 0), alt_row_col
                             'bottom-left': '0 20% 20% 0',
                             'bottom-right': '20% 20% 0 0'
                         }
-                        
+
                         # Create VML rounded corner element
                         vml_xml = f'''
                         <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
@@ -1727,17 +1727,17 @@ def apply_premium_table_style(table, header_color_rgb=(204, 102, 0), alt_row_col
                           </v:roundrect>
                         </w:pict>
                         '''
-                        
+
                         # Parse and insert VML into the paragraph
                         vml_element = parse_xml(vml_xml)
                         vml_para._p.append(vml_element._element)
-                        
+
                     except Exception:
                         continue
-                        
+
         except Exception:
             pass
-        
+
         # Style header row with premium look
         header_cells = table.rows[0].cells
         for cell in header_cells:
@@ -1749,7 +1749,7 @@ def apply_premium_table_style(table, header_color_rgb=(204, 102, 0), alt_row_col
             shd.set(qn('w:color'), 'auto')
             shd.set(qn('w:fill'), '{:02x}{:02x}{:02x}'.format(*header_color_rgb))
             tcPr.append(shd)
-            
+
             # Add minimal cell padding for compactness
             tcMar = OxmlElement('w:tcMar')
             for side in ('top', 'left', 'bottom', 'right'):
@@ -1758,7 +1758,7 @@ def apply_premium_table_style(table, header_color_rgb=(204, 102, 0), alt_row_col
                 margin.set(qn('w:type'), 'dxa')
                 tcMar.append(margin)
             tcPr.append(tcMar)
-            
+
             # Enhanced header text styling
             for paragraph in cell.paragraphs:
                 paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -1767,13 +1767,13 @@ def apply_premium_table_style(table, header_color_rgb=(204, 102, 0), alt_row_col
                     run.font.color.rgb = RGBColor(255, 255, 255)
                     run.font.size = Pt(9)  # Slightly smaller for compactness
                     run.font.name = 'Calibri'
-        
+
         # Style data rows with professional alternating colors
         for i, row in enumerate(table.rows[1:], 1):
             for cell in row.cells:
                 cell_elem = cell._tc
                 tcPr = cell_elem.get_or_add_tcPr()
-                
+
                 # Alternating row colors: odd rows (1,3,5...) get beautiful light orange background
                 if i % 2 == 1:  # Odd rows get the beautiful light orange background
                     shd = OxmlElement('w:shd')
@@ -1782,7 +1782,7 @@ def apply_premium_table_style(table, header_color_rgb=(204, 102, 0), alt_row_col
                     shd.set(qn('w:fill'), '{:02x}{:02x}{:02x}'.format(*alt_row_color_rgb))
                     tcPr.append(shd)
                 # Even rows (2,4,6...) get no background color (default white)
-                
+
                 # Add minimal cell padding for all data cells
                 tcMar = OxmlElement('w:tcMar')
                 for side in ('top', 'left', 'bottom', 'right'):
@@ -1791,7 +1791,7 @@ def apply_premium_table_style(table, header_color_rgb=(204, 102, 0), alt_row_col
                     margin.set(qn('w:type'), 'dxa')
                     tcMar.append(margin)
                 tcPr.append(tcMar)
-                
+
                 # Enhanced data text styling
                 for paragraph in cell.paragraphs:
                     for run in paragraph.runs:
@@ -1812,7 +1812,7 @@ def create_section_header(container, title, color_rgb=(25, 55, 109)):
     h.runs[0].font.name = 'Calibri'
     h.paragraph_format.space_before = Pt(8)
     h.paragraph_format.space_after = Pt(6)
-    
+
     return h
 
 def set_col_widths(table, widths_inch):
@@ -2115,13 +2115,13 @@ with row2c3:
     tz_val = (st.session_state.get('tz_input','') or '').strip()
     place_val = (st.session_state.get('place_input','') or '').strip()
     tz_err = (st.session_state.get('submitted') or st.session_state.get('generate_clicked')) and (not tz_val)
-    
+
     # Check if field was auto-populated (has value and place was checked)
     is_auto_populated = bool(tz_val and st.session_state.get('last_place_checked', ''))
-    
+
     # Always disable UTC field until place is entered (force proper workflow)
     should_disable = not place_val or is_auto_populated
-    
+
     if is_auto_populated:
         render_label('UTC offset (auto-detected) <span style="color:green">✓</span>', False)
     elif not place_val:
@@ -2129,7 +2129,7 @@ with row2c3:
     else:
         # Auto-detection failed, field is editable but still required
         render_label('UTC offset (manual entry required) <span style="color:red">*</span>', tz_err)
-    
+
     tz_override = st.text_input("UTC Offset", key="tz_input", label_visibility="collapsed", disabled=should_disable)
 
 st.write("")
@@ -2151,17 +2151,17 @@ can_generate = False
 if generate_clicked or st.session_state.get('submitted'):
     # Set submitted state for error highlighting
     st.session_state['submitted'] = True
-    
+
     # Use session state values (more reliable after rerun)
     _name = (st.session_state.get('name_input') or '').strip()
     _place = (st.session_state.get('place_input') or '').strip()
     _tz = (st.session_state.get('tz_input') or '').strip()
     _dob = st.session_state.get('dob_input', datetime.date.today())  # Use today as default
     _tob = st.session_state.get('tob_input', datetime.time(12, 0))  # Use 12:00 as default
-    
-    
+
+
     any_err = False
-    
+
     # Check all required fields
     if not _name or not _place or not _tz or _dob is None or _tob is None:
         any_err = True
@@ -2172,7 +2172,7 @@ if generate_clicked or st.session_state.get('submitted'):
                 any_err = True
         except Exception as e:
             any_err = True
-    
+
     if any_err:
         # Error message perfectly centered below the Generate button
         st.markdown(
@@ -2206,7 +2206,7 @@ if can_generate:
     if not api_key:
         st.error("Geoapify key missing. Add GEOAPIFY_API_KEY in Secrets.")
         st.stop()
-    
+
     try:
             # Use the validated variables from session state
             name = _name
@@ -2214,9 +2214,9 @@ if can_generate:
             dob = _dob
             tob = _tob
             tz_override = _tz
-            
+
             lat, lon, disp = geocode(place, api_key)
-            
+
             dt_local = datetime.datetime.combine(dob, tob).replace(tzinfo=None)
             used_manual = False
             if tz_override.strip():
@@ -2250,7 +2250,7 @@ if can_generate:
                     L = ORDER[idx]; dur_days = YEARS[L]*YEAR_DAYS; end = min(t + datetime.timedelta(days=dur_days), end_limit)
                     segments.append({"planet": L, "start": t, "end": end, "days": dur_days}); t = end; idx = (idx + 1) % 9
                 return segments
-            
+
             md_segments_utc = build_mahadashas_days_utc(dt_utc, sidelons['Mo'])
 
             def age_years(birth_dt_local, end_utc):
@@ -2283,17 +2283,17 @@ if can_generate:
             # Enhanced document styling
             style = doc.styles['Normal']; style.font.name = LATIN_FONT; style.font.size = Pt(BASE_FONT_PT)
             style._element.rPr.rFonts.set(qn('w:eastAsia'), HINDI_FONT); style._element.rPr.rFonts.set(qn('w:cs'), HINDI_FONT)
-            
+
             # Set subtle page background
             try:
                 set_page_background(doc, 'FEFEFE')  # Very light gray background
             except Exception:
                 pass
 
-            
-            
-            
-            
+
+
+
+
             # ===== EXACT LAYOUT MATCH: Top section with Personal Details (left) + MRIDAASTRO (right) =====
             try:
                 # Create top header table (2 columns: Personal Details | MRIDAASTRO)
@@ -2323,7 +2323,7 @@ if can_generate:
                     pass
   # keep total ~7.5"
   # Right: MRIDAASTRO (adjusted)
-                
+
                 # Remove borders from header table
                 hdr_tbl = header_table._tbl
                 hdr_tblPr = hdr_tbl.tblPr
@@ -2333,10 +2333,10 @@ if can_generate:
                     el.set(qn('w:val'), 'nil')
                     hdr_tblBorders.append(el)
                 hdr_tblPr.append(hdr_tblBorders)
-                
+
                 # LEFT CELL: Personal Details
                 left_cell = header_table.rows[0].cells[0]
-                
+
                 # Keep the cell exactly as tall as the overlay so content centers within the round-rect
                 header_table.rows[0].height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
                 header_table.rows[0].height = Pt(92)
@@ -2350,7 +2350,7 @@ if can_generate:
                 r_title = p_title.add_run("व्यक्तिगत विवरण")
                 r_title.font.bold = True
                 r_title.font.size = Pt(12)
-                
+
                 # Create aligned personal details using proper spacing
                 details = [
                     ("नाम:", name),
@@ -2358,7 +2358,7 @@ if can_generate:
                     ("जन्म समय:", dt_local.strftime('%H:%M:%S')),
                     ("स्थान:", place)
                 ]
-                
+
                 pd_table = left_cell.add_table(rows=len(details), cols=2)
                 try:
                     pd_table.alignment = WD_TABLE_ALIGNMENT.CENTER
@@ -2400,7 +2400,7 @@ if can_generate:
                     p1.paragraph_format.space_after = Pt(0)
                     r1 = p1.add_run(str(value))
                     r1.font.size = Pt(10)
-                
+
                 # Add dark orange rounded border around personal details cell using VML
                 try:
                     # Create a VML rounded rectangle overlay for the personal details
@@ -2425,12 +2425,12 @@ if can_generate:
                     # Fallback to regular thick border if VML fails
                     tc = left_cell._tc
                     tcPr = tc.get_or_add_tcPr()
-                    
+
                     # Remove existing borders first
                     existing_borders = tcPr.find(qn('w:tcBorders'))
                     if existing_borders is not None:
                         tcPr.remove(existing_borders)
-                    
+
                     # Add dark orange borders
                     tcBorders = OxmlElement('w:tcBorders')
                     for edge in ('top', 'left', 'bottom', 'right'):
@@ -2441,10 +2441,10 @@ if can_generate:
                         el.set(qn('w:space'), '0')
                         tcBorders.append(el)
                     tcPr.append(tcBorders)
-                
+
                 # RIGHT CELL: MRIDAASTRO + Tagline
                 right_cell = header_table.rows[0].cells[1]
-                
+
                 # MRIDAASTRO - Enhanced font size (48px equivalent = 36pt)
                 p_mrid = right_cell.add_paragraph()
                 p_mrid.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -2460,29 +2460,29 @@ if can_generate:
                         rFonts.set(qn('w:ascii'), 'Cinzel Decorative')
                         rFonts.set(qn('w:hAnsi'), 'Cinzel Decorative')
                         rFonts.set(qn('w:cs'), 'Cinzel Decorative')
-                
+
                 # Tagline
                 p_tag = right_cell.add_paragraph()
                 p_tag.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 r_tag = p_tag.add_run("In the light of the divine, let your soul journey shine.")
                 r_tag.italic = True
                 r_tag.font.size = Pt(10)  # Enhanced from 10pt to 14pt
-                
+
                 # Add some space after header table
                 spacer1 = doc.add_paragraph()
                 spacer1.paragraph_format.space_after = Pt(6)
-                
+
                 # CENTERED DOCUMENT TITLE
                 title_para = doc.add_paragraph()
                 title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 r_title_main = title_para.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI)")
                 r_title_main.font.bold = True
                 r_title_main.font.size = Pt(20)
-                
+
                 # Add space after title
                 spacer2 = doc.add_paragraph()
                 spacer2.paragraph_format.space_after = Pt(4)
-                
+
             except Exception as e:
                 # Fallback to simple header
                 pass
@@ -2497,7 +2497,7 @@ if can_generate:
             CHART_W_PT = int(right_width_in * 72 - 10)
             CHART_H_PT = int(CHART_W_PT * 0.80)
             ROW_HEIGHT_PT = int(CHART_H_PT + 36)
-            
+
             # Remove outer borders and the internal vertical divider
             tbl = outer._tbl; tblPr = tbl.tblPr; tblBorders = OxmlElement('w:tblBorders')
             for edge in ('top','left','bottom','right','insideH','insideV'):
@@ -2507,7 +2507,7 @@ if can_generate:
             for edge in ('insideH',):
                 el = OxmlElement(f'w:{edge}'); el.set(qn('w:val'),'nil'); tblBorders.append(el)
             tblPr.append(tblBorders)
-            
+
             # Add subtle table shading
             try:
                 tblPr = outer._tbl.tblPr
@@ -2526,22 +2526,22 @@ if can_generate:
                 place_disp = disp
             except Exception:
                 place_disp = place if 'place' in locals() else ''
-            
+
             # Personal details are now in the header section above, no need for duplicate
             # Original planetary positions section
             # h1 = left.add_paragraph("ग्रह स्थिति"); _apply_hindi_caption_style(h1, size_pt=11, underline=True, bold=True)
             create_cylindrical_section_header(left, "ग्रह स्थिति", width_pt=260)
-            
+
             # === COMPLETELY REWRITTEN FIRST TABLE: ग्रह स्थिति ===
             # Create table with exact 5 columns for clean structure
             t1 = left.add_table(rows=1, cols=5)
             t1.autofit = False  # Disable autofit to prevent conflicts
-            
+
             # Set headers manually to ensure correct order
             headers = ["ग्रह", "राशि", "अंश", "नक्षत्र", "उप‑नक्षत्र"]
             for i, header in enumerate(headers):
                 t1.rows[0].cells[i].text = header
-            
+
             # Add data rows with clean structure
             for _, row in df_positions.iterrows():
                 new_row = t1.add_row()
@@ -2550,21 +2550,21 @@ if can_generate:
                 new_row.cells[2].text = str(row["अंश"]) if pd.notna(row["अंश"]) else ""
                 new_row.cells[3].text = str(row["नक्षत्र"]) if pd.notna(row["नक्षत्र"]) else ""
                 new_row.cells[4].text = str(row["उप‑नक्षत्र"]) if pd.notna(row["उप‑नक्षत्र"]) else ""
-                
+
                 # Center align all data cells
                 for cell in new_row.cells:
                     for paragraph in cell.paragraphs:
                         paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            
+
             # Apply styling and formatting
             center_header_row(t1)
             set_table_font(t1, pt=BASE_FONT_PT)
             add_table_borders(t1, size=6)
             apply_premium_table_style(t1)
-            
+
             # Set proper column widths AFTER creating structure
             set_col_widths(t1, [0.70, 0.55, 0.85, 0.80, 0.80])
-            
+
             # Left align ONLY the header cell of the last column (उप‑नक्षत्र)
             for p in t1.rows[0].cells[-1].paragraphs:
                 p.alignment = WD_ALIGN_PARAGRAPH.LEFT
@@ -2670,10 +2670,6 @@ if can_generate:
                 set_cell_margins(cell1, top=0, bottom=0)
             except Exception:
                 pass
-            try:
-                set_cell_margins(cell1, top=0, bottom=0)
-            except Exception:
-                pass
             # Lagna chart cylindrical header bar (centered)
             create_cylindrical_section_header(cell1, "लग्न कुंडली", width_pt=int(CHART_W_PT), align='center', spacing_after=0, text_jc='center', run_text=False, line_exact=True)
             hdr_p = cell1.paragraphs[-1]
@@ -2717,7 +2713,7 @@ if (st.session_state.get('kundali_doc') and
     st.session_state.get('generation_completed') and
     st.session_state.get('submitted') and  # User must have clicked Generate
     can_generate):  # AND current form is still valid
-    
+
     # Center the download button like the Generate button
     col1, col2, col3 = st.columns([1, 1, 1])
     with col2:
