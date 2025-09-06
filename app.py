@@ -1316,8 +1316,7 @@ def create_unified_personal_details_box(container, name, dob, tob, place):
           </w:pPr>
           <w:r>
             <w:pict xmlns:v="urn:schemas-microsoft-com:vml">
-              <v:roundrect style="position:relative;width:332pt;height:130pt" 
-                           arcsize="35" fillcolor="white" strokecolor="#F15A23" strokeweight="1.5pt">
+              \135%\2 fillcolor="white" strokecolor="#F15A23" strokeweight="1.5pt">
                 <v:textbox inset="12pt,10pt,12pt,10pt">
                   <w:txbxContent>
                     <w:p>
@@ -2464,7 +2463,7 @@ if can_generate:
                 p_tag.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 r_tag = p_tag.add_run("In the light of the divine, let your soul journey shine.")
                 r_tag.italic = True
-                r_tag.font.size = Pt(12)  # Set to 12pt per request
+                r_tag.font.size = Pt(10)  # Set to 12pt per request
                 
                 # Add some space after header table
                 spacer1 = doc.add_paragraph()
