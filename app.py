@@ -1224,7 +1224,7 @@ def create_unified_personal_details_box(container, name, dob, tob, place):
           </w:pPr>
           <w:r>
             <w:pict xmlns:v="urn:schemas-microsoft-com:vml">
-              <v:roundrect style="position:relative;width:{int((3.6)*72)-12}pt;height:{160}pt" 
+              <v:roundrect style="position:relative;width:332pt;height:130pt" 
                            arcsize="15%" fillcolor="white" strokecolor="#F15A23" strokeweight="1.5pt">
                 <v:textbox inset="12pt,10pt,12pt,10pt">
                   <w:txbxContent>
@@ -2200,11 +2200,10 @@ if can_generate:
                 # Create top header table (2 columns: Personal Details | MRIDAASTRO)
                 header_table = doc.add_table(rows=1, cols=2)
                 header_table.autofit = False
-                header_table.columns[0].width = Inches(left_width_in)  # Left: Personal details (1.3 inch)
-                header_table.columns[1].width = Inches(  # Left: Personal details (set via left_width_in)
-                left_width_in = 3.6
+                left_width_in = 3.6  # inches; Personal Details column
                 header_table.columns[0].width = Inches(left_width_in)
-                header_table.columns[1].width = Inches(7.5 - left_width_in))  # Right: MRIDAASTRO (adjusted)
+                header_table.columns[1].width = Inches(7.5 - left_width_in)  # keep total ~7.5"
+  # Right: MRIDAASTRO (adjusted)
                 
                 # Remove borders from header table
                 hdr_tbl = header_table._tbl
@@ -2250,6 +2249,8 @@ if can_generate:
                 # Add dark orange rounded border around personal details cell using VML
                 try:
                     # Create a VML rounded rectangle overlay for the personal details
+                    vml_w_pt = int(left_width_in * 72) - 12
+                    vml_h_pt = 160
                     vml_content = f'''
                     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
                       <w:pPr>
@@ -2257,7 +2258,7 @@ if can_generate:
                       </w:pPr>
                       <w:r>
                         <w:pict xmlns:v="urn:schemas-microsoft-com:vml">
-                          <v:roundrect style="position:absolute;left:0pt;top:0pt;width:{int((3.6)*72)-12}pt;height:{160}pt;z-index:-1" 
+                          <v:roundrect style="position:absolute;left:0pt;top:0pt;width:{vml_w_pt}pt;height:{vml_h_pt}pt;z-index:-1" 
                                        arcsize="15%" fillcolor="transparent" strokecolor="#CC6600" strokeweight="3pt">
                           </v:roundrect>
                         </w:pict>
