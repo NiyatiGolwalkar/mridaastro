@@ -1283,6 +1283,7 @@ def create_cylindrical_section_header(container, title_text, width_pt=320, align
         from docx.oxml import parse_xml
         header_element = parse_xml(xml_content)
         container._element.append(header_element)
+        vml_ok = True
         # Remove the original paragraph we added
         container._element.remove(header_para._element)
     except Exception:
@@ -1318,7 +1319,7 @@ def create_unified_personal_details_box(container, name, dob, tob, place):
           </w:pPr>
           <w:r>
             <w:pict xmlns:v="urn:schemas-microsoft-com:vml">
-              <v:roundrect style="position:relative;width:332pt;height:130pt" 
+              <v:roundrect style="position:relative;width:332pt;height:100pt" 
                            arcsize="15%" fillcolor="white" strokecolor="#F15A23" strokeweight="1.5pt">
                 <v:textbox inset="12pt,10pt,12pt,10pt">
                   <w:txbxContent>
@@ -2340,7 +2341,7 @@ if can_generate:
                 
                 # Keep the cell exactly as tall as the overlay so content centers within the round-rect
                 header_table.rows[0].height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
-                header_table.rows[0].height = Pt(130)
+                header_table.rows[0].height = Pt(110)
                 # Vertical center the whole block within the cell
                 left_cell.vertical_alignment = WD_ALIGN_VERTICAL.TOP
                 # RIGHT CELL: MRIDAASTRO + Tagline
