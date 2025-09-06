@@ -2235,25 +2235,25 @@ if can_generate:
                 ]
                 
                 pd_table = left_cell.add_table(rows=len(details), cols=2)
-try:
-    pd_table.alignment = WD_TABLE_ALIGNMENT.CENTER
-except Exception:
-    pass
-set_col_widths(pd_table, [1.3, max(1.0, left_width_in - 1.3 - 0.1)])
-for i, (label, value) in enumerate(details):
-    c0 = pd_table.cell(i, 0)
-    c1 = pd_table.cell(i, 1)
-    # Label (bold, left)
-    p0 = c0.paragraphs[0]
-    p0.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    run0 = p0.add_run(str(label))
-    run0.font.bold = True
-    run0.font.size = Pt(10)
-    # Value (left)
-    p1 = c1.paragraphs[0]
-    p1.alignment = WD_ALIGN_PARAGRAPH.LEFT
-    run1 = p1.add_run(str(value))
-    run1.font.size = Pt(10)
+                try:
+                    pd_table.alignment = WD_TABLE_ALIGNMENT.CENTER
+                except Exception:
+                    pass
+                set_col_widths(pd_table, [1.3, max(1.0, left_width_in - 1.3 - 0.1)])
+                for i, (label, value) in enumerate(details):
+                    c0 = pd_table.cell(i, 0)
+                    c1 = pd_table.cell(i, 1)
+                    # Label (bold, left)
+                    p0 = c0.paragraphs[0]
+                    p0.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                    run0 = p0.add_run(str(label))
+                    run0.font.bold = True
+                    run0.font.size = Pt(10)
+                    # Value (left)
+                    p1 = c1.paragraphs[0]
+                    p1.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                    run1 = p1.add_run(str(value))
+                    run1.font.size = Pt(10)
 # Add dark orange rounded border around personal details cell using VML
                 try:
                     # Create a VML rounded rectangle overlay for the personal details
