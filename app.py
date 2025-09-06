@@ -448,6 +448,27 @@ from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
 from docx.shared import Inches, Mm, Pt
 
+def set_cell_margins(cell, *, left=None, right=None, top=None, bottom=None):
+    try:
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+        tc = cell._tc
+        tcPr = tc.get_or_add_tcPr()
+        for el in list(tcPr):
+            if el.tag.endswith('tcMar'):
+                tcPr.remove(el)
+        tcMar = OxmlElement('w:tcMar')
+        for side, val in (('left', left), ('right', right), ('top', top), ('bottom', bottom)):
+            if val is not None:
+                el = OxmlElement(f'w:{side}')
+                el.set(qn('w:w'), str(int(val)))
+                el.set(qn('w:type'), 'dxa')
+                tcMar.append(el)
+        tcPr.append(tcMar)
+    except Exception:
+        pass
+
+
 # --- Table header shading helper (match kundali bg) ---
 def shade_cell(cell, fill_hex="FFFFFF"):
     return
@@ -2575,6 +2596,10 @@ if can_generate:
             except Exception:
                 pass
             right = outer.rows[0].cells[1]
+            try:
+                set_cell_margins(right, left=360)
+            except Exception:
+                pass
 
             # Ensure the OUTER right cell has zero inner margins so the kundali touches the cell borders
             try:
