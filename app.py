@@ -207,6 +207,8 @@ def set_app_background(image_path: str, size: str = "contain", position: str = "
         with open(image_path, "rb") as f:
             b64 = base64.b64encode(f.read()).decode("utf-8")
         tilak = _tilak_src()
+    except Exception:
+        pass
 st.markdown(
     f"""
     <style>
