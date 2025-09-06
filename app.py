@@ -973,7 +973,7 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
         <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:80" fillcolor="#ffffff" strokecolor="none" strokeweight="0pt">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-              <w:p><w:pPr><w:jc w:val="{text_jc}"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
+              <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
             </w:txbxContent>
           </v:textbox>
         </v:rect>
@@ -1116,7 +1116,7 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
         <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{box_w}pt;height:{box_h}pt;z-index:5" strokecolor="none">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-              <w:p><w:pPr><w:jc w:val="{text_jc}"/></w:pPr>{content}</w:p>
+              <w:p><w:pPr><w:jc w:val="center"/></w:pPr>{content}</w:p>
             </w:txbxContent>
           </v:textbox>
         </v:rect>
@@ -1159,7 +1159,7 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
         <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{w}pt;height:{h}pt;z-index:5" strokecolor="none">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-              <w:p><w:pPr><w:jc w:val="{text_jc}"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
+              <w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
             </w:txbxContent>
           </v:textbox>
         </v:rect>''')
@@ -1289,7 +1289,7 @@ def create_unified_personal_details_box(container, name, dob, tob, place):
                 <v:textbox inset="12pt,10pt,12pt,10pt">
                   <w:txbxContent>
                     <w:p>
-                      <w:pPr><w:jc w:val="{text_jc}"/><w:spacing w:after="120"/></w:pPr>
+                      <w:pPr><w:jc w:val="center"/><w:spacing w:after="120"/></w:pPr>
                       <w:r>
                         <w:rPr>
                           <w:color w:val="F15A23"/>
