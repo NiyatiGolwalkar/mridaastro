@@ -1045,9 +1045,9 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
     boxes_xml = "\\n".join(num_boxes + planet_boxes)
 
     xml = f'''
-    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
+    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:pPr><w:jc w:val="center"/></w:pPr><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-        <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
+        <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
           <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="#CC6600" strokeweight="3pt" fillcolor="#ffdcc8"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
@@ -1119,9 +1119,9 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
         ''')
     boxes_xml = "\\n".join(text_boxes)
     xml = f'''
-    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
+    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:pPr><w:jc w:val="center"/></w:pPr><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-        <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
+        <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
           <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="#CC6600" strokeweight="3pt" fillcolor="#ffdcc8"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
@@ -1160,9 +1160,9 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
           </v:textbox>
         </v:rect>''')
     boxes_xml = "\\n".join(boxes)
-    xml = f'''<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
+    xml = f'''<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:pPr><w:jc w:val="center"/></w:pPr><w:r>
         <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-          <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
+          <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
             <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.25pt" fillcolor="#ffdcc8"/>
             <v:line style="position:absolute;z-index:2" from="0,0" to="{S},{S}" strokecolor="black" strokeweight="1.25pt"/>
             <v:line style="position:absolute;z-index:2" from="{S},0" to="0,{S}" strokecolor="black" strokeweight="1.25pt"/>
@@ -2423,7 +2423,7 @@ if can_generate:
                 p_tag.alignment = WD_ALIGN_PARAGRAPH.CENTER
                 r_tag = p_tag.add_run("In the light of the divine, let your soul journey shine.")
                 r_tag.italic = True
-                r_tag.font.size = Pt(14)  # Enhanced from 10pt to 14pt
+                r_tag.font.size = Pt(12)  # Set to 12pt per request
                 
                 # Add some space after header table
                 spacer1 = doc.add_paragraph()
@@ -2618,27 +2618,25 @@ if can_generate:
             
 
             # Original Lagna chart title
-            cell1 = kt.rows[0].cells[0]; cap1 = cell1.add_paragraph("लग्न कुंडली")
-            cap1.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap1, size_pt=11, underline=True, bold=True); cap1.paragraph_format.space_before = Pt(2); cap1.paragraph_format.space_after = Pt(2)
-            p1 = cell1.add_paragraph(); p1.paragraph_format.space_before = Pt(2); p1.paragraph_format.space_after = Pt(4)
+            cell1 = kt.rows[0].cells[0];
+            # Cylindrical header for Lagna chart
+            try:
+                create_cylindrical_section_header(cell1, "लग्न कुंडली", width_pt=int(CHART_W_PT))
+            except Exception:
+                _cap = cell1.add_paragraph("लग्न कुंडली"); _cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p1 = cell1.add_paragraph(); p1.paragraph_format.space_before = Pt(2); p1.paragraph_format.space_after = Pt(4); p1.paragraph_format.space_before = Pt(2); p1.paragraph_format.space_after = Pt(4)
             # Lagna chart with planets in single box per house
             rasi_house_planets = build_rasi_house_planets_marked(sidelons, lagna_sign)
             p1._p.addnext(kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
 
             # Original Navamsa chart title - Enhanced styling for visibility
-            cell2 = kt.rows[1].cells[0]; cap2 = cell2.add_paragraph("नवांश कुंडली")
-            cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-            # Ensure the title is visible with proper formatting
-            if cap2.runs:
-                run = cap2.runs[0]
-            else:
-                run = cap2.add_run("नवांश कुंडली")
-            run.bold = True
-            run.underline = True  
-            run.font.size = Pt(11)
-            run.font.color.rgb = RGBColor(139, 69, 19)  # Saddle brown color
-            cap2.paragraph_format.space_before = Pt(2); cap2.paragraph_format.space_after = Pt(2)
-            p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(2); p2.paragraph_format.space_after = Pt(4)
+            cell2 = kt.rows[1].cells[0];
+            # Cylindrical header for Navamsa chart
+            try:
+                create_cylindrical_section_header(cell2, "नवांश कुंडली", width_pt=int(CHART_W_PT))
+            except Exception:
+                _cap2 = cell2.add_paragraph("नवांश कुंडली"); _cap2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(2); p2.paragraph_format.space_after = Pt(4); p2.paragraph_format.space_before = Pt(2); p2.paragraph_format.space_after = Pt(4)
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
             p2._p.addnext(kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
             # (प्रमुख बिंदु moved to row 2 of outer table)
