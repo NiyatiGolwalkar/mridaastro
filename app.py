@@ -1070,7 +1070,7 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
     boxes_xml = "\\n".join(num_boxes + planet_boxes)
 
     xml = f'''
-    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
+    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:pPr><w:spacing w:before="0" w:after="0"/></w:pPr><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
         <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
           <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="#CC6600" strokeweight="3pt" fillcolor="#ffdcc8"/>
@@ -1221,69 +1221,40 @@ def center_header_row(table):
 # ===== MODERN DESIGN STYLING FUNCTIONS =====
 
 def create_cylindrical_section_header(container, title_text, width_pt=320, align='center', spacing_after=20, text_jc='center'):
-    """Create modern cylindrical tube-shaped section headers with dynamic width"""
-    # Create paragraph for the header
-    header_para = container.add_paragraph()
-    header_para.alignment = (WD_ALIGN_PARAGRAPH.RIGHT if align=='right' else (WD_ALIGN_PARAGRAPH.LEFT if align=='left' else WD_ALIGN_PARAGRAPH.CENTER))
-    header_para.paragraph_format.space_before = Pt(0)
-    header_para.paragraph_format.space_after = Pt(0)
-    
-    # Add the title text with styling
-    run = header_para.add_run(title_text)
-    run.font.name = 'Calibri'
-    run.font.size = Pt(12)
-    run.font.bold = True
-    run.font.color.rgb = RGBColor(255, 255, 255)  # White text
-    
-    # Add beautiful gradient background styling using VML shape 
+    """Create modern cylindrical tube-shaped section headers with dynamic width, super-tight spacing."""
+    from docx.shared import Pt
+    anchor = container.add_paragraph()
+    anchor.alignment = (WD_ALIGN_PARAGRAPH.RIGHT if align=='right' else (WD_ALIGN_PARAGRAPH.LEFT if align=='left' else WD_ALIGN_PARAGRAPH.CENTER))
+    anchor.paragraph_format.space_before = Pt(0)
+    anchor.paragraph_format.space_after = Pt(0)
     xml_content = f'''
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
       <w:pPr>
         <w:jc w:val="{text_jc}"/>
-        <w:spacing w:before="120" w:after="100"/>
+        <w:spacing w:before="0" w:after="{spacing_after}"/>
       </w:pPr>
       <w:r>
-        <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-          <v:roundrect style="position:relative;width:{width_pt}pt;height:28pt;margin-left:auto;margin-right:auto" 
-                       arcsize="45%" strokecolor="#D2691E" strokeweight="1.5pt">
-            <v:fill type="gradient" color="#F15A23" color2="#FFEACC" angle="90" opacity="1"/>
-            <v:textbox inset="8pt,4pt,8pt,4pt">
-              <w:txbxContent>
-                <w:p>
-                  <w:pPr><w:jc w:val="{text_jc}"/></w:pPr>
-                  <w:r>
-                    <w:rPr>
-                      <w:color w:val="FFFFFF"/>
-                      <w:sz w:val="24"/>
-                      <w:b/>
-                      <w:rFonts w:ascii="Calibri" w:hAnsi="Calibri"/>
-                    </w:rPr>
-                    <w:t>{title_text}</w:t>
-                  </w:r>
-                </w:p>
-              </w:txbxContent>
-            </v:textbox>
-          </v:roundrect>
+        <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word">
+          <w10:wrap type="topAndBottom"/>
+          <v:group style="position:relative;margin-left:auto;margin-right:auto;width:{width_pt}pt;height:24pt" coordorigin="0,0" coordsize="{width_pt},24">
+            <v:roundrect style="position:relative;width:{width_pt}pt;height:24pt" arcsize="30%" strokecolor="#E67E22" strokeweight="1.5pt">
+              <v:fill type="gradient" color="#E67E22" color2="#F39C12" angle="0"/>
+              <v:shadow on="t" opacity="0.2"/>
+              <v:textbox inset="4pt,2pt,4pt,2pt">
+                <w:txbxContent>
+                  <w:p><w:pPr><w:jc w:val="{text_jc}"/></w:pPr><w:r><w:rPr><w:color w:val="FFFFFF"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>{title_text}</w:t></w:r></w:p>
+                </w:txbxContent>
+              </v:textbox>
+            </v:roundrect>
+          </v:group>
         </w:pict>
       </w:r>
-    </w:p>'''
-    
-    try:
-        from docx.oxml import parse_xml
-        header_element = parse_xml(xml_content)
-        container._element.append(header_element)
-        # Remove the original paragraph we added
-        container._element.remove(header_para._element)
-    except Exception:
-        # Fallback to simple styled text if VML fails
-        pass
-    # Ensure spacing after header so following table starts below the bar
-    try:
-        spacer = container.add_paragraph()
-        spacer.paragraph_format.space_after = Pt(0)
-    except Exception:
-        pass
-
+    </w:p>
+    '''
+    elem = parse_xml(xml_content)
+    anchor._p.addnext(elem)
+    anchor._element.getparent().remove(anchor._element)
+    return
 def create_unified_personal_details_box(container, name, dob, tob, place):
     """Create single rounded corner box with title inside, matching reference image exactly"""
     
