@@ -2321,7 +2321,7 @@ if can_generate:
                 try:
                     # Create a VML rounded rectangle overlay for the personal details
                     vml_w_pt = int(left_width_in * 72) - 12
-                    vml_h_pt = 96
+                    vml_h_pt = 88
                     vml_content = f'''
                     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
                       <w:pPr>
@@ -2386,7 +2386,7 @@ if can_generate:
                 
                 # Add some space after header table
                 spacer1 = doc.add_paragraph()
-                spacer1.paragraph_format.space_after = Pt(20)
+                spacer1.paragraph_format.space_after = Pt(6)
                 
                 # CENTERED DOCUMENT TITLE
                 title_para = doc.add_paragraph()
@@ -2397,7 +2397,7 @@ if can_generate:
                 
                 # Add space after title
                 spacer2 = doc.add_paragraph()
-                spacer2.paragraph_format.space_after = Pt(15)
+                spacer2.paragraph_format.space_after = Pt(4)
                 
             except Exception as e:
                 # Fallback to simple header
