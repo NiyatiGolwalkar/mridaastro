@@ -2315,7 +2315,7 @@ if can_generate:
                 try:
                     # Create a VML rounded rectangle overlay for the personal details
                     vml_w_pt = int(left_width_in * 72) - 12
-                    vml_h_pt = 160
+                    vml_h_pt = 120
                     vml_content = f'''
                     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
                       <w:pPr>
