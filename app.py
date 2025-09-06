@@ -2650,7 +2650,8 @@ if can_generate:
             p1._p.addnext(kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
 
             # Original Navamsa chart title - Enhanced styling for visibility
-            cell2 = kt.rows[1].cells[0];             # Navamsha chart cylindrical header bar (centered)
+            cell2 = kt.rows[1].cells[0];                         sp_nav = cell2.add_paragraph(); sp_nav.paragraph_format.space_before = Pt(8); sp_nav.paragraph_format.space_after = Pt(0)
+            # Navamsha chart cylindrical header bar (centered)
             create_cylindrical_section_header(cell2, "नवांश कुंडली", width_pt=int(CHART_W_PT), align='center', spacing_after=0, text_jc='center')
             p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0)
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
