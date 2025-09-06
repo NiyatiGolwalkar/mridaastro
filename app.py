@@ -983,7 +983,7 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
         <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{num_w}pt;height:{num_h}pt;z-index:80" fillcolor="#ffffff" strokecolor="none" strokeweight="0pt">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-              <w:p><w:pPr><w:jc w:val="{text_jc}"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
+              <w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
             </w:txbxContent>
           </v:textbox>
         </v:rect>
@@ -1059,7 +1059,7 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
     boxes_xml = "\\n".join(num_boxes + planet_boxes)
 
     xml = f'''
-    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:pPr><w:jc w:val="{text_jc}"/></w:pPr><w:r>
+    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:pPr><w:jc w:val="right"/></w:pPr><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
         <v:group style="position:relative;margin-left:auto;margin-right:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
           <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="#CC6600" strokeweight="3pt" fillcolor="#ffdcc8"/>
@@ -1126,14 +1126,14 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
         <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{box_w}pt;height:{box_h}pt;z-index:5" strokecolor="none">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-              <w:p><w:pPr><w:jc w:val="{text_jc}"/></w:pPr>{content}</w:p>
+              <w:p><w:pPr><w:jc w:val="right"/></w:pPr>{content}</w:p>
             </w:txbxContent>
           </v:textbox>
         </v:rect>
         ''')
     boxes_xml = "\\n".join(text_boxes)
     xml = f'''
-    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:pPr><w:jc w:val="{text_jc}"/></w:pPr><w:r>
+    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:pPr><w:jc w:val="right"/></w:pPr><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
         <v:group style="position:relative;margin-left:auto;margin-right:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
           <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="#CC6600" strokeweight="3pt" fillcolor="#ffdcc8"/>
@@ -1169,12 +1169,12 @@ def kundali_w_p_with_centroid_labels(size_pt=220, lagna_sign=1):
         <v:rect style="position:absolute;left:{left}pt;top:{top}pt;width:{w}pt;height:{h}pt;z-index:5" strokecolor="none">
           <v:textbox inset="0,0,0,0">
             <w:txbxContent xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-              <w:p><w:pPr><w:jc w:val="{text_jc}"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
+              <w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:t>{txt}</w:t></w:r></w:p>
             </w:txbxContent>
           </v:textbox>
         </v:rect>''')
     boxes_xml = "\\n".join(boxes)
-    xml = f'''<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:pPr><w:jc w:val="{text_jc}"/></w:pPr><w:r>
+    xml = f'''<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:pPr><w:jc w:val="right"/></w:pPr><w:r>
         <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
           <v:group style="position:relative;margin-left:auto;margin-right:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
             <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.25pt" fillcolor="#ffdcc8"/>
@@ -1299,7 +1299,7 @@ def create_unified_personal_details_box(container, name, dob, tob, place):
                 <v:textbox inset="12pt,10pt,12pt,10pt">
                   <w:txbxContent>
                     <w:p>
-                      <w:pPr><w:jc w:val="{text_jc}"/><w:spacing w:after="120"/></w:pPr>
+                      <w:pPr><w:jc w:val="right"/><w:spacing w:after="120"/></w:pPr>
                       <w:r>
                         <w:rPr>
                           <w:color w:val="F15A23"/>
