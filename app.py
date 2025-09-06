@@ -226,7 +226,7 @@ def set_app_background(image_path: str, size: str = "contain", position: str = "
 
 
 # --- Google Search Console verification (inject into <head>) ---
-st.markdown(f\"\"\"
+st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&display=swap');
 .mrida-brand { text-align:center; padding: 16px 0 8px; }
@@ -253,7 +253,7 @@ st.markdown(f\"\"\"
   <div class="mrida-tagline">In the light of divine, let your soul journey shine</div>
   <div style="height:3px; width:160px; margin:6px auto 0; background:black; border-radius:2px;"></div>
 </div>
-\"\"\", unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 # === End MRIDAASTRO Header ===
 _apply_bg()
 AYANAMSHA_VAL = swe.SIDM_LAHIRI
