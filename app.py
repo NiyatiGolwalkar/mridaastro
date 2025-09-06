@@ -226,7 +226,7 @@ st.markdown(
     <div class="mrida-brand">
       <div class="mrida-title">
         <span>MR</span>
-        <img src="{tilak}" alt="I" class="mrida-tilak" />
+        <img src="{_tilak_src()}" alt="I" class="mrida-tilak" />
         <span>DAASTRO</span>
       </div>
       <div class="mrida-tagline">In the light of divine, let your soul journey shine</div>
