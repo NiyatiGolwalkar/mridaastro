@@ -204,6 +204,16 @@ import pytz
 import streamlit as st
 
 from brand_component import render_brand
+# --- Swiss Ephemeris import (with fallback) ---
+try:
+    import swisseph as swe  # pip install swisseph
+except Exception:
+    try:
+        import pyswisseph as swe  # alternate package name on some envs
+    except Exception:
+        swe = None  # will guard later if truly unavailable
+# --- End swe import ---
+
 # === App background helper (for authenticated pages) ===
 import base64, os, streamlit as st
 
@@ -230,7 +240,6 @@ def set_app_background(image_path: str, size: str = "contain", position: str = "
     except Exception:
         # If anything fails (missing file, etc.), continue without background
         return
-
 
 _apply_bg()
 
