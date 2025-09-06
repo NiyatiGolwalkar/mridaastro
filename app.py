@@ -2329,6 +2329,11 @@ if can_generate:
                 
                 # LEFT CELL: Personal Details
                 left_cell = header_table.rows[0].cells[0]
+                try:
+                    create_unified_personal_details_box(left_cell, name, dt_local.strftime('%Y-%m-%d'), dt_local.strftime('%H:%M:%S'), place)
+                except Exception:
+                    pass
+
                 
                 # Keep the cell exactly as tall as the overlay so content centers within the round-rect
                 header_table.rows[0].height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
@@ -2488,10 +2493,9 @@ if can_generate:
             right_width_in = 3.70; outer.columns[0].width = Inches(3.70); outer.columns[1].width = Inches(3.70)
             # ##GUTTER_APPLIED: add inner gutter so the two columns breathe
             try:
-                # ~10pt padding on the inner edges (right of left cell, left of right cell)
-                gutter_dxa = 200  # 10pt * 20
-                set_cell_margins(outer.cell(0,0), right=gutter_dxa)
-                set_cell_margins(outer.cell(0,1), left=gutter_dxa)
+                # Remove right padding on left column (fix clipped border)
+                # and enlarge left padding on right column for kundali centering
+                set_cell_margins(outer.cell(0,1), left=360)  # 18pt
             except Exception:
                 pass
 
