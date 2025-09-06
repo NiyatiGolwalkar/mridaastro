@@ -80,7 +80,7 @@ def set_page_background(doc, hex_color):
 
 # --- Phalit ruled lines (25 rows) ---
 from docx.enum.table import WD_ROW_HEIGHT_RULE
-def add_phalit_section(container_cell, width_inches=3.60, rows=25):
+def add_phalit_section(container_cell, width_inches=3.60, rows=15):
     # Add beautiful cylindrical gradient header bar for फलित section
     create_cylindrical_section_header(container_cell, "फलित", width_pt=260)
 
@@ -202,13 +202,12 @@ try:
     CLIENT_SECRET = _cfg["client_secret"]
     REDIRECT_URI  = _cfg["redirect_uri"]  # e.g. https://mridaastro.streamlit.app/oauth2callback
     OAUTH_ENABLED = True
-except Exception:
+except:
+    # Demo mode - OAuth not configured
+    CLIENT_ID     = "demo"
+    CLIENT_SECRET = "demo"
+    REDIRECT_URI  = "demo"
     OAUTH_ENABLED = False
-    CLIENT_ID = CLIENT_SECRET = REDIRECT_URI = ""
-    st.error("⚠️ Google OAuth credentials not configured. Please configure [google_oauth] in Secrets.")
-    st.info("Required secrets: client_id, client_secret, redirect_uri")
-    st.stop()
-
 
 AUTH_ENDPOINT  = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
@@ -999,13 +998,13 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
         <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
-          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.25pt" fillcolor="#ffdcc8"/>
-          <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.25pt"/>
-          <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.25pt"/>
-          <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.25pt"/>
-          <v:line style="position:absolute;z-index:2" from="{R},{S/2}" to="{S/2},{B}" strokecolor="black" strokeweight="1.25pt"/>
-          <v:line style="position:absolute;z-index:2" from="{S/2},{B}" to="{L},{S/2}" strokecolor="black" strokeweight="1.25pt"/>
-          <v:line style="position:absolute;z-index:2" from="{L},{S/2}" to="{S/2},{T}" strokecolor="black" strokeweight="1.25pt"/>
+          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="#CC6600" strokeweight="3pt" fillcolor="#ffdcc8"/>
+          <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
+          <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
+          <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="#CC6600" strokeweight="1.25pt"/>
+          <v:line style="position:absolute;z-index:2" from="{R},{S/2}" to="{S/2},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
+          <v:line style="position:absolute;z-index:2" from="{S/2},{B}" to="{L},{S/2}" strokecolor="#CC6600" strokeweight="1.25pt"/>
+          <v:line style="position:absolute;z-index:2" from="{L},{S/2}" to="{S/2},{T}" strokecolor="#CC6600" strokeweight="1.25pt"/>
           {boxes_xml}
         </v:group>
       </w:pict>
@@ -1073,13 +1072,13 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
     <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
         <v:group style="position:relative;margin-left:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
-          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="black" strokeweight="1.25pt" fillcolor="#ffdcc8"/>
-          <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="black" strokeweight="1.25pt"/>
-          <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="black" strokeweight="1.25pt"/>
-          <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="black" strokeweight="1.25pt"/>
-          <v:line style="position:absolute;z-index:2" from="{R},{S/2}" to="{S/2},{B}" strokecolor="black" strokeweight="1.25pt"/>
-          <v:line style="position:absolute;z-index:2" from="{S/2},{B}" to="{L},{S/2}" strokecolor="black" strokeweight="1.25pt"/>
-          <v:line style="position:absolute;z-index:2" from="{L},{S/2}" to="{S/2},{T}" strokecolor="black" strokeweight="1.25pt"/>
+          <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="#CC6600" strokeweight="3pt" fillcolor="#ffdcc8"/>
+          <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
+          <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
+          <v:line style="position:absolute;z-index:2" from="{S/2},{T}" to="{R},{S/2}" strokecolor="#CC6600" strokeweight="1.25pt"/>
+          <v:line style="position:absolute;z-index:2" from="{R},{S/2}" to="{S/2},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
+          <v:line style="position:absolute;z-index:2" from="{S/2},{B}" to="{L},{S/2}" strokecolor="#CC6600" strokeweight="1.25pt"/>
+          <v:line style="position:absolute;z-index:2" from="{L},{S/2}" to="{S/2},{T}" strokecolor="#CC6600" strokeweight="1.25pt"/>
           {boxes_xml}
         </v:group>
       </w:pict>
@@ -1225,7 +1224,7 @@ def create_unified_personal_details_box(container, name, dob, tob, place):
           </w:pPr>
           <w:r>
             <w:pict xmlns:v="urn:schemas-microsoft-com:vml">
-              <v:roundrect style="position:relative;width:260pt;height:130pt" 
+              <v:roundrect style="position:relative;width:332pt;height:130pt" 
                            arcsize="15%" fillcolor="white" strokecolor="#F15A23" strokeweight="1.5pt">
                 <v:textbox inset="12pt,10pt,12pt,10pt">
                   <w:txbxContent>
@@ -1541,7 +1540,7 @@ def create_rounded_table_container(doc, table_content, width_pt=400, height_pt=2
     
     return parse_xml(xml_content)
 
-def apply_premium_table_style(table, header_color_rgb=(241, 90, 35), alt_row_color_rgb=(255, 220, 200)):
+def apply_premium_table_style(table, header_color_rgb=(204, 102, 0), alt_row_color_rgb=(255, 235, 224)):
     """Apply premium professional styling to tables with genuine rounded corners using VML background"""
     try:
         # Apply table borders - no outer borders for rounded effect
@@ -1837,7 +1836,7 @@ def compact_table_paragraphs(tbl):
 
 def add_pramukh_bindu_section(container_cell, sidelons, lagna_sign, dob_dt):
     spacer = container_cell.add_paragraph("")
-    spacer.paragraph_format.space_after = Pt(4)
+    spacer.paragraph_format.space_after = Pt(8)
     # Title
     # title = container_cell.add_paragraph("प्रमुख बिंदु")
     # # Match other section titles
@@ -2047,9 +2046,6 @@ with col2:
         st.session_state['generate_clicked'] = True
         st.session_state['submitted'] = True
         st.rerun()  # Immediate rerun to show validation
-    
-    
-    # Show download button only if Kundali was generated in this session
 
 # --- Validation gate computed on rerun after click ---
 can_generate = False
@@ -2079,14 +2075,13 @@ if generate_clicked or st.session_state.get('submitted'):
             any_err = True
     
     if any_err:
-        # Error message perfectly centered using container with slight left adjustment
+        # Error message perfectly centered below the Generate button
         st.markdown(
             """<div style='
                 display: flex; 
                 justify-content: center; 
                 width: 100%; 
                 margin-top: 10px;
-                margin-left: -50px;
             '>
                 <div style='
                     color: #c1121f; 
@@ -2103,6 +2098,8 @@ if generate_clicked or st.session_state.get('submitted'):
         can_generate = True
         # Clear previous generation flag to ensure clean state
         st.session_state['generation_completed'] = False
+
+# Show download button only if Kundali was generated in this session
 
 if can_generate:
     # key presence
@@ -2198,34 +2195,138 @@ if can_generate:
             
             
             
-            # ===== ORIGINAL MRIDAASTRO HEADER BLOCK =====
+            # ===== EXACT LAYOUT MATCH: Top section with Personal Details (left) + MRIDAASTRO (right) =====
             try:
-                # MRIDAASTRO
-                hdr1 = doc.add_paragraph(); hdr1.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r = hdr1.add_run("MRIDAASTRO"); r.font.bold = True; r.font.small_caps = True; r.font.size = Pt(16)
-
+                # Create top header table (2 columns: Personal Details | MRIDAASTRO)
+                header_table = doc.add_table(rows=1, cols=2)
+                header_table.autofit = False
+                header_table.columns[0].width = Inches(1.3)  # Left: Personal details (1.3 inch)
+                header_table.columns[1].width = Inches(6.2)  # Right: MRIDAASTRO (adjusted)
+                
+                # Remove borders from header table
+                hdr_tbl = header_table._tbl
+                hdr_tblPr = hdr_tbl.tblPr
+                hdr_tblBorders = OxmlElement('w:tblBorders')
+                for edge in ('top','left','bottom','right','insideH','insideV'):
+                    el = OxmlElement(f'w:{edge}')
+                    el.set(qn('w:val'), 'nil')
+                    hdr_tblBorders.append(el)
+                hdr_tblPr.append(hdr_tblBorders)
+                
+                # LEFT CELL: Personal Details
+                left_cell = header_table.rows[0].cells[0]
+                
+                # Personal Details Title
+                p_title = left_cell.add_paragraph()
+                p_title.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                r_title = p_title.add_run("व्यक्तिगत विवरण")
+                r_title.font.bold = True
+                r_title.font.size = Pt(12)
+                
+                # Create aligned personal details using proper spacing
+                details = [
+                    ("नाम:", name),
+                    ("जन्म तिथि:", dt_local.strftime('%Y-%m-%d')),
+                    ("जन्म समय:", dt_local.strftime('%H:%M:%S')),
+                    ("स्थान:", place)
+                ]
+                
+                for label, value in details:
+                    p = left_cell.add_paragraph()
+                    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                    # Add label
+                    r_label = p.add_run(f"{label}")
+                    r_label.font.size = Pt(10)
+                    r_label.font.bold = True
+                    # Add proper spacing (tab)
+                    r_space = p.add_run("\t")
+                    # Add value - left aligned
+                    r_value = p.add_run(str(value))
+                    r_value.font.size = Pt(10)
+                
+                # Add dark orange rounded border around personal details cell using VML
+                try:
+                    # Create a VML rounded rectangle overlay for the personal details
+                    vml_content = f'''
+                    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                      <w:pPr>
+                        <w:spacing w:before="0" w:after="0"/>
+                      </w:pPr>
+                      <w:r>
+                        <w:pict xmlns:v="urn:schemas-microsoft-com:vml">
+                          <v:roundrect style="position:absolute;left:0pt;top:0pt;width:180pt;height:120pt;z-index:-1" 
+                                       arcsize="15%" fillcolor="transparent" strokecolor="#CC6600" strokeweight="3pt">
+                          </v:roundrect>
+                        </w:pict>
+                      </w:r>
+                    </w:p>'''
+                    vml_element = parse_xml(vml_content)
+                    left_cell._element.insert(0, vml_element)
+                except Exception:
+                    # Fallback to regular thick border if VML fails
+                    tc = left_cell._tc
+                    tcPr = tc.get_or_add_tcPr()
+                    
+                    # Remove existing borders first
+                    existing_borders = tcPr.find(qn('w:tcBorders'))
+                    if existing_borders is not None:
+                        tcPr.remove(existing_borders)
+                    
+                    # Add dark orange borders
+                    tcBorders = OxmlElement('w:tcBorders')
+                    for edge in ('top', 'left', 'bottom', 'right'):
+                        el = OxmlElement(f'w:{edge}')
+                        el.set(qn('w:val'), 'single')
+                        el.set(qn('w:sz'), '18')  # Thick border
+                        el.set(qn('w:color'), 'CC6600')  # Dark orange
+                        el.set(qn('w:space'), '0')
+                        tcBorders.append(el)
+                    tcPr.append(tcBorders)
+                
+                # RIGHT CELL: MRIDAASTRO + Tagline
+                right_cell = header_table.rows[0].cells[1]
+                
+                # MRIDAASTRO - Enhanced font size (48px equivalent = 36pt)
+                p_mrid = right_cell.add_paragraph()
+                p_mrid.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r_mrid = p_mrid.add_run("MRIDAASTRO")
+                r_mrid.font.bold = True
+                r_mrid.font.size = Pt(36)  # Enhanced from 16pt to 36pt
+                r_mrid.font.name = "Cinzel Decorative"
+                # Force font type change using XML
+                rPr = r_mrid._element.rPr
+                if rPr is not None:
+                    rFonts = rPr.find(qn('w:rFonts'))
+                    if rFonts is not None:
+                        rFonts.set(qn('w:ascii'), 'Cinzel Decorative')
+                        rFonts.set(qn('w:hAnsi'), 'Cinzel Decorative')
+                        rFonts.set(qn('w:cs'), 'Cinzel Decorative')
+                
                 # Tagline
-                hdr2 = doc.add_paragraph(); hdr2.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r2 = hdr2.add_run("In the light of the divine, let your soul journey shine."); r2.italic = True; r2.font.size = Pt(10)
-
-                # Title
-                hdr3 = doc.add_paragraph(); hdr3.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r3 = hdr3.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI)"); r3.bold = True; r3.font.size = Pt(13)
-
-                # Name
-                hdr4 = doc.add_paragraph(); hdr4.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r4 = hdr4.add_run("Niyati Niraj Golwalkar"); r4.font.size = Pt(10); r4.bold = True
-
-                # Role line
-                hdr5 = doc.add_paragraph(); hdr5.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r5 = hdr5.add_run("Astrologer • Sound & Mantra Healer"); r5.font.size = Pt(9.5)
-
-                # Contact line
-                hdr6 = doc.add_paragraph(); hdr6.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                r6 = hdr6.add_run("Phone: +91 9302413816  |  Electronic City Phase 1, Bangalore, India"); r6.font.size = Pt(9.5)
-            except Exception:
+                p_tag = right_cell.add_paragraph()
+                p_tag.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r_tag = p_tag.add_run("In the light of the divine, let your soul journey shine.")
+                r_tag.italic = True
+                r_tag.font.size = Pt(14)  # Enhanced from 10pt to 14pt
+                
+                # Add some space after header table
+                spacer1 = doc.add_paragraph()
+                spacer1.paragraph_format.space_after = Pt(20)
+                
+                # CENTERED DOCUMENT TITLE
+                title_para = doc.add_paragraph()
+                title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                r_title_main = title_para.add_run("PERSONAL HOROSCOPE (JANMA KUNDALI)")
+                r_title_main.font.bold = True
+                r_title_main.font.size = Pt(20)
+                
+                # Add space after title
+                spacer2 = doc.add_paragraph()
+                spacer2.paragraph_format.space_after = Pt(15)
+                
+            except Exception as e:
+                # Fallback to simple header
                 pass
-            # ===== END ORIGINAL MRIDAASTRO HEADER =====
 # ===== End Header Block (simplified & robust) =====
 # ===== End Header Block (safe) =====
 
@@ -2270,8 +2371,7 @@ if can_generate:
             except Exception:
                 place_disp = place if 'place' in locals() else ''
             
-            # Create single unified rounded box containing title and all personal details
-            create_unified_personal_details_box(left, str(name), str(dob), str(tob), str(place_disp))
+            # Personal details are now in the header section above, no need for duplicate
             # Original planetary positions section
             # h1 = left.add_paragraph("ग्रह स्थिति"); _apply_hindi_caption_style(h1, size_pt=11, underline=True, bold=True)
             create_cylindrical_section_header(left, "ग्रह स्थिति", width_pt=260)
@@ -2348,13 +2448,13 @@ if can_generate:
                         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             center_header_row(t3); set_table_font(t3, pt=BASE_FONT_PT); add_table_borders(t3, size=6)
             apply_premium_table_style(t3)  # Apply orange headers and alternating grey rows
-            set_col_widths(t3, [1.20, 1.50, 1.10])
+            set_col_widths(t3, [1.30, 1.40, 1.00])  # Adjusted column widths for better alignment
             compact_table_paragraphs(t3)  # Move after styling to prevent border conflicts
 
             # One-page: place Pramukh Bindu under tables (left column) to free right column for charts
             try:
                 add_pramukh_bindu_section(left, sidelons, lagna_sign, dt_utc)
-                add_phalit_section(left)
+                add_phalit_section(left, rows=12)  # Reduced rows to prevent overlapping
             except Exception:
                 pass
             right = outer.rows[0].cells[1]
@@ -2404,7 +2504,7 @@ if can_generate:
             # Original Lagna chart title
             cell1 = kt.rows[0].cells[0]; cap1 = cell1.add_paragraph("लग्न कुंडली")
             cap1.alignment = WD_ALIGN_PARAGRAPH.CENTER; _apply_hindi_caption_style(cap1, size_pt=11, underline=True, bold=True); cap1.paragraph_format.space_before = Pt(2); cap1.paragraph_format.space_after = Pt(2)
-            p1 = cell1.add_paragraph(); p1.paragraph_format.space_before = Pt(0); p1.paragraph_format.space_after = Pt(0)
+            p1 = cell1.add_paragraph(); p1.paragraph_format.space_before = Pt(2); p1.paragraph_format.space_after = Pt(4)
             # Lagna chart with planets in single box per house
             rasi_house_planets = build_rasi_house_planets_marked(sidelons, lagna_sign)
             p1._p.addnext(kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=lagna_sign, house_planets=rasi_house_planets))
@@ -2422,13 +2522,12 @@ if can_generate:
             run.font.size = Pt(11)
             run.font.color.rgb = RGBColor(139, 69, 19)  # Saddle brown color
             cap2.paragraph_format.space_before = Pt(2); cap2.paragraph_format.space_after = Pt(2)
-            p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(0); p2.paragraph_format.space_after = Pt(0)
+            p2 = cell2.add_paragraph(); p2.paragraph_format.space_before = Pt(2); p2.paragraph_format.space_after = Pt(4)
             nav_house_planets = build_navamsa_house_planets_marked(sidelons, nav_lagna_sign)
             p2._p.addnext(kundali_with_planets(size_pt=CHART_W_PT, lagna_sign=nav_lagna_sign, house_planets=nav_house_planets))
             # (प्रमुख बिंदु moved to row 2 of outer table)
-            # Ensure content goes below chart shape
-            cell2.add_paragraph("")
-            cell2.add_paragraph("")
+            # Ensure content goes below chart shape - single spacing paragraph
+            cell2.add_paragraph("").paragraph_format.space_after = Pt(6)
             # (Pramukh Bindu moved above charts)
 
             out = BytesIO(); doc.save(out); out.seek(0)
