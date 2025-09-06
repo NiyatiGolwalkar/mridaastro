@@ -388,7 +388,7 @@ def _clamp_in_bbox(left, top, w, h, bbox, pad):
     tmax = bbox['bottom'] - h - pad
     return max(lmin, min(left, lmax)), max(tmin, min(top, tmax))
 from docx import Document
-from docx.enum.table import WD_ROW_HEIGHT_RULE, WD_ALIGN_VERTICAL, WD_TABLE_ALIGNMENT
+from docx.enum.table import WD_ROW_HEIGHT_RULE, WD_ALIGN_VERTICAL
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import qn
@@ -1168,7 +1168,7 @@ def create_cylindrical_section_header(container, title_text, width_pt=320):
         <w:spacing w:before="120" w:after="100"/>
       </w:pPr>
       <w:r>
-        <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+        <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
           <v:roundrect style="position:relative;width:{width_pt}pt;height:28pt;margin-left:auto;margin-right:auto" 
                        arcsize="45%" strokecolor="#D2691E" strokeweight="1.5pt">
             <v:fill type="gradient" color="#F15A23" color2="#FFEACC" angle="90" opacity="1"/>
@@ -1201,6 +1201,12 @@ def create_cylindrical_section_header(container, title_text, width_pt=320):
         container._element.remove(header_para._element)
     except Exception:
         # Fallback to simple styled text if VML fails
+        pass
+    # Ensure spacing after header so following table starts below the bar
+    try:
+        spacer = container.add_paragraph()
+        spacer.paragraph_format.space_after = Pt(4)
+    except Exception:
         pass
 
 def create_unified_personal_details_box(container, name, dob, tob, place):
@@ -2217,11 +2223,10 @@ if can_generate:
                 
                 # LEFT CELL: Personal Details
                 left_cell = header_table.rows[0].cells[0]
-                left_cell.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
                 
                 # Personal Details Title
                 p_title = left_cell.add_paragraph()
-                p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                p_title.alignment = WD_ALIGN_PARAGRAPH.LEFT
                 r_title = p_title.add_run("व्यक्तिगत विवरण")
                 r_title.font.bold = True
                 r_title.font.size = Pt(12)
@@ -2234,27 +2239,20 @@ if can_generate:
                     ("स्थान:", place)
                 ]
                 
-                pd_table = left_cell.add_table(rows=len(details), cols=2)
-                try:
-                    pd_table.alignment = WD_TABLE_ALIGNMENT.CENTER
-                except Exception:
-                    pass
-                set_col_widths(pd_table, [1.3, max(1.0, left_width_in - 1.3 - 0.1)])
-                for i, (label, value) in enumerate(details):
-                    c0 = pd_table.cell(i, 0)
-                    c1 = pd_table.cell(i, 1)
-                    # Label (bold, left)
-                    p0 = c0.paragraphs[0]
-                    p0.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                    run0 = p0.add_run(str(label))
-                    run0.font.bold = True
-                    run0.font.size = Pt(10)
-                    # Value (left)
-                    p1 = c1.paragraphs[0]
-                    p1.alignment = WD_ALIGN_PARAGRAPH.LEFT
-                    run1 = p1.add_run(str(value))
-                    run1.font.size = Pt(10)
-# Add dark orange rounded border around personal details cell using VML
+                for label, value in details:
+                    p = left_cell.add_paragraph()
+                    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+                    # Add label
+                    r_label = p.add_run(f"{label}")
+                    r_label.font.size = Pt(10)
+                    r_label.font.bold = True
+                    # Add proper spacing (tab)
+                    r_space = p.add_run("\t")
+                    # Add value - left aligned
+                    r_value = p.add_run(str(value))
+                    r_value.font.size = Pt(10)
+                
+                # Add dark orange rounded border around personal details cell using VML
                 try:
                     # Create a VML rounded rectangle overlay for the personal details
                     vml_w_pt = int(left_width_in * 72) - 12
