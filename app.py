@@ -1329,7 +1329,7 @@ def create_unified_personal_details_box(container, name, dob, tob, place):
           </w:pPr>
           <w:r>
             <w:pict xmlns:v="urn:schemas-microsoft-com:vml">
-              <v:roundrect style="position:relative;width:332pt;height:94pt" 
+              <v:roundrect style="position:relative;width:94pt;height:115pt" 
                            arcsize="15%" fillcolor="white" strokecolor="#F15A23" strokeweight="1.5pt">
                 <v:textbox inset="12pt,10pt,12pt,10pt">
                   <w:txbxContent>
@@ -2351,7 +2351,7 @@ if can_generate:
                 
                 # Keep the cell exactly as tall as the overlay so content centers within the round-rect
                 header_table.rows[0].height_rule = WD_ROW_HEIGHT_RULE.EXACTLY
-                header_table.rows[0].height = Pt(96)
+                header_table.rows[0].height = Pt(118)
                 # Vertical center the whole block within the cell
                 left_cell.vertical_alignment = WD_ALIGN_VERTICAL.TOP
                 # RIGHT CELL: MRIDAASTRO + Tagline
