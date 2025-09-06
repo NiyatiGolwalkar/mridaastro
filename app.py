@@ -124,6 +124,28 @@ def set_page_background(doc, hex_color):
 # --- Phalit ruled lines (25 rows) ---
 from docx.enum.table import WD_ROW_HEIGHT_RULE
 
+
+def set_cell_margins(cell, *, left=None, right=None, top=None, bottom=None):
+    """Set Word table cell margins in dxa (1/20th of a point)."""
+    try:
+        from docx.oxml import OxmlElement
+        from docx.oxml.ns import qn
+        tc = cell._tc
+        tcPr = tc.get_or_add_tcPr()
+        # Remove existing tcMar if present
+        for el in list(tcPr):
+            if el.tag.endswith('tcMar'):
+                tcPr.remove(el)
+        tcMar = OxmlElement('w:tcMar')
+        for side, val in (('left', left), ('right', right), ('top', top), ('bottom', bottom)):
+            if val is not None:
+                el = OxmlElement(f'w:{side}')
+                el.set(qn('w:w'), str(int(val)))  # dxa
+                el.set(qn('w:type'), 'dxa')
+                tcMar.append(el)
+        tcPr.append(tcMar)
+    except Exception:
+        pass
 def zero_table_cell_margins(table):
     """Set w:tblCellMar for all sides to 0 to remove extra top/bottom padding inside table cells."""
     try:
@@ -1059,9 +1081,9 @@ def kundali_with_planets(size_pt=None, lagna_sign=1, house_planets=None):
     boxes_xml = "\\n".join(num_boxes + planet_boxes)
 
     xml = f'''
-    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:pPr><w:jc w:val="right"/></w:pPr><w:r>
+    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:pPr><w:jc w:val="center"/></w:pPr><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-        <v:group style="position:relative;margin-left:auto;margin-right:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
+        <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
           <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="#CC6600" strokeweight="3pt" fillcolor="#ffdcc8"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
@@ -1133,9 +1155,9 @@ def kundali_single_box(size_pt=220, lagna_sign=1, house_planets=None):
         ''')
     boxes_xml = "\\n".join(text_boxes)
     xml = f'''
-    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:pPr><w:jc w:val="right"/></w:pPr><w:r>
+    <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:pPr><w:jc w:val="center"/></w:pPr><w:r>
       <w:pict xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w10="urn:schemas-microsoft-com:office:word"><w10:wrap type="topAndBottom"/>
-        <v:group style="position:relative;margin-left:auto;margin-right:0;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
+        <v:group style="position:relative;margin-left:auto;margin-right:auto;margin-top:0;width:{S}pt;height:{int(S*0.80)}pt" coordorigin="0,0" coordsize="{S},{S}">
           <v:rect style="position:absolute;left:0;top:0;width:{S}pt;height:{S}pt;z-index:1" strokecolor="#CC6600" strokeweight="3pt" fillcolor="#ffdcc8"/>
           <v:line style="position:absolute;z-index:2" from="{L},{T}" to="{R},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
           <v:line style="position:absolute;z-index:2" from="{R},{T}" to="{L},{B}" strokecolor="#CC6600" strokeweight="1.25pt"/>
@@ -2464,6 +2486,15 @@ if can_generate:
             # ===== ENHANCED MAIN LAYOUT TABLE =====
             outer = doc.add_table(rows=1, cols=2); outer.autofit=False
             right_width_in = 3.70; outer.columns[0].width = Inches(3.70); outer.columns[1].width = Inches(3.70)
+            # ##GUTTER_APPLIED: add inner gutter so the two columns breathe
+            try:
+                # ~10pt padding on the inner edges (right of left cell, left of right cell)
+                gutter_dxa = 200  # 10pt * 20
+                set_cell_margins(outer.cell(0,0), right=gutter_dxa)
+                set_cell_margins(outer.cell(0,1), left=gutter_dxa)
+            except Exception:
+                pass
+
 
             CHART_W_PT = int(right_width_in * 72 - 10)
             CHART_H_PT = int(CHART_W_PT * 0.80)
