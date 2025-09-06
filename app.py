@@ -227,357 +227,33 @@ def set_app_background(image_path: str, size: str = "contain", position: str = "
 
 # --- Google Search Console verification (inject into <head>) ---
 st.markdown("""
-<script>
-(function() {
-  try {
-    var meta = document.createElement('meta');
-    meta.name = 'google-site-verification';
-    meta.content = '01pSw-vPDjcZLjPluDXzbWvMR-YxFjh3w3T94nMxsVU';
-    document.getElementsByTagName('head')[0].appendChild(meta);
-  } catch (e) { console.log('GSC meta inject error', e); }
-})();
-</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&display=swap');
+.mrida-brand { text-align:center; padding: 16px 0 8px; }
+.mrida-title {
+  font-family:'Cinzel Decorative',serif;
+  font-weight:700; letter-spacing:1px; color:#000;
+  display:flex; align-items:center; justify-content:center; gap:6px;
+  font-size:50px;
+  text-shadow:1px 1px 2px rgba(0,0,0,0.2);
+}
+.mrida-tilak { width:32px; height:32px; display:inline-block; vertical-align:middle; }
+.mrida-tagline {
+  font-family:'Cinzel Decorative',serif;
+  font-style:italic; color:#000; font-size:22px; margin-top:6px;
+}
+@media (max-width: 480px) {.mrida-title{font-size:38px}.mrida-tilak{width:26px;height:26px}.mrida-tagline{font-size:18px}}
+</style>
+<div class="mrida-brand">
+  <div class="mrida-title">
+    <span>MR</span>
+    <img src="{_tilak_src()}" alt="I" class="mrida-tilak" />
+    <span>DAASTRO</span>
+  </div>
+  <div class="mrida-tagline">In the light of divine, let your soul journey shine</div>
+  <div style="height:3px; width:160px; margin:6px auto 0; background:black; border-radius:2px;"></div>
+</div>
 """, unsafe_allow_html=True)
-
-
-from login_branding_helper import show_login_screen
-
-# ===================== Google OAuth2 Login Gate (with callback) =====================
-import time, requests
-from urllib.parse import urlencode
-from google.oauth2 import id_token
-from google.auth.transport import requests as g_requests
-import streamlit as st
-
-# Read secrets (supports both top-level and [google_oauth] section)
-try:
-    _cfg = st.secrets.get("google_oauth", st.secrets)
-    CLIENT_ID     = _cfg["client_id"]
-    CLIENT_SECRET = _cfg["client_secret"]
-    REDIRECT_URI  = _cfg["redirect_uri"]  # e.g. https://mridaastro.streamlit.app/oauth2callback
-    OAUTH_ENABLED = True
-except:
-    # Demo mode - OAuth not configured
-    CLIENT_ID     = "demo"
-    CLIENT_SECRET = "demo"
-    REDIRECT_URI  = "demo"
-    OAUTH_ENABLED = False
-
-AUTH_ENDPOINT  = "https://accounts.google.com/o/oauth2/v2/auth"
-TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
-SCOPES = "openid email profile"
-
-def build_auth_url(state: str) -> str:
-    params = {
-        "client_id": CLIENT_ID,
-        "redirect_uri": REDIRECT_URI,
-        "response_type": "code",
-        "scope": SCOPES,
-        "access_type": "online",
-        "include_granted_scopes": "true",
-        "prompt": "consent",
-        "state": state,
-    }
-    return f"{AUTH_ENDPOINT}?{urlencode(params)}"
-
-def exchange_code_for_tokens(code: str) -> dict:
-    data = {
-        "code": code,
-        "client_id": CLIENT_ID,
-        "client_secret": CLIENT_SECRET,
-        "redirect_uri": REDIRECT_URI,
-        "grant_type": "authorization_code",
-    }
-    resp = requests.post(TOKEN_ENDPOINT, data=data, timeout=15)
-    resp.raise_for_status()
-    return resp.json()
-
-def verify_id_token(idt: str) -> dict:
-    # Verifies signature & audience (CLIENT_ID)
-    return id_token.verify_oauth2_token(idt, g_requests.Request(), CLIENT_ID)
-
-def sign_out():
-    for k in ("user", "oauth", "oauth_state"):
-        st.session_state.pop(k, None)
-    st.rerun()
-
-# --- Handle Google redirect (works on /oauth2callback or any path with ?code=...)
-#     Use new stable API: st.query_params (replaces deprecated experimental_get_query_params)
-qp = dict(st.query_params)  # convert to a plain dict
-code  = qp.get("code")
-state = qp.get("state")
-
-# If values are lists, take the first element
-if isinstance(code, list):
-    code = code[0] if code else None
-if isinstance(state, list):
-    state = state[0] if state else None
-
-if code:
-    try:
-        if "oauth_state" in st.session_state and state != st.session_state["oauth_state"]:
-            st.error("State mismatch. Please try signing in again.")
-            st.stop()
-
-        tokens = exchange_code_for_tokens(code)
-        claims = verify_id_token(tokens["id_token"])
-        st.session_state["user"] = {
-            "email": claims.get("email"),
-            "name": claims.get("name") or claims.get("email"),
-            "picture": claims.get("picture", ""),
-        }
-        st.session_state["oauth"] = tokens
-
-        # Clear query params and send user back to root path
-        st.query_params.clear()
-        st.markdown("<script>history.replaceState({}, '', '/');</script>", unsafe_allow_html=True)
-
-        st.success(f"Signed in as {st.session_state['user']['email']}")
-        time.sleep(0.5)
-        st.rerun()
-    except Exception:
-        st.error("Login failed. Please try again.")
-        st.stop()
-
-# --- If not signed in, show login and stop
-if "user" not in st.session_state:
-    # Render the fully branded login screen (background + hero + gold button)
-    show_login_screen()
-    st.stop()
-
-# --- Restrict who can access (pick ONE approach) ---
-
-# --- Restrict who can access (STRICT WHITELIST) ---
-email = (st.session_state["user"].get("email") or "").lower()
-
-# Read allowed users from Streamlit secrets. Supports either a list or a comma-separated string.
-_allowed_raw = st.secrets.get("allowed_users", [])
-if isinstance(_allowed_raw, str):
-    allowed_users = {u.strip().lower() for u in _allowed_raw.split(",") if u.strip()}
-elif isinstance(_allowed_raw, (list, tuple, set)):
-    allowed_users = {str(u).strip().lower() for u in _allowed_raw if str(u).strip()}
-else:
-    allowed_users = set()
-
-# Enforce: if whitelist is empty -> deny by default to avoid accidental exposure.
-if not allowed_users:
-    st.error("Access restricted. No allowed users configured. Add 'allowed_users' in Streamlit Secrets.")
-    st.stop()
-
-if email not in allowed_users:
-    st.error("Access restricted to authorized users only.")
-    st.stop()
-
-# Set background for authenticated app pages
-set_app_background("assets/login_bg.png", size="contain", position="top center")
-
-
-# Show identity & Sign out in sidebar
-st.sidebar.markdown(f"**Signed in:** {st.session_state['user'].get('name') or email} ({email})")
-if st.sidebar.button("Sign out"):
-    sign_out()
-# =================== End Google OAuth2 Login Gate (with callback) ===================
-
-# --- Custom style for Generate & Download buttons ---
-st.markdown("""
-    <style>
-    div.stButton > button,
-    div.stDownloadButton > button {
-        background-color: black;
-        color: white;
-        font-weight: 600;
-        border-radius: 8px;
-        border: 1px solid #2e8b57;
-    }
-    div.stButton > button:hover,
-    div.stDownloadButton > button:hover {
-        background-color: #2e8b57 !important;  /* sea green hover */
-        color: white !important;
-    }
-    div.stButton > button:active,
-    div.stDownloadButton > button:active {
-        background-color: #2e8b57 !important;  /* sea green click */
-        color: white !important;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-from PIL import Image
-
-
-# === App background (minimal, no logic changes) ===
-def _apply_bg():
-    try:
-        import streamlit as st, base64
-        from pathlib import Path
-        p = Path("assets/ganesha_bg.png")
-        if p.exists():
-            b64 = base64.b64encode(p.read_bytes()).decode()
-            css = f"""
-            <style>
-            [data-testid="stAppViewContainer"] {{
-                background: url('data:image/png;base64,{b64}') no-repeat center top fixed;
-                background-size: cover;
-            }}
-            </style>
-            """
-            st.markdown(css, unsafe_allow_html=True)
-    except Exception:
-        pass
-# === End App background ===
-
-
-import swisseph as swe
-from timezonefinder import TimezoneFinder
-
-
-def _bbox_of_poly(poly):
-    xs, ys = zip(*poly)
-    return {'left': min(xs), 'top': min(ys), 'right': max(xs), 'bottom': max(ys)}
-
-def _clamp_in_bbox(left, top, w, h, bbox, pad):
-    lmin = bbox['left'] + pad
-    tmin = bbox['top'] + pad
-    lmax = bbox['right'] - w - pad
-    tmax = bbox['bottom'] - h - pad
-    return max(lmin, min(left, lmax)), max(tmin, min(top, tmax))
-from docx import Document
-from docx.enum.table import WD_ROW_HEIGHT_RULE, WD_ALIGN_VERTICAL, WD_TABLE_ALIGNMENT
-from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.oxml import OxmlElement, parse_xml
-from docx.oxml.ns import qn
-from docx.shared import Inches, Mm, Pt
-
-def set_cell_margins(cell, *, left=None, right=None, top=None, bottom=None):
-    try:
-        from docx.oxml import OxmlElement
-        from docx.oxml.ns import qn
-        tc = cell._tc
-        tcPr = tc.get_or_add_tcPr()
-        for el in list(tcPr):
-            if el.tag.endswith('tcMar'):
-                tcPr.remove(el)
-        tcMar = OxmlElement('w:tcMar')
-        for side, val in (('left', left), ('right', right), ('top', top), ('bottom', bottom)):
-            if val is not None:
-                el = OxmlElement(f'w:{side}')
-                el.set(qn('w:w'), str(int(val)))
-                el.set(qn('w:type'), 'dxa')
-                tcMar.append(el)
-        tcPr.append(tcMar)
-    except Exception:
-        pass
-
-
-# --- Table header shading helper (match kundali bg) ---
-def shade_cell(cell, fill_hex="FFFFFF"):
-    return
-
-def shade_header_row(table, fill_hex="FFFFFF"):
-    return
-
-def set_page_background(doc, hex_color):
-    try:
-        bg = OxmlElement('w:background')
-        bg.set(qn('w:color'), hex_color)
-        doc.element.insert(0, bg)
-    except Exception:
-        pass
-
-
-
-# ---- Dasha helpers (top-level; ORDER & YEARS must exist at call time) ----
-def antar_segments_in_md_utc(md_lord, md_start_utc, md_days):
-    res=[]; t=md_start_utc; start_idx=ORDER.index(md_lord)
-    for i in range(9):
-        L=ORDER[(start_idx+i)%9]; dur = YEARS[L]*(md_days/(120.0)); start = t; end = t + datetime.timedelta(days=dur)
-        res.append((L, start, end, dur)); t = end
-    return res
-
-def pratyantars_in_antar_utc(antar_lord, antar_start_utc, antar_days):
-    res=[]; t=antar_start_utc; start_idx=ORDER.index(antar_lord)
-    for i in range(9):
-        L=ORDER[(start_idx+i)%9]; dur = YEARS[L]*(antar_days/(120.0)); start = t; end = t + datetime.timedelta(days=dur)
-        res.append((L, start, end)); t = end
-    return res
-
-def next_antar_in_days_utc(now_utc, md_segments, days_window):
-    rows=[]; horizon=now_utc + datetime.timedelta(days=days_window)
-    for seg in md_segments:
-        MD = seg["planet"]; ms = seg["start"]; me = seg["end"]; md_days = seg["days"]
-        for AL, as_, ae, adays in antar_segments_in_md_utc(MD, ms, md_days):
-            if ae < now_utc or as_ > horizon: 
-                continue
-            end = min(ae, horizon)
-            rows.append({"major": MD, "antar": AL, "end": end})
-    rows.sort(key=lambda r:r["end"])
-    return rows
-# ---- End helpers ----
-
-
-# ---- Dasha helpers (top-level; use ORDER & YEARS defined before calls) ----
-# ---- End helpers ----
-
-
-
-# --- favicon helper (must be defined before set_page_config) ---
-def _load_page_icon():
-    try:
-        return Image.open("assets/fevicon_icon.png")
-    except Exception:
-        return "🪔"
-st.set_page_config(page_title="MRIDAASTRO", layout="wide", page_icon=_load_page_icon())
-
-# --- First-visit reset so 'Required' doesn't show on initial load ---
-if 'first_visit' not in st.session_state:
-    st.session_state['first_visit'] = True
-if st.session_state.get('first_visit', False):
-    st.session_state['submitted'] = False
-    st.session_state['first_visit'] = False
-
-
-
-
-
-
-# --- show validation only after first submit ---
-if 'submitted' not in st.session_state:
-    st.session_state['submitted'] = False
-
-def render_label(text: str, show_required: bool = False):
-    if show_required:
-        # Professional validation: black field name + red "Required"
-        html = (
-            "<div style='display:flex;justify-content:space-between;align-items:center;'>"
-            f"<span style='font-weight:700; font-size:18px;'>{text}</span>"
-            "<span style='color:#c1121f; font-size:14px; font-weight:700;'>Required</span>"
-            "</div>"
-        )
-    else:
-        # Normal state
-        html = (
-            "<div style='display:flex;justify-content:space-between;align-items:center;'>"
-            f"<span style='font-weight:700; font-size:18px;'>{text}</span>"
-            "</div>"
-        )
-    st.markdown(html, unsafe_allow_html=True)
-
-# === MRIDAASTRO Brand Header (Top) ===
-st.markdown(
-    """
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@700&display=swap" rel="stylesheet">
-    <div style='text-align:center; padding: 14px 0 4px 0;'>
-      <div style='font-family:Cinzel Decorative, cursive; font-size:58px; font-weight:700; color:#000000; text-shadow:2px 2px 4px rgba(0,0,0,0.2); margin-bottom:8px;'>
-        MRIDAASTRO
-      </div>
-      <div style='font-family:Georgia,serif; font-style:italic; font-size:24px; color:#000000; margin-bottom:18px;'>
-        In the light of divine, let your soul journey shine
-      </div>
-      <div style='height:3px; width:160px; margin:0 auto 6px auto; background:black; border-radius:2px;'></div>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
 # === End MRIDAASTRO Header ===
 _apply_bg()
 AYANAMSHA_VAL = swe.SIDM_LAHIRI
@@ -778,31 +454,6 @@ def geocode(place, api_key):
         res=j["results"][0]; return float(res["lat"]), float(res["lon"]), res.get("formatted", place)
     raise RuntimeError("Place not found.")
 
-
-def geocode_strict(place, api_key):
-    """
-    Strict geocode: requires City/Town/Village + Country; returns (lat, lon, display).
-    Raises RuntimeError if the result is not a populated place.
-    """
-    if not api_key: 
-        raise RuntimeError("Geoapify key missing. Add GEOAPIFY_API_KEY in Secrets.")
-    base="https://api.geoapify.com/v1/geocode/search?"
-    q = urllib.parse.urlencode({"text":place, "format":"json", "limit":1, "apiKey":api_key})
-    with urllib.request.urlopen(base+q, timeout=15) as r: 
-        j = json.loads(r.read().decode())
-    if not j.get("results"): 
-        raise RuntimeError("Place not found. Please enter 'City, State, Country' and pick a real place.")
-    res = j["results"][0]
-    rtype = res.get("result_type","")
-    city = res.get("city") or res.get("town") or res.get("village") or res.get("municipality") or res.get("state_district") or res.get("county")
-    country = res.get("country")
-    if not country or not (city or res.get("state")):
-        raise RuntimeError("Incomplete address. Enter 'City, State, Country'.")
-    good_types = {"city","town","village","municipality","suburb","state_district","county","district"}
-    if rtype and rtype not in good_types:
-        raise RuntimeError("Please enter a valid birth place (city/town/village).")
-    display = res.get("formatted") or ", ".join([x for x in [city, res.get("state"), country] if x])
-    return float(res["lat"]), float(res["lon"]), display
 
 def get_timezone_offset_simple(lat, lon):
     """Simple timezone offset calculation for auto-population using hardcoded values"""
@@ -2078,10 +1729,8 @@ with row1c1:
 with row1c2:
     place_val = (st.session_state.get('place_input','') or '').strip()
     place_err = (st.session_state.get('submitted') or st.session_state.get('generate_clicked')) and (not place_val)
-    place_valid = bool(st.session_state.get('place_validated'))
-place_err = (st.session_state.get('submitted') or st.session_state.get('generate_clicked')) and not place_valid
-render_label('Place of Birth (City, State, Country) <span style="color:red">*</span>', place_err)
-place = st.text_input("Place of Birth", key="place_input", label_visibility="collapsed")
+    render_label('Place of Birth (City, State, Country) <span style="color:red">*</span>', place_err)
+    place = st.text_input("Place of Birth", key="place_input", label_visibility="collapsed")
 
 # Clear previous generation if any field changes
 current_form_values = {
@@ -2108,20 +1757,19 @@ st.session_state['last_form_values'] = current_form_values
 # Auto-populate UTC offset when place changes
 place_input_val = st.session_state.get('place_input', '').strip()
 if place_input_val and place_input_val != st.session_state.get('last_place_checked', ''):
-    st.session_state['tz_input'] = ''
-    st.session_state['last_place_checked'] = ''
     try:
         api_key = st.secrets.get("GEOAPIFY_API_KEY", "")
         if api_key:
-            lat, lon, disp = geocode_strict(place_input_val, api_key)
+            # Try to geocode and detect timezone
+            lat, lon, disp = geocode(place_input_val, api_key)
+            # Use simple timezone offset calculation for auto-population
             offset_hours = get_timezone_offset_simple(lat, lon)
+            # Auto-populate the UTC offset field
             st.session_state['tz_input'] = str(offset_hours)
             st.session_state['last_place_checked'] = place_input_val
-            st.session_state['place_validated_display'] = disp
-            st.session_state['place_validated'] = True
-            st.rerun()
+            st.rerun()  # Refresh to show the auto-populated value
     except Exception as e:
-        st.session_state['place_validated'] = False
+        # If auto-detection fails, just leave the field for manual entry
         pass
 
 # Row 2: Date of Birth, Time of Birth, and UTC offset override
@@ -2191,7 +1839,7 @@ if generate_clicked or st.session_state.get('submitted'):
     any_err = False
 
     # Check all required fields
-    if not _name or not _place or not _tz or _dob is None or _tob is None or not st.session_state.get('place_validated'):
+    if not _name or not _place or not _tz or _dob is None or _tob is None:
         any_err = True
     else:
         try:
@@ -2238,12 +1886,12 @@ if can_generate:
     try:
             # Use the validated variables from session state
             name = _name
-            place = st.session_state.get('place_validated_display', _place)
+            place = _place
             dob = _dob
             tob = _tob
             tz_override = _tz
 
-            lat, lon, disp = geocode_strict(place, api_key)
+            lat, lon, disp = geocode(place, api_key)
 
             dt_local = datetime.datetime.combine(dob, tob).replace(tzinfo=None)
             used_manual = False
